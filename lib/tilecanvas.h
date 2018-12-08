@@ -55,6 +55,9 @@ public:
     TileCanvas();
     ~TileCanvas() override;
 
+    virtual QImage *currentProjectImage() override;
+    virtual const QImage *currentProjectImage() const override;
+
     int cursorTilePixelX() const;
     void setCursorTilePixelX(int cursorTilePixelX);
 
@@ -70,7 +73,7 @@ public:
     QPoint scenePosToTilePixelPos(const QPoint &scenePos) const;
     QRect sceneRectToTileRect(const QRect &sceneRect) const;
 
-    virtual QList<SubImage> subImagesInBounds(const QRect &bounds) const override;
+    virtual QList<SubImage> subImageInstancesInBounds(const QRect &bounds) const override;
 
 signals:
     void cursorTilePixelXChanged();

@@ -54,6 +54,16 @@ TileCanvas::~TileCanvas()
     qCDebug(lcImageCanvasLifecycle) << "destructing TileCanvas" << this;
 }
 
+QImage *TileCanvas::currentProjectImage()
+{
+    return mTilesetProject->tileset()->image();
+}
+
+const QImage *TileCanvas::currentProjectImage() const
+{
+    return const_cast<TileCanvas *>(this)->currentProjectImage();
+}
+
 TileCanvas::Mode TileCanvas::mode() const
 {
     return mMode;
@@ -329,12 +339,12 @@ void TileCanvas::applyCurrentTool()
 
 //            mTilesetProject->beginMacro(QLatin1String("PixelPenTool"));
 //            mTilesetProject->addChange(new ApplyPixelPenCommand(this, -1, candidateData.scenePositions, candidateData.previousColours, penColour()));
-            mProject->beginMacro(QLatin1String("PixelLineTool"));
+//            mProject->beginMacro(QLatin1String("PixelLineTool"));
             // Draw the line on top of what has already been painted using a special composition mode.
             // This ensures that e.g. a translucent red overwrites whatever pixels it
             // lies on, rather than blending with them.
-            mProject->addChange(new ApplyPixelLineCommand(this, -1, *mTilesetProject->tileset()->image(), linePoint1(), linePoint2(),
-                mPressScenePosition, mLastPixelPenPressScenePosition, QPainter::CompositionMode_Source));
+            mProject->addChange(new ApplyPixelLineCommand(this, linePoint1(), linePoint2(),
+                mPressScenePosition, mLastPixelPenPressScenePosition, QPainter::CompositionMode_SourceOver));
             break;
         } else {
             const QPoint scenePos = QPoint(mCursorSceneX, mCursorSceneY);
@@ -428,7 +438,7 @@ QRect TileCanvas::sceneRectToTileRect(const QRect &sceneRect) const
                  QPoint(Utils::divFloor(sceneRect.right(), mTilesetProject->tileWidth()), Utils::divFloor(sceneRect.bottom(), mTilesetProject->tileHeight())));
 }
 
-QList<ImageCanvas::SubImage> TileCanvas::subImagesInBounds(const QRect &bounds) const
+QList<ImageCanvas::SubImage> TileCanvas::subImageInstancesInBounds(const QRect &bounds) const
 {
     const QRect tileRect = sceneRectToTileRect(bounds);
     QList<ImageCanvas::SubImage> subImages;

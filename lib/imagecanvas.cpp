@@ -102,6 +102,8 @@ ImageCanvas::ImageCanvas() :
     mMaxToolSize(100),
     mPenForegroundColour(Qt::black),
     mPenBackgroundColour(Qt::white),
+    mBrush(),
+    mStroke(),
     mPotentiallySelecting(false),
     mHasSelection(false),
     mMovingSelection(false),
@@ -827,7 +829,14 @@ qreal ImageCanvas::lineAngle() const
     return line.angle();
 }
 
-QList<ImageCanvas::SubImage> ImageCanvas::subImagesInBounds(const QRect &bounds) const
+ImageCanvas::SubImage ImageCanvas::getSubImage(const int index) const
+{
+    Q_ASSERT(index == 0);
+
+    return SubImage();
+}
+
+QList<ImageCanvas::SubImage> ImageCanvas::subImageInstancesInBounds(const QRect &bounds) const
 {
     QList<SubImage> subImages;
     if (bounds.intersects(mProject->bounds())) {
@@ -962,7 +971,7 @@ QImage *ImageCanvas::currentProjectImage()
 
 const QImage *ImageCanvas::currentProjectImage() const
 {
-    return mImageProject->image();
+    return const_cast<ImageCanvas *>(this)->currentProjectImage();
 }
 
 QImage *ImageCanvas::imageForLayerAt(int layerIndex)
@@ -991,12 +1000,23 @@ QImage ImageCanvas::getContentImage()
         // Draw the line on top of what has already been painted using a special composition mode.
         // This ensures that e.g. a translucent red overwrites whatever pixels it
         // lies on, rather than blending with them.
-        drawLine(&linePainter, linePoint1(), linePoint2(), QPainter::CompositionMode_Source);
+        drawStroke(&linePainter, {linePoint1(), linePoint2()}, QPainter::CompositionMode_SourceOver);
     }
     return image;
 }
 
-void ImageCanvas::drawLine(QPainter *painter, QPointF point1, QPointF point2, const QPainter::CompositionMode mode) const
+void ImageCanvas::drawDabbedSegment(QPainter *painter, QPointF point1, QPointF point2, const QPainter::CompositionMode mode) const
+{
+    painter->save();
+    painter->restore();
+}
+
+void ImageCanvas::drawDabbedStroke(QPainter *painter, const QList<QPointF> &stroke, const QPainter::CompositionMode mode) const
+{
+
+}
+
+void ImageCanvas::drawStroke(QPainter *painter, const QList<QPointF> &stroke, const QPainter::CompositionMode mode) const
 {
     painter->save();
 
@@ -1005,7 +1025,7 @@ void ImageCanvas::drawLine(QPainter *painter, QPointF point1, QPointF point2, co
     pen.setWidth(mToolSize);
     if (mToolShape == ToolShape::SquareToolShape) {
         pen.setCapStyle(Qt::PenCapStyle::SquareCap);
-        pen.setJoinStyle(Qt::PenJoinStyle::MiterJoin);
+        pen.setJoinStyle(Qt::PenJoinStyle::BevelJoin);
     }
     else {
         pen.setCapStyle(Qt::PenCapStyle::RoundCap);
@@ -1013,30 +1033,52 @@ void ImageCanvas::drawLine(QPainter *painter, QPointF point1, QPointF point2, co
     }
     painter->setPen(pen);
 
-    // Offset odd sized pens to pixel centre to centre pen
-    const QPointF penOffset = (mToolSize % 2 == 1) ? QPointF(0.5, 0.5) : QPointF(0.0, 0.0);
+    auto snapPenToPixel = [this](const QPointF point){
+        const QPointF penOffset = (mToolSize % 2 == 1) ? QPointF(0.5, 0.5) : QPointF(0.0, 0.0);
+        return (point + penOffset).toPoint() - penOffset;
+    };
 
-    // Snap points to points to pixel grid
-    if (mToolSize > 1) {
-        point1 = (point1 + penOffset).toPoint() - penOffset;
-        point2 = (point2 + penOffset).toPoint() - penOffset;
-    }
-    else {
-        // Handle inconsitant width 1 pen behaviour, off pixel centres so results in non-ideal asymetrical lines but
-        // would require either redrawing previous segment as part of stroke or custom line function to prevent spurs
-        point1 = QPointF(qFloor(point1.x()), qFloor(point1.y()));
-        point2 = QPointF(qFloor(point2.x()), qFloor(point2.y()));
-    }
+    auto strokeIsSinglePoint = [snapPenToPixel](const QList<QPointF> &stroke) {
+        for (int i = 1; i < stroke.length(); ++i) {
+            if (snapPenToPixel(stroke[i]) != snapPenToPixel(stroke[i - 1])) {
+                return false;
+            }
+        }
+        return true;
+    };
 
-    const QLineF line(point1, point2);
+    auto mergePoints = [](const QList<QPointF> &stroke, const qreal mergeThreshold = 2.0){
+        QList<QPointF> mergedStroke;
+        int lastPoint = 0;
+        mergedStroke.append(stroke[0]);
+        for (int i = 1; i < stroke.length(); ++i) {
+            if (QLineF(stroke[i], stroke[lastPoint]).length() > mergeThreshold) {
+                mergedStroke.append(stroke[i]);
+                lastPoint = i;
+            }
+        }
+        return mergedStroke;
+    };
+
+    QList<QPointF> processedStroke = mergePoints(stroke, 1);
 
     painter->setCompositionMode(mode);
     // Zero-length line doesn't draw with round pen so handle case with drawPoint
-    if (line.p1() == line.p2()) {
-        painter->drawPoint(line.p1());
+    if (strokeIsSinglePoint(processedStroke)) {
+        QPointF point = snapPenToPixel(processedStroke[0]);
+        // Handle inconsitent width 1 pen behaviour off single points drawing offset
+        if (mToolSize == 1) {
+            point -= QPoint(1, 1);
+        }
+        painter->drawPoint(point);
     }
     else {
-        painter->drawLine(line);
+        QPainterPath path;
+        path.moveTo(snapPenToPixel(processedStroke[0]));
+        for (int i = 1; i < processedStroke.length(); ++i) {
+            path.lineTo(snapPenToPixel(processedStroke[i]));
+        }
+        painter->drawPath(path);
     }
 
     painter->restore();
@@ -2049,12 +2091,12 @@ void ImageCanvas::applyCurrentTool()
 
     switch (mTool) {
     case PenTool: {
-        mProject->beginMacro(QLatin1String("PixelLineTool"));
+//        mProject->beginMacro(QLatin1String("PixelLineTool"));
         // Draw the line on top of what has already been painted using a special composition mode.
         // This ensures that e.g. a translucent red overwrites whatever pixels it
         // lies on, rather than blending with them.
-        mProject->addChange(new ApplyPixelLineCommand(this, mProject->currentLayerIndex(), *currentProjectImage(), linePoint1(), linePoint2(),
-            mPressScenePositionF, mLastPixelPenPressScenePositionF, QPainter::CompositionMode_Source));
+        mProject->addChange(new ApplyPixelLineCommand(this, linePoint1(), linePoint2(),
+            mPressScenePositionF, mLastPixelPenPressScenePositionF, QPainter::CompositionMode_SourceOver));
         break;
     }
     case EyeDropperTool: {
@@ -2067,7 +2109,7 @@ void ImageCanvas::applyCurrentTool()
     case EraserTool: {
         mProject->beginMacro(QLatin1String("PixelEraserTool"));
         // Draw the line on top of what has already been painted using a special composition mode to erase pixels.
-        mProject->addChange(new ApplyPixelLineCommand(this, mProject->currentLayerIndex(), *currentProjectImage(), linePoint1(), linePoint2(),
+        mProject->addChange(new ApplyPixelLineCommand(this, linePoint1(), linePoint2(),
             mPressScenePositionF, mLastPixelPenPressScenePositionF, QPainter::CompositionMode_Clear));
         break;
     }
@@ -2206,9 +2248,25 @@ QRect ImageCanvas::normalisedLineRect(const QPointF point1, const QPointF point2
     // a simplification of Pythagoras’ theorem.
     // The bounds could be tighter by taking into account the specific rotation of the brush,
     // but the sqrt(2) ensures it is big enough for any rotation.
-    const int margin = qCeil(M_SQRT2 * mToolSize / 2.0) + 1;
-    return QRect(point1.toPoint(), point2.toPoint()).normalized()
-            .marginsAdded({margin, margin, margin, margin});
+//    const int margin = qCeil(M_SQRT2 * mToolSize / 2.0) + 1;
+//    return QRect(point1.toPoint(), point2.toPoint()).normalized()
+//            .marginsAdded({margin, margin, margin, margin});
+    return strokeBounds({point1, point2}, mToolSize);
+}
+
+QRect ImageCanvas::strokeBounds(const QList<QPointF> stroke, const int toolSize)
+{
+    // sqrt(2) is the ratio between the hypotenuse of a square and its side;
+    // a simplification of Pythagoras’ theorem.
+    // The bounds could be tighter by taking into account the specific rotation of the brush,
+    // but the sqrt(2) ensures it is big enough for any rotation.
+    const int margin = qCeil(M_SQRT2 * toolSize / 2.0) + 1;
+
+    QRect bounds;
+    for (auto point : stroke) {
+        bounds = bounds.united(QRect(point.toPoint(), QSize()).marginsAdded({margin, margin, margin, margin}));
+    }
+    return bounds;
 }
 
 void ImageCanvas::updateCursorPos(const QPoint &eventPos)

@@ -1,4 +1,4 @@
-/*
+﻿/*
     Copyright 2017, Mitch Curtis
 
     This file is part of Slate.
@@ -27,42 +27,19 @@
 
 Q_LOGGING_CATEGORY(lcApplyPixelLineCommand, "app.undo.applyPixelLineCommand")
 
-// The undo command for lines needs the project image before and after
-// the line was drawn on it.
-ApplyPixelLineCommand::ApplyPixelLineCommand(ImageCanvas *canvas, int layerIndex, QImage &currentProjectImage, const QPointF point1, const QPointF point2,
+ApplyPixelLineCommand::ApplyPixelLineCommand(ImageCanvas *canvas, const QPointF point1, const QPointF point2,
         const QPointF &newLastPixelPenReleaseScenePos, const QPointF &oldLastPixelPenReleaseScenePos,
         const QPainter::CompositionMode mode, QUndoCommand *parent) :
     QUndoCommand(parent),
     mCanvas(canvas),
-    mLayerIndex(layerIndex),
     mNewLastPixelPenReleaseScenePos(newLastPixelPenReleaseScenePos),
     mOldLastPixelPenReleaseScenePos(oldLastPixelPenReleaseScenePos),
-    subImageDatas()
+    mMode(mode),
+    mStroke({point1, point2}), mOldStroke(),
+    mDrawBounds(ImageCanvas::strokeBounds(mStroke, mCanvas->toolSize())),
+    mImageRegion(), mUndoBuffer(), mRedoBuffer(), mImageBounds(),
+    needDraw(true)
 {
-    const QRect lineRect = mCanvas->normalisedLineRect(point1, point2);
-    const QList<ImageCanvas::SubImage> subImages = canvas->subImagesInBounds(lineRect);
-    for (auto const &subImage : subImages) {
-        // subimage-space to scene-space offset
-        const QPoint offset = subImage.bounds.topLeft() - subImage.offset;
-        // line rect offset to scene space and clipped to subimage bounds
-        const QRect subImageLineRect = subImage.bounds.intersected(lineRect.translated(offset));
-
-        SubImageData subImageData;
-        subImageData.subImage = subImage;
-        subImageData.lineRect = subImageLineRect;
-        subImageData.imageWithoutLine = currentProjectImage.copy(subImageLineRect);
-
-        QPainter painter(&currentProjectImage);
-        // Clip drawing to subimage
-        painter.setClipRect(subImageLineRect);
-        // Draw line with offset to subimage
-        mCanvas->drawLine(&painter, point1 + offset, point2 + offset, mode);
-        painter.end();
-
-        subImageData.imageWithLine = currentProjectImage.copy(subImageLineRect);
-        subImageDatas.append(subImageData);
-    }
-
     qCDebug(lcApplyPixelLineCommand) << "constructed" << this;
 }
 
@@ -74,17 +51,112 @@ ApplyPixelLineCommand::~ApplyPixelLineCommand()
 void ApplyPixelLineCommand::undo()
 {
     qCDebug(lcApplyPixelLineCommand) << "undoing" << this;
-    for (auto const &subImageData : subImageDatas) {
-        mCanvas->applyPixelLineTool(mLayerIndex, subImageData.imageWithoutLine, subImageData.lineRect, mOldLastPixelPenReleaseScenePos);
+
+    // Copy image from undo buffer
+    QPainter painter(mCanvas->currentProjectImage());
+    for (auto rect : mImageRegion.rects()) {
+        undoRect(painter, rect);
     }
+    mCanvas->requestContentPaint();
+
+    mCanvas->mLastPixelPenPressScenePositionF = mOldLastPixelPenReleaseScenePos;
 }
 
 void ApplyPixelLineCommand::redo()
 {
     qCDebug(lcApplyPixelLineCommand) << "redoing" << this;
-    for (auto const &subImageData : subImageDatas) {
-        mCanvas->applyPixelLineTool(mLayerIndex, subImageData.imageWithLine, subImageData.lineRect, mNewLastPixelPenReleaseScenePos);
+
+    qDebug() << "DRAW" << mDrawBounds;
+    qDebug() << mCanvas->subImageInstancesInBounds(mDrawBounds);
+
+    mDrawBounds = ImageCanvas::strokeBounds(mStroke, mCanvas->toolSize());////////////////////////////
+
+    // First "redo" so draw and store undo/redo buffers
+    if (needDraw) {
+        // Find intersections of stroke and subimages
+        struct Intersection {
+            QRect bounds;
+            QPoint drawOffset;
+        };
+        QList<Intersection> subImageIntersections;
+        for (auto const &subImage : mCanvas->subImageInstancesInBounds(mDrawBounds)) {
+            const QPoint subImageOffset = subImage.bounds.topLeft() - subImage.position;
+            const QRect subImageIntersection = mDrawBounds.translated(subImageOffset).intersected(subImage.bounds);
+            if (!subImageIntersection.isEmpty()) {
+                subImageIntersections.append({subImageIntersection, subImageOffset});
+            }
+        }
+
+        if (!subImageIntersections.isEmpty()) {
+            QPainter painter;
+
+            // Restore area to be drawn from undo buffer
+            painter.begin(mCanvas->currentProjectImage());
+            for (auto const &intersection : subImageIntersections) {
+                for (auto rect : mImageRegion.intersected(intersection.bounds).rects()) {
+                    undoRect(painter, rect);
+                }
+                mImageRegion = mImageRegion.subtracted(intersection.bounds);
+            }
+            painter.end();
+
+            // Resize buffers if bounds changed
+            const QRect oldImageBounds = mImageBounds;
+            // Add rects to region
+            for (auto const &intersection : subImageIntersections) {
+                mImageRegion = mImageRegion.united(intersection.bounds);
+            }
+            mImageBounds = mImageRegion.boundingRect();
+            if (mImageBounds != oldImageBounds) {
+                const QPoint bufferOffset = mImageBounds.topLeft() - oldImageBounds.topLeft();
+
+                if (mUndoBuffer.isNull()) mUndoBuffer = QImage(mImageBounds.size(), mCanvas->currentProjectImage()->format());
+                else mUndoBuffer = mUndoBuffer.copy(mImageBounds.translated(bufferOffset));
+
+                if (mRedoBuffer.isNull()) mRedoBuffer = QImage(mImageBounds.size(), mCanvas->currentProjectImage()->format());
+                else mRedoBuffer = mRedoBuffer.copy(mImageBounds.translated(bufferOffset));
+            }
+
+            // Store original image in undo buffer
+            painter.begin(&mUndoBuffer);
+            for (auto const &intersection : subImageIntersections) {
+                painter.setCompositionMode(QPainter::CompositionMode_Source);
+                painter.drawImage(intersection.bounds.topLeft() - mImageBounds.topLeft(), *mCanvas->currentProjectImage(), intersection.bounds);
+            }
+            painter.end();
+
+            // Draw stroke
+            painter.begin(mCanvas->currentProjectImage());
+            for (auto const &intersection : subImageIntersections) {
+                painter.save();
+                painter.setClipRect(intersection.bounds);
+                painter.translate(intersection.drawOffset);
+                mCanvas->drawStroke(&painter, mStroke, mMode);
+                painter.restore();
+            }
+            painter.end();
+
+            // Store changed image in redo buffer
+            painter.begin(&mRedoBuffer);
+            for (auto const &intersection : subImageIntersections) {
+                painter.setCompositionMode(QPainter::CompositionMode_Source);
+                painter.drawImage(intersection.bounds.topLeft() - mImageBounds.topLeft(), *mCanvas->currentProjectImage(), intersection.bounds);
+            }
+            painter.end();
+        }
+
+        needDraw = false;
     }
+    // Otherwise copy image from redo buffer
+    else {
+        QPainter painter(mCanvas->currentProjectImage());
+        for (auto rect : mImageRegion.rects()) {
+            redoRect(painter, rect);
+        }
+    }
+    mCanvas->requestContentPaint();
+
+    mCanvas->mLastPixelPenPressScenePositionF = mNewLastPixelPenReleaseScenePos;
 }
 
 int ApplyPixelLineCommand::id() const
@@ -92,15 +164,48 @@ int ApplyPixelLineCommand::id() const
     return ApplyPixelLineCommandId;
 }
 
-bool ApplyPixelLineCommand::mergeWith(const QUndoCommand *)
+bool ApplyPixelLineCommand::mergeWith(const QUndoCommand *other)
 {
-    return false;
+    if (other->id() != id()) return false;
+    const ApplyPixelLineCommand *newCommand = static_cast<const ApplyPixelLineCommand*>(other);
+    if (newCommand->mStroke.first() != mStroke.last() || newCommand->mCanvas != mCanvas) return false;
+
+    // Undo new stroke
+    QPainter painter;
+    painter.begin(mCanvas->currentProjectImage());
+    for (auto rect : newCommand->mImageRegion.rects()) {
+        newCommand->undoRect(painter, rect);
+    }
+    painter.end();
+
+    // Merge new stroke with old stroke
+    mDrawBounds = newCommand->mDrawBounds;
+    mStroke.append(newCommand->mStroke.mid(1));
+    qDebug() << "mDrawBounds" << mDrawBounds;
+
+    // Redraw merged stroke
+    needDraw = true;
+    redo();
+
+    return true;
+}
+
+void ApplyPixelLineCommand::undoRect(QPainter &painter, const QRect &rect) const
+{
+    painter.setCompositionMode(QPainter::CompositionMode_Source);
+    painter.drawImage(rect, mUndoBuffer, rect.translated(-mImageBounds.topLeft()));
+}
+
+void ApplyPixelLineCommand::redoRect(QPainter &painter, const QRect &rect) const
+{
+    painter.setCompositionMode(QPainter::CompositionMode_Source);
+    painter.drawImage(rect, mRedoBuffer, rect.translated(-mImageBounds.topLeft()));
 }
 
 QDebug operator<<(QDebug debug, const ApplyPixelLineCommand *command)
 {
     debug.nospace() << "(ApplyPixelLineCommand"
-        << " layerIndex=" << command->mLayerIndex
+//        << " layerIndex=" << command->mLayerIndex
 //        << ", lineRect" << command->mLineRect
         << ", newLastPixelPenReleaseScenePos=" << command->mNewLastPixelPenReleaseScenePos
         << ", oldLastPixelPenReleaseScenePos=" << command->mOldLastPixelPenReleaseScenePos

@@ -30,7 +30,7 @@
 class SLATE_EXPORT ApplyPixelLineCommand : public QUndoCommand
 {
 public:
-    ApplyPixelLineCommand(ImageCanvas *canvas, int layerIndex, QImage &currentProjectImage, const QPointF point1, const QPointF point2,
+    ApplyPixelLineCommand(ImageCanvas *canvas, const QPointF point1, const QPointF point2,
         const QPointF &newLastPixelPenReleaseScenePos, const QPointF &oldLastPixelPenReleaseScenePos,
         const QPainter::CompositionMode mode, QUndoCommand *parent = nullptr);
     ~ApplyPixelLineCommand();
@@ -39,23 +39,29 @@ public:
     void redo() override;
 
     int id() const override;
-    bool mergeWith(const QUndoCommand *other) override;
+    bool mergeWith(const QUndoCommand *command) override;
 
 private:
     friend QDebug operator<<(QDebug debug, const ApplyPixelLineCommand *command);
 
+    void undoRect(QPainter &painter, const QRect &rect) const;
+    void redoRect(QPainter &painter, const QRect &rect) const;
+    void resizeUndoRedoBuffers(const QRect &rect);
+
     ImageCanvas *mCanvas;
-    int mLayerIndex;
     QPointF mNewLastPixelPenReleaseScenePos;
     QPointF mOldLastPixelPenReleaseScenePos;
+    QPainter::CompositionMode mMode;
 
-    struct SubImageData {
-        ImageCanvas::SubImage subImage;
-        QRect lineRect;
-        QImage imageWithoutLine;
-        QImage imageWithLine;
-    };
-    QList<SubImageData> subImageDatas;
+    QList<QPointF> mStroke;
+    QList<QPointF> mOldStroke;
+    QRect mDrawBounds;
+    QRegion mImageRegion;
+    QImage mUndoBuffer;
+    QImage mRedoBuffer;
+    QRect mImageBounds;
+
+    bool needDraw;
 };
 
 

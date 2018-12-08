@@ -239,14 +239,29 @@ public:
 
     struct SubImage {
         bool operator==(const SubImage &other) const {
-            return bounds == other.bounds && offset == other.offset;
+            return bounds == other.bounds && position == other.position;
         }
 
+        // Image-space bounds
         QRect bounds;
-        QPoint offset;
+        // Scene-space position
+        QPoint position;
     };
 
-    virtual QList<SubImage> subImagesInBounds(const QRect &bounds) const;
+    struct SubImageInstance {
+        bool operator==(const SubImageInstance &other) const {
+            return index == other.index && position == other.position;
+        }
+        // index of master subimage
+        int index;
+        // Scene-space position
+        QPoint position;
+        // Other transform?
+    };
+
+    virtual SubImage getSubImage(const int index) const;
+
+    virtual QList<SubImage> subImageInstancesInBounds(const QRect &bounds) const;
 
     // Essentially currentProjectImage() for regular image canvas, but may return a
     // preview image if there is a selection active. For layered image canvases, this
@@ -413,6 +428,7 @@ protected:
     QPointF linePoint1() const;
     QPointF linePoint2() const;
     QRect normalisedLineRect(const QPointF point1, const QPointF point2) const;
+    static QRect strokeBounds(const QList<QPointF> stroke, const int toolSize);
 
     virtual void updateCursorPos(const QPoint &eventPos);
     void updateVisibleSceneArea();
@@ -432,7 +448,9 @@ protected:
     CanvasPane *hoveredPane(const QPoint &pos);
     QPoint eventPosRelativeToCurrentPane(const QPoint &pos);
     virtual QImage getContentImage();
-    void drawLine(QPainter *painter, QPointF point1, QPointF point2, const QPainter::CompositionMode mode) const;
+    void drawDabbedSegment(QPainter *painter, QPointF point1, QPointF point2, const QPainter::CompositionMode mode) const;
+    void drawDabbedStroke(QPainter *painter, const QList<QPointF> &stroke, const QPainter::CompositionMode mode) const;
+    void drawStroke(QPainter *painter, const QList<QPointF> &stroke, const QPainter::CompositionMode mode) const;
     void centrePanes(bool respectSceneCentred = true);
     enum ResetPaneSizePolicy {
         DontResetPaneSizes,
@@ -582,6 +600,7 @@ protected:
     int mMaxToolSize;
     QColor mPenForegroundColour;
     QColor mPenBackgroundColour;
+    QImage mBrush;
 
     TexturedFillParameters mTexturedFillParameters;
 
@@ -593,6 +612,8 @@ protected:
     QPointF mLastPixelPenPressScenePositionF;
     // An image as large as the rectangle that contains the line that is being previewed.
     QImage mLinePreviewImage;
+
+    QList<QPointF> mStroke;
 
     bool mPotentiallySelecting;
     bool mHasSelection;
@@ -638,7 +659,7 @@ inline uint qHash(const ImageCanvas::SubImage &key, const uint seed = 0) {
 inline QDebug operator<<(QDebug debug, const ImageCanvas::SubImage &subImage)
 {
     QDebugStateSaver saver(debug);
-    debug.nospace() << "SubImage(" << subImage.bounds << ", " << subImage.offset << ')';
+    debug.nospace() << "SubImage(" << subImage.bounds << ", " << subImage.position << ')';
 
     return debug;
 }
