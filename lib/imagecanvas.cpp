@@ -212,8 +212,9 @@ void ImageCanvas::setProject(Project *project)
         QJsonObject *cachedProjectJson = project->cachedProjectJson();
 
         if (cachedProjectJson->contains("lastFillToolUsed")) {
-            mLastFillToolUsed = static_cast<Tool>(QMetaEnum::fromType<Tool>().keyToValue(
-                qPrintable(cachedProjectJson->value("lastFillToolUsed").toString())));
+            const QString lastFillToolUsedAsString = cachedProjectJson->value("lastFillToolUsed").toString();
+            setLastFillToolUsed(static_cast<Tool>(
+                QMetaEnum::fromType<Tool>().keyToValue(qPrintable(lastFillToolUsedAsString))));
         }
 
         bool readPanes = false;
@@ -467,12 +468,8 @@ void ImageCanvas::setTool(const Tool &tool)
             clearOrConfirmSelection();
     }
 
-    if (mTool == FillTool || mTool == TexturedFillTool) {
-        if (mTool != mLastFillToolUsed) {
-            mLastFillToolUsed = mTool;
-            emit lastFillToolUsedChanged();
-        }
-    }
+    if (mTool == FillTool || mTool == TexturedFillTool)
+        setLastFillToolUsed(mTool);
 
     updateSelectionCursorGuideVisibility();
 
@@ -499,6 +496,17 @@ void ImageCanvas::setToolShape(const ImageCanvas::ToolShape &toolShape)
 ImageCanvas::Tool ImageCanvas::lastFillToolUsed() const
 {
     return mLastFillToolUsed;
+}
+
+void ImageCanvas::setLastFillToolUsed(Tool lastFillToolUsed)
+{
+    Q_ASSERT(lastFillToolUsed == FillTool || lastFillToolUsed == TexturedFillTool);
+    qCDebug(lcImageCanvas) << "setting lastFillToolUsed to" << lastFillToolUsed;
+    if (mLastFillToolUsed == lastFillToolUsed)
+        return;
+
+    mLastFillToolUsed = lastFillToolUsed;
+    emit lastFillToolUsedChanged();
 }
 
 int ImageCanvas::toolSize() const
