@@ -1006,15 +1006,29 @@ QImage ImageCanvas::contentImage()
 
 QImage ImageCanvas::getContentImage()
 {
-    QImage image = !shouldDrawSelectionPreviewImage() ? *currentProjectImage() : mSelectionPreviewImage;
+    QImage image;
+
+    const bool showPreview = isLineVisible() && QSet<Tool>{PenTool, EraserTool}.contains(mTool);
+
     // Draw the pixel-pen-line indicator over the content.
-    if (isLineVisible()) {
-        QPainter linePainter(&image);
+    if (showPreview) {
         // Draw the line on top of what has already been painted using a special composition mode.
         // This ensures that e.g. a translucent red overwrites whatever pixels it
         // lies on, rather than blending with them.
-        drawStroke(&linePainter, {linePoint1(), linePoint2()}, QPainter::CompositionMode_SourceOver);
+//        QUndoCommand *const command = new ApplyPixelLineCommand(this, mProject->currentLayerIndex(), linePoint1(), linePoint2(),
+//            mPressScenePosition, mLastPixelPenPressScenePosition, QPainter::CompositionMode_SourceOver,
+//            true, mProject->undoStack()->command(mProject->undoStack()->index() - 1));
+//        mProject->undoStack()->push(command);
+        applyCurrentTool();
     }
+
+    image = !shouldDrawSelectionPreviewImage() ? *currentProjectImage() : mSelectionPreviewImage;
+
+    // Remove the pixel-pen-line indicator
+    if (showPreview) {
+        mProject->undoStack()->undo();
+    }
+
     return image;
 }
 
