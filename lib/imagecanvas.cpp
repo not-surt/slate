@@ -841,16 +841,16 @@ ImageCanvas::SubImage ImageCanvas::getSubImage(const int index) const
 {
     Q_ASSERT(index == 0);
 
-    return SubImage();
+    return {0, mProject->bounds(), {0, 0}};
 }
 
-QList<ImageCanvas::SubImage> ImageCanvas::subImageInstancesInBounds(const QRect &bounds) const
+QList<ImageCanvas::SubImageInstance> ImageCanvas::subImageInstancesInBounds(const QRect &bounds) const
 {
-    QList<SubImage> subImages;
+    QList<SubImageInstance> instances;
     if (bounds.intersects(mProject->bounds())) {
-        subImages.append(SubImage{mProject->bounds(), {}});
+        instances.append({0, {0, 0}});
     }
-    return subImages;
+    return instances;
 }
 
 void ImageCanvas::setAltPressed(bool altPressed)
@@ -988,6 +988,11 @@ QImage *ImageCanvas::imageForLayerAt(int layerIndex)
     return mImageProject->image();
 }
 
+const QImage *ImageCanvas::imageForLayerAt(int layerIndex) const
+{
+    return const_cast<ImageCanvas *>(this)->imageForLayerAt(layerIndex);
+}
+
 int ImageCanvas::currentLayerIndex() const
 {
     return -1;
@@ -1012,6 +1017,68 @@ QImage ImageCanvas::getContentImage()
     }
     return image;
 }
+
+//void doLine(QImage &image, const QPoint begin, const QPoint end, const ColourIndex colour, const DrawPoint drawPoint, const bool inclusive)
+//{
+//    QPoint delta = end - begin;
+//    const int stepX = sign(delta.x()), stepY = sign(delta.y());
+//    int sumStepX = abs(delta.y()), sumStepY = abs(delta.x());
+//    int x = begin.x(), y = begin.y();
+//    if (sumStepX > 0 || sumStepY > 0) {
+//        if (sumStepX == 0) {
+//            sumStepX = sumStepY;
+//        }
+//        if (sumStepY == 0) {
+//            sumStepY = sumStepX;
+//        }
+//        const int limit = sumStepX * sumStepY;
+//        int sumX = sumStepX, sumY = sumStepY;
+//        do {
+//            (*drawPoint)(image, QPoint(x, y), colour);
+//            if (sumX >= sumY) {
+//                y += stepY;
+//                sumY += sumStepY;
+//            }
+//            if (sumX <= sumY) {
+//                x += stepX;
+//                sumX += sumStepX;
+//            }
+//        } while (sumX <= limit && sumY <= limit);
+//    }
+//    if (inclusive) {
+//        (*drawPoint)(image, QPoint(x, y), colour);
+//    }
+//}
+
+
+//float strokeSegmentDabs(const Stroke::Point &start, const Stroke::Point &end, const QVector2D dabSize, const QVector2D absoluteSpacing, const QVector2D proportionalSpacing, const float offset, Stroke &output) {
+//    auto ellipsePolar = [](const float a, const float b, const float theta){
+//        return (a * b) / std::sqrt(std::pow(a, 2.0f) * std::pow(std::sin(theta), 2.0f) + std::pow(b, 2.0f) * std::pow(std::cos(theta), 2.0f));
+//    };
+
+//    const QVector2D spacing{absoluteSpacing + proportionalSpacing * dabSize};
+
+//    const float a = spacing.x() / 2.0f;
+//    const float b = spacing.y() / 2.0f;
+//    const float theta = std::atan2(end.pos.y() - start.pos.y(), end.pos.x() - start.pos.x());
+//    float increment = ellipsePolar(a, b, theta + ((2.0f * pi<float>) / 360.0f) * -start.quaternion.scalar()) * 2.0f;
+
+//    const float incrementScale = 1.0;
+//    float pos = offset * increment;
+//    if (pos == 0.0f) {
+//        output.add(start);
+//        pos += increment;
+//    }
+//    const QVector2D delta = end.pos - start.pos;
+//    const float length = delta.length();
+//    while (pos < length) {
+//        output.add(Stroke::interpolate(start, end, pos / length));
+//        pos += std::max(increment, 1.0f);
+//        increment *= incrementScale;
+//    }
+
+//    return (pos - length) / increment;
+//}
 
 void ImageCanvas::drawDabbedSegment(QPainter *painter, QPointF point1, QPointF point2, const QPainter::CompositionMode mode) const
 {
@@ -2099,12 +2166,14 @@ void ImageCanvas::applyCurrentTool()
 
     switch (mTool) {
     case PenTool: {
-//        mProject->beginMacro(QLatin1String("PixelLineTool"));
         // Draw the line on top of what has already been painted using a special composition mode.
         // This ensures that e.g. a translucent red overwrites whatever pixels it
         // lies on, rather than blending with them.
-        mProject->addChange(new ApplyPixelLineCommand(this, linePoint1(), linePoint2(),
-            mPressScenePositionF, mLastPixelPenPressScenePositionF, QPainter::CompositionMode_SourceOver));
+        QUndoCommand *const command = new ApplyPixelLineCommand(this, mProject->currentLayerIndex(), linePoint1(), linePoint2(),
+            mPressScenePosition, mLastPixelPenPressScenePosition, QPainter::CompositionMode_SourceOver,
+            true, mProject->undoStack()->command(mProject->undoStack()->index() - 1));
+        command->setText(QLatin1String("PixelLineTool"));
+        mProject->addChange(command);
         break;
     }
     case EyeDropperTool: {
@@ -2115,10 +2184,12 @@ void ImageCanvas::applyCurrentTool()
         break;
     }
     case EraserTool: {
-        mProject->beginMacro(QLatin1String("PixelEraserTool"));
         // Draw the line on top of what has already been painted using a special composition mode to erase pixels.
-        mProject->addChange(new ApplyPixelLineCommand(this, linePoint1(), linePoint2(),
-            mPressScenePositionF, mLastPixelPenPressScenePositionF, QPainter::CompositionMode_Clear));
+        QUndoCommand *const command = new ApplyPixelLineCommand(this, mProject->currentLayerIndex(), linePoint1(), linePoint2(),
+            mPressScenePosition, mLastPixelPenPressScenePosition, QPainter::CompositionMode_Clear,
+            true, mProject->undoStack()->command(mProject->undoStack()->index() - 1));
+        command->setText(QLatin1String("PixelEraserTool"));
+        mProject->addChange(command);
         break;
     }
     case FillTool: {

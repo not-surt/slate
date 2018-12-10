@@ -30,36 +30,41 @@
 class SLATE_EXPORT ApplyPixelLineCommand : public QUndoCommand
 {
 public:
-    ApplyPixelLineCommand(ImageCanvas *canvas, const QPointF point1, const QPointF point2,
+    ApplyPixelLineCommand(ImageCanvas *const canvas, const int layerIndex, const QPointF point1, const QPointF point2,
         const QPointF &newLastPixelPenReleaseScenePos, const QPointF &oldLastPixelPenReleaseScenePos,
-        const QPainter::CompositionMode mode, QUndoCommand *parent = nullptr);
-    ~ApplyPixelLineCommand();
+        const QPainter::CompositionMode compositionMode, const bool allowMerge, const QUndoCommand *const previousCommand = nullptr, QUndoCommand *const parent = nullptr);
+    virtual ~ApplyPixelLineCommand() override;
 
     void undo() override;
     void redo() override;
 
     int id() const override;
-    bool mergeWith(const QUndoCommand *command) override;
+    bool mergeWith(const QUndoCommand *const command) override;
 
 private:
     friend QDebug operator<<(QDebug debug, const ApplyPixelLineCommand *command);
+
+    bool canMerge(const QUndoCommand *const command) const;
 
     void undoRect(QPainter &painter, const QRect &rect) const;
     void redoRect(QPainter &painter, const QRect &rect) const;
     void resizeUndoRedoBuffers(const QRect &rect);
 
     ImageCanvas *mCanvas;
+    int mLayerIndex;
     QPointF mNewLastPixelPenReleaseScenePos;
     QPointF mOldLastPixelPenReleaseScenePos;
-    QPainter::CompositionMode mMode;
+    QPainter::CompositionMode mCompositionMode;
 
     QList<QPointF> mStroke;
-    QList<QPointF> mOldStroke;
     QRect mDrawBounds;
-    QRegion mImageRegion;
+    QRegion mBufferRegion;
     QImage mUndoBuffer;
     QImage mRedoBuffer;
-    QRect mImageBounds;
+    QRect mBufferBounds;
+
+    bool mAllowMerge;
+    const QUndoCommand *const mPreviousCommand;
 
     bool needDraw;
 };

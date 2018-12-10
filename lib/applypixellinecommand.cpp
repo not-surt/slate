@@ -27,18 +27,17 @@
 
 Q_LOGGING_CATEGORY(lcApplyPixelLineCommand, "app.undo.applyPixelLineCommand")
 
-ApplyPixelLineCommand::ApplyPixelLineCommand(ImageCanvas *canvas, const QPointF point1, const QPointF point2,
+ApplyPixelLineCommand::ApplyPixelLineCommand(ImageCanvas *const canvas, const int layerIndex, const QPointF point1, const QPointF point2,
         const QPointF &newLastPixelPenReleaseScenePos, const QPointF &oldLastPixelPenReleaseScenePos,
-        const QPainter::CompositionMode mode, QUndoCommand *parent) :
+        const QPainter::CompositionMode compositionMode, const bool allowMerge, const QUndoCommand *const previousCommand, QUndoCommand *const parent) :
     QUndoCommand(parent),
-    mCanvas(canvas),
+    mCanvas(canvas), mLayerIndex(layerIndex),
     mNewLastPixelPenReleaseScenePos(newLastPixelPenReleaseScenePos),
     mOldLastPixelPenReleaseScenePos(oldLastPixelPenReleaseScenePos),
-    mMode(mode),
-    mStroke({point1, point2}), mOldStroke(),
-    mDrawBounds(ImageCanvas::strokeBounds(mStroke, mCanvas->toolSize())),
-    mImageRegion(), mUndoBuffer(), mRedoBuffer(), mImageBounds(),
-    needDraw(true)
+    mCompositionMode(compositionMode),
+    mStroke({point1, point2}), mDrawBounds(ImageCanvas::strokeBounds(mStroke, mCanvas->toolSize())),
+    mBufferRegion(), mUndoBuffer(), mRedoBuffer(), mBufferBounds(),
+    mAllowMerge(allowMerge), mPreviousCommand(previousCommand), needDraw(true)
 {
     qCDebug(lcApplyPixelLineCommand) << "constructed" << this;
 }
@@ -53,8 +52,8 @@ void ApplyPixelLineCommand::undo()
     qCDebug(lcApplyPixelLineCommand) << "undoing" << this;
 
     // Copy image from undo buffer
-    QPainter painter(mCanvas->currentProjectImage());
-    for (auto rect : mImageRegion.rects()) {
+    QPainter painter(mCanvas->imageForLayerAt(mLayerIndex));
+    for (auto const &rect : mBufferRegion) {
         undoRect(painter, rect);
     }
     mCanvas->requestContentPaint();
@@ -66,81 +65,86 @@ void ApplyPixelLineCommand::redo()
 {
     qCDebug(lcApplyPixelLineCommand) << "redoing" << this;
 
-    qDebug() << "DRAW" << mDrawBounds;
-    qDebug() << mCanvas->subImageInstancesInBounds(mDrawBounds);
-
-    mDrawBounds = ImageCanvas::strokeBounds(mStroke, mCanvas->toolSize());////////////////////////////
-
+    // Merging so initially skip drawing then draw after merge
+    if (mAllowMerge && canMerge(mPreviousCommand)) {
+        // Do nothing
+        return;
+    }
     // First "redo" so draw and store undo/redo buffers
-    if (needDraw) {
+    else if (needDraw) {
         // Find intersections of stroke and subimages
-        struct Intersection {
+        const QRect strokeBounds = ImageCanvas::strokeBounds(mStroke, mCanvas->toolSize());
+        struct DrawRect {
             QRect bounds;
             QPoint drawOffset;
         };
-        QList<Intersection> subImageIntersections;
-        for (auto const &subImage : mCanvas->subImageInstancesInBounds(mDrawBounds)) {
-            const QPoint subImageOffset = subImage.bounds.topLeft() - subImage.position;
-            const QRect subImageIntersection = mDrawBounds.translated(subImageOffset).intersected(subImage.bounds);
-            if (!subImageIntersection.isEmpty()) {
-                subImageIntersections.append({subImageIntersection, subImageOffset});
+        QList<DrawRect> subImageDrawRects;
+        QRegion bufferDrawRegion;
+        for (auto const &instance : mCanvas->subImageInstancesInBounds(strokeBounds)) {
+            const ImageCanvas::SubImage subImage = mCanvas->getSubImage(instance.index);
+            const QPoint instanceOffset = subImage.bounds.topLeft() - instance.position;
+            const DrawRect drawRect{strokeBounds.translated(instanceOffset).intersected(subImage.bounds), instanceOffset};
+            if (!drawRect.bounds.isEmpty()) {
+                subImageDrawRects.append(drawRect);
+                bufferDrawRegion = bufferDrawRegion.united(drawRect.bounds);
             }
         }
 
-        if (!subImageIntersections.isEmpty()) {
+        if (!subImageDrawRects.isEmpty()) {
             QPainter painter;
 
             // Restore area to be drawn from undo buffer
-            painter.begin(mCanvas->currentProjectImage());
-            for (auto const &intersection : subImageIntersections) {
-                for (auto rect : mImageRegion.intersected(intersection.bounds).rects()) {
-                    undoRect(painter, rect);
-                }
-                mImageRegion = mImageRegion.subtracted(intersection.bounds);
+            painter.begin(mCanvas->imageForLayerAt(mLayerIndex));
+            for (auto const &rect : bufferDrawRegion.intersected(mBufferRegion)) {
+                undoRect(painter, rect);
             }
             painter.end();
+            mBufferRegion = mBufferRegion.subtracted(bufferDrawRegion);
 
-            // Resize buffers if bounds changed
-            const QRect oldImageBounds = mImageBounds;
+            // Resize undo/redo buffers if bounds changed
+            const QRect oldBufferBounds = mBufferBounds;
             // Add rects to region
-            for (auto const &intersection : subImageIntersections) {
-                mImageRegion = mImageRegion.united(intersection.bounds);
-            }
-            mImageBounds = mImageRegion.boundingRect();
-            if (mImageBounds != oldImageBounds) {
-                const QPoint bufferOffset = mImageBounds.topLeft() - oldImageBounds.topLeft();
-
-                if (mUndoBuffer.isNull()) mUndoBuffer = QImage(mImageBounds.size(), mCanvas->currentProjectImage()->format());
-                else mUndoBuffer = mUndoBuffer.copy(mImageBounds.translated(bufferOffset));
-
-                if (mRedoBuffer.isNull()) mRedoBuffer = QImage(mImageBounds.size(), mCanvas->currentProjectImage()->format());
-                else mRedoBuffer = mRedoBuffer.copy(mImageBounds.translated(bufferOffset));
+            mBufferRegion = mBufferRegion.united(bufferDrawRegion);
+            mBufferBounds = mBufferRegion.boundingRect();
+            if (mBufferBounds != oldBufferBounds) {
+                if (mUndoBuffer.isNull()) {
+                    mUndoBuffer = QImage(mBufferBounds.size(), mCanvas->imageForLayerAt(mLayerIndex)->format());
+                    mRedoBuffer = QImage(mBufferBounds.size(), mCanvas->imageForLayerAt(mLayerIndex)->format());
+                }
+                else {
+                    const QRect copyRect = mBufferBounds.translated(oldBufferBounds.topLeft() - mBufferBounds.topLeft());
+                    mUndoBuffer = mUndoBuffer.copy(copyRect);
+                    mRedoBuffer = mRedoBuffer.copy(copyRect);
+                }
             }
 
             // Store original image in undo buffer
             painter.begin(&mUndoBuffer);
-            for (auto const &intersection : subImageIntersections) {
+            for (auto const &rect : bufferDrawRegion) {
                 painter.setCompositionMode(QPainter::CompositionMode_Source);
-                painter.drawImage(intersection.bounds.topLeft() - mImageBounds.topLeft(), *mCanvas->currentProjectImage(), intersection.bounds);
+                painter.drawImage(rect.topLeft() - mBufferBounds.topLeft(), *mCanvas->imageForLayerAt(mLayerIndex), rect);
             }
             painter.end();
 
-            // Draw stroke
-            painter.begin(mCanvas->currentProjectImage());
-            for (auto const &intersection : subImageIntersections) {
-                painter.save();
-                painter.setClipRect(intersection.bounds);
-                painter.translate(intersection.drawOffset);
-                mCanvas->drawStroke(&painter, mStroke, mMode);
-                painter.restore();
+            // Draw stroke to image
+            painter.begin(mCanvas->imageForLayerAt(mLayerIndex));
+            for (auto const &drawRect : subImageDrawRects) {
+                const QRect rect = strokeBounds.translated(drawRect.drawOffset).intersected(drawRect.bounds);
+                if (!rect.isEmpty()) {
+                    painter.save();
+                    painter.setClipRect(rect);
+                    painter.translate(drawRect.drawOffset);
+                    mCanvas->drawStroke(&painter, mStroke, mCompositionMode);
+                    painter.restore();
+                }
             }
             painter.end();
 
             // Store changed image in redo buffer
             painter.begin(&mRedoBuffer);
-            for (auto const &intersection : subImageIntersections) {
+            for (auto const &rect : bufferDrawRegion) {
                 painter.setCompositionMode(QPainter::CompositionMode_Source);
-                painter.drawImage(intersection.bounds.topLeft() - mImageBounds.topLeft(), *mCanvas->currentProjectImage(), intersection.bounds);
+                painter.drawImage(rect.topLeft() - mBufferBounds.topLeft(), *mCanvas->imageForLayerAt(mLayerIndex), rect);
             }
             painter.end();
         }
@@ -149,13 +153,13 @@ void ApplyPixelLineCommand::redo()
     }
     // Otherwise copy image from redo buffer
     else {
-        QPainter painter(mCanvas->currentProjectImage());
-        for (auto rect : mImageRegion.rects()) {
+        QPainter painter(mCanvas->imageForLayerAt(mLayerIndex));
+        for (auto const &rect : mBufferRegion) {
             redoRect(painter, rect);
         }
     }
-    mCanvas->requestContentPaint();
 
+    mCanvas->requestContentPaint();
     mCanvas->mLastPixelPenPressScenePositionF = mNewLastPixelPenReleaseScenePos;
 }
 
@@ -164,28 +168,28 @@ int ApplyPixelLineCommand::id() const
     return ApplyPixelLineCommandId;
 }
 
-bool ApplyPixelLineCommand::mergeWith(const QUndoCommand *other)
+bool ApplyPixelLineCommand::mergeWith(const QUndoCommand *const command)
 {
-    if (other->id() != id()) return false;
-    const ApplyPixelLineCommand *newCommand = static_cast<const ApplyPixelLineCommand*>(other);
-    if (newCommand->mStroke.first() != mStroke.last() || newCommand->mCanvas != mCanvas) return false;
-
-    // Undo new stroke
-    QPainter painter;
-    painter.begin(mCanvas->currentProjectImage());
-    for (auto rect : newCommand->mImageRegion.rects()) {
-        newCommand->undoRect(painter, rect);
-    }
-    painter.end();
+    const ApplyPixelLineCommand *const newCommand = dynamic_cast<const ApplyPixelLineCommand *const>(command);
+    if (!newCommand || !newCommand->canMerge(this)) return false;
 
     // Merge new stroke with old stroke
-    mDrawBounds = newCommand->mDrawBounds;
     mStroke.append(newCommand->mStroke.mid(1));
-    qDebug() << "mDrawBounds" << mDrawBounds;
 
-    // Redraw merged stroke
+    // Draw merged stroke
+    mAllowMerge = false;
     needDraw = true;
     redo();
+
+    return true;
+}
+
+bool ApplyPixelLineCommand::canMerge(const QUndoCommand *const command) const
+{
+    if (!command) return false;
+    if (command->id() != id()) return false;
+    const ApplyPixelLineCommand *previousCommand = static_cast<const ApplyPixelLineCommand*>(command);
+    if (previousCommand->mStroke.last() != mStroke.first() || previousCommand->mCanvas != mCanvas) return false;
 
     return true;
 }
@@ -193,20 +197,20 @@ bool ApplyPixelLineCommand::mergeWith(const QUndoCommand *other)
 void ApplyPixelLineCommand::undoRect(QPainter &painter, const QRect &rect) const
 {
     painter.setCompositionMode(QPainter::CompositionMode_Source);
-    painter.drawImage(rect, mUndoBuffer, rect.translated(-mImageBounds.topLeft()));
+    painter.drawImage(rect, mUndoBuffer, rect.translated(-mBufferBounds.topLeft()));
 }
 
 void ApplyPixelLineCommand::redoRect(QPainter &painter, const QRect &rect) const
 {
     painter.setCompositionMode(QPainter::CompositionMode_Source);
-    painter.drawImage(rect, mRedoBuffer, rect.translated(-mImageBounds.topLeft()));
+    painter.drawImage(rect, mRedoBuffer, rect.translated(-mBufferBounds.topLeft()));
 }
 
 QDebug operator<<(QDebug debug, const ApplyPixelLineCommand *command)
 {
     debug.nospace() << "(ApplyPixelLineCommand"
-//        << " layerIndex=" << command->mLayerIndex
-//        << ", lineRect" << command->mLineRect
+        << " layerIndex=" << command->mLayerIndex
+        << ", stroke" << command->mStroke
         << ", newLastPixelPenReleaseScenePos=" << command->mNewLastPixelPenReleaseScenePos
         << ", oldLastPixelPenReleaseScenePos=" << command->mOldLastPixelPenReleaseScenePos
         << ")";

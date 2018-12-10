@@ -154,6 +154,11 @@ QImage *LayeredImageCanvas::imageForLayerAt(int layerIndex)
     return mLayeredImageProject->layerAt(layerIndex)->image();
 }
 
+const QImage *LayeredImageCanvas::imageForLayerAt(int layerIndex) const
+{
+    return const_cast<LayeredImageCanvas *>(this)->imageForLayerAt(layerIndex);
+}
+
 int LayeredImageCanvas::currentLayerIndex() const
 {
     return mLayeredImageProject->currentLayerIndex();
