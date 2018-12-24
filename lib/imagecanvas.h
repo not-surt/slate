@@ -389,6 +389,8 @@ public:
     virtual const QImage *imageForLayerAt(int layerIndex) const;
     virtual int currentLayerIndex() const;
 
+    virtual void paintOverlay(QPainter *const painter, const CanvasPane *const pane, const int paneIndex) const {}
+
     enum SelectionModification {
         NoSelectionModification,
         SelectionPaste,
@@ -645,7 +647,6 @@ private:
 
 protected:
     friend class CanvasPaneItem;
-    friend class TileCanvasPaneItem;
 
     // The background colour of the entire pane.
     QColor mBackgroundColour;

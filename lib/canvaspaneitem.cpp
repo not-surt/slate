@@ -138,4 +138,6 @@ void CanvasPaneItem::paint(QPainter *painter)
     const QImage image = mCanvas->contentImage();
     const QSize zoomedImageSize = image.size() * mPane->integerZoomLevel();
     painter->drawImage(QRectF(QPointF(0, 0), zoomedImageSize), image, QRectF(0, 0, image.width(), image.height()));
+
+    mCanvas->paintOverlay(painter, mPane, mPaneIndex);
 }

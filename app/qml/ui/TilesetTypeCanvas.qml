@@ -40,7 +40,7 @@ TileCanvas {
         id: root
         model: 2
 
-        TileCanvasPaneItem {
+        CanvasPaneItem {
             id: paneItem
             objectName: "tileCanvasPaneItem" + index
             canvas: tileCanvas

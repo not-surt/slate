@@ -191,8 +191,6 @@ Product {
         "tile.h",
         "tilecanvas.cpp",
         "tilecanvas.h",
-        "tilecanvaspaneitem.cpp",
-        "tilecanvaspaneitem.h",
         "tilegrid.cpp",
         "tilegrid.h",
         "tileset.cpp",

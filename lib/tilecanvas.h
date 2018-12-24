@@ -61,6 +61,8 @@ public:
     virtual QImage *imageForLayerAt(int layerIndex) override;
     virtual const QImage *imageForLayerAt(int layerIndex) const override;
 
+    virtual void paintOverlay(QPainter *const painter, const CanvasPane *const pane, const int paneIndex) const override;
+
     int cursorTilePixelX() const;
     void setCursorTilePixelX(int cursorTilePixelX);
 
@@ -110,7 +112,6 @@ protected:
     void onLoadedChanged() override;
 
 private:
-    friend class TileCanvasPaneItem;
     friend class ApplyTilePenCommand;
     friend class ApplyTileEraserCommand;
     friend class ApplyTileFillCommand;

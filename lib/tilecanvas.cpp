@@ -32,6 +32,7 @@
 #include "applytilefillcommand.h"
 #include "applytilepencommand.h"
 #include "fillalgorithms.h"
+#include "panedrawinghelper.h"
 #include "tileset.h"
 #include "tilesetproject.h"
 #include "utils.h"
@@ -72,6 +73,36 @@ QImage *TileCanvas::imageForLayerAt(int layerIndex)
 const QImage *TileCanvas::imageForLayerAt(int layerIndex) const
 {
     return const_cast<TileCanvas *>(this)->imageForLayerAt(layerIndex);
+}
+
+void TileCanvas::paintOverlay(QPainter *const painter, const CanvasPane *const pane, const int paneIndex) const
+{
+    const TilesetProject *const tilesetProject = qobject_cast<TilesetProject*>(project());
+    Q_ASSERT(tilesetProject);
+
+    const QSize zoomedTileSize = tilesetProject->tileSize() * pane->integerZoomLevel();
+
+    const QRect tilesRect{QPoint{0, 0}, QSize{tilesetProject->tilesWide(), tilesetProject->tilesHigh()}};
+
+    if (mGridVisible) {
+        painter->setPen(mGridColour);
+        for (int y = tilesRect.top(); y <= tilesRect.bottom(); ++y) {
+            for (int x = tilesRect.left(); x <= tilesRect.right(); ++x) {
+                // Draw top edge for tile
+                painter->drawLine(x * zoomedTileSize.width(), y * zoomedTileSize.height(), (x + 1) * zoomedTileSize.width(), y * zoomedTileSize.height());
+                // Draw left edge for tile
+                painter->drawLine(x * zoomedTileSize.width(), y * zoomedTileSize.height(), x * zoomedTileSize.width(), (y + 1) * zoomedTileSize.height());
+            }
+        }
+        // Draw bottom-most edges
+        for (int x = tilesRect.left(), y = tilesRect.bottom() + 1; x <= tilesRect.right(); ++x) {
+            painter->drawLine(x * zoomedTileSize.width(), y * zoomedTileSize.height(), (x + 1) * zoomedTileSize.width(), y * zoomedTileSize.height());
+        }
+        // Draw right-most edges
+        for (int y = tilesRect.top(), x = tilesRect.right() + 1; y <= tilesRect.bottom(); ++y) {
+            painter->drawLine(x * zoomedTileSize.width(), y * zoomedTileSize.height(), x * zoomedTileSize.width(), (y + 1) * zoomedTileSize.height());
+        }
+    }
 }
 
 TileCanvas::Mode TileCanvas::mode() const
