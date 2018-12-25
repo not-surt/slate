@@ -62,7 +62,7 @@ public:
     QImage flattenedImage(std::function<QImage(int)> layerSubstituteFunction = nullptr) const;
     QImage flattenedImage(int fromIndex, int toIndex, std::function<QImage(int)> layerSubstituteFunction = nullptr) const;
     QHash<QString, QImage> flattenedImages() const;
-    QImage exportedImage() const override;
+    virtual QImage exportedImage() const override;
 
     bool isAutoExportEnabled() const;
     void setAutoExportEnabled(bool autoExportEnabled);

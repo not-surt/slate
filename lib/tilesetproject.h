@@ -61,7 +61,7 @@ public:
     int heightInPixels() const override;
     QRect bounds() const override;
 
-    QImage exportedImage() const override;
+    virtual QImage exportedImage() const override;
 
     QUrl tilesetUrl() const;
     Tileset *tileset() const;

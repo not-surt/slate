@@ -868,6 +868,17 @@ CanvasPane *ImageCanvas::paneAt(int index)
     return index == 0 ? &mFirstPane : &mSecondPane;
 }
 
+const CanvasPane *ImageCanvas::paneAt(int index) const
+{
+    const_cast<ImageCanvas *>(this)->paneAt(index);
+}
+
+QRectF ImageCanvas::paneAbsoluteRect(int index) const
+{
+    const CanvasPane *const pane = paneAt(index);
+    return pane->absoluteRect(this);
+}
+
 int ImageCanvas::paneWidth(int index) const
 {
     return index == 0 ? mFirstPane.size() * width() : width() - mFirstPane.size() * width();
@@ -1045,9 +1056,12 @@ bool ImageCanvas::hasBlankCursor() const
 
 void ImageCanvas::onSplitterPositionChanged()
 {
-    mFirstPane.setSize(mSplitter.position());
-    mSecondPane.setSize(1.0 - mSplitter.position());
-    requestContentPaint();
+    const qreal split = mSplitter.position();
+    mFirstPane.setSize(split);
+    mFirstPane.setProportionalRect(QRectF(QPointF(0.0, 0.0), QSizeF(split, 1.0)));
+    mSecondPane.setSize(1.0 - split);
+    mSecondPane.setProportionalRect(QRectF(QPointF(split, 0.0), QSizeF(1.0 - split, 1.0)));
+    updatePaneGeometry();
 }
 
 void ImageCanvas::componentComplete()
@@ -1059,7 +1073,7 @@ void ImageCanvas::componentComplete()
     // For some reason, we need to force this stuff to update when creating a
     // tileset project after a layered image project.
     updateRulerVisibility();
-    resizeRulers();
+    updatePaneGeometry();
 
     updateSelectionCursorGuideVisibility();
     mGuidesItem->setVisible(mGuidesVisible);
@@ -1073,8 +1087,10 @@ void ImageCanvas::geometryChanged(const QRectF &newGeometry, const QRectF &oldGe
 {
     QQuickItem::geometryChanged(newGeometry, oldGeometry);
 
+    if (newGeometry == oldGeometry) return;
+
     centrePanes();
-    resizeRulers();
+    updatePaneGeometry();
     resizeChildren();
 
     if (mProject)
@@ -1119,22 +1135,25 @@ int ImageCanvas::currentLayerIndex() const
     return -1;
 }
 
-QImage ImageCanvas::contentImage()
+void ImageCanvas::paintBackground(QPainter *const painter) const
 {
-    mCachedContentImage = getContentImage();
-    return mCachedContentImage;
+    QBrush brush(mCheckerPixmap);
+    // Invert painter transform for background pattern so unaffected by painter zoom and pan
+    brush.setTransform(painter->transform().inverted());
+
+    // Draw the checkered pixmap that acts as an indicator for transparency
+    painter->fillRect(0, 0, currentProjectImage()->width(), currentProjectImage()->height(), brush);
 }
 
-QImage ImageCanvas::getComposedImage()
+void ImageCanvas::paintContent(QPainter *const painter)
 {
-    return !shouldDrawSelectionPreviewImage() ? *currentProjectImage() : mSelectionPreviewImage;
+    painter->drawImage(QPointF(0, 0), getComposedImage());
 }
 
-QImage ImageCanvas::getContentImage()
+void ImageCanvas::paintContentWithPreview(QPainter *const painter)
 {
     static const QSet<Tool> previewTools{PenTool, EraserTool};
     QUndoStack tempUndoStack;
-    QImage image;
 
     const bool showPreview = containsMouse() && (mProject->settings()->isBrushPreviewVisible() || isLineVisible()) && previewTools.contains(mTool);
 
@@ -1143,14 +1162,23 @@ QImage ImageCanvas::getContentImage()
         applyCurrentTool(&tempUndoStack);
     }
 
-    image = getComposedImage();
+    paintContent(painter);
 
-    // Undo drawing the line preview
+    // Undo drawing the brush/line preview
     if (showPreview) {
         tempUndoStack.undo();
     }
+}
 
-    return image;
+QImage ImageCanvas::contentImage()
+{
+    mCachedContentImage = getComposedImage();
+    return mCachedContentImage;
+}
+
+QImage ImageCanvas::getComposedImage()
+{
+    return !shouldDrawSelectionPreviewImage() ? *currentProjectImage() : mSelectionPreviewImage;
 }
 
 void ImageCanvas::drawBrush(QPainter *const painter, const Brush &brush, const QColor &colour, const QPointF pos, const qreal scale, const qreal rotation)
@@ -1204,9 +1232,10 @@ void ImageCanvas::doSetSplitScreen(bool splitScreen, ImageCanvas::ResetPaneSizeP
         centrePanes();
     }
 
+    updatePaneGeometry();
+
     updateVisibleSceneArea();
     updateRulerVisibility();
-    resizeRulers();
 
     requestContentPaint();
 
@@ -1215,8 +1244,23 @@ void ImageCanvas::doSetSplitScreen(bool splitScreen, ImageCanvas::ResetPaneSizeP
 
 void ImageCanvas::setDefaultPaneSizes()
 {
-    mFirstPane.setSize(mSplitScreen ? 0.5 : 1.0);
-    mSecondPane.setSize(mSplitScreen ? 0.5 : 0.0);
+    mSplitter.setPosition(0.5);
+}
+
+void ImageCanvas::updatePaneGeometry()
+{
+    const qreal split = mSplitScreen ? mSplitter.position() : 1.0;
+    mFirstPane.setSize(split);
+    mFirstPane.setProportionalRect(QRectF(QPointF(0.0, 0.0), QSizeF(split, 1.0)));
+    mSecondPane.setSize(1.0 - split);
+    mSecondPane.setProportionalRect(QRectF(QPointF(split, 0.0), QSizeF(1.0 - split, 1.0)));
+
+    updateVisibleSceneArea();
+    resizeRulers();
+    if (mGuidesVisible) mGuidesItem->update();
+    mSelectionItem->update();
+
+    requestContentPaint();
 }
 
 bool ImageCanvas::mouseOverSplitterHandle(const QPoint &mousePos)

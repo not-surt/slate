@@ -18,6 +18,7 @@
 */
 
 #include "canvaspane.h"
+#include "imagecanvas.h"
 
 #include <QJsonObject>
 #include <QLoggingCategory>
@@ -32,6 +33,25 @@ CanvasPane::CanvasPane(QObject *parent) :
     mMaxZoomLevel(48),
     mSceneCentered(true)
 {
+}
+
+QRectF CanvasPane::proportionalRect() const
+{
+    return mProportionalRect;
+}
+
+void CanvasPane::setProportionalRect(const QRectF &proportionalRect)
+{
+    if (proportionalRect == mProportionalRect) return;
+
+    mProportionalRect = proportionalRect;
+    emit proportionalRectChanged();
+}
+
+QRectF CanvasPane::absoluteRect(const ImageCanvas *const canvas) const
+{
+    return QRectF(QPointF(mProportionalRect.x() * canvas->width(), mProportionalRect.y() * canvas->height()),
+                  QSizeF(mProportionalRect.width() * canvas->width(), mProportionalRect.height() * canvas->height()));
 }
 
 qreal CanvasPane::size() const

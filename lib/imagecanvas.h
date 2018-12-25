@@ -125,7 +125,7 @@ public:
     Q_ENUM(ToolBlendMode)
 
     ImageCanvas();
-    ~ImageCanvas() override;
+    virtual ~ImageCanvas() override;
 
     virtual bool eventFilter(QObject *watched, QEvent *event) override;
 
@@ -202,6 +202,8 @@ public:
     const CanvasPane *secondPane() const;
     CanvasPane *currentPane();
     Q_INVOKABLE CanvasPane *paneAt(int index);
+    const CanvasPane *paneAt(int index) const;
+    QRectF paneAbsoluteRect(int index) const;
     int paneWidth(int index) const;
 
     QColor rulerForegroundColour() const;
@@ -389,7 +391,10 @@ public:
     virtual const QImage *imageForLayerAt(int layerIndex) const;
     virtual int currentLayerIndex() const;
 
-    virtual void paintOverlay(QPainter *const painter, const CanvasPane *const pane, const int paneIndex) const {}
+    virtual void paintBackground(QPainter *const painter) const;
+    virtual void paintContent(QPainter *const painter);
+    virtual void paintContentWithPreview(QPainter *const painter);
+    virtual void paintOverlay(QPainter *const painter) const {}
 
     enum SelectionModification {
         NoSelectionModification,
@@ -504,7 +509,7 @@ protected slots:
 
 protected:
     void componentComplete() override;
-    void geometryChanged(const QRectF &newGeometry, const QRectF &oldGeometry) override;
+    virtual void geometryChanged(const QRectF &newGeometry, const QRectF &oldGeometry) override;
 
     void resizeChildren();
 
@@ -561,7 +566,6 @@ protected:
     CanvasPane *hoveredPane(const QPoint &pos);
     QPoint eventPosRelativeToCurrentPane(const QPoint &pos);
     virtual QImage getComposedImage();
-    virtual QImage getContentImage();
     void centrePanes(bool respectSceneCentred = true);
     enum ResetPaneSizePolicy {
         DontResetPaneSizes,
@@ -569,6 +573,7 @@ protected:
     };
     void doSetSplitScreen(bool splitScreen, ResetPaneSizePolicy resetPaneSizePolicy);
     void setDefaultPaneSizes();
+    void updatePaneGeometry();
     bool mouseOverSplitterHandle(const QPoint &mousePos);
 
     void updateRulerVisibility();

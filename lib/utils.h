@@ -49,24 +49,24 @@ namespace Utils {
         return string;
     }
 
-    template<typename T>
+    template<class T, typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
     inline T divFloor(const T dividend, const T divisor) {
         T quotient = dividend / divisor;
         const T remainder = dividend % divisor;
         if ((remainder != 0) && ((remainder < 0) != (divisor < 0))) --quotient;
         return quotient;
     }
-    template<typename T>
+    template<class T, typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
     inline T divCeil(const T dividend, const T divisor) {
         return divFloor(dividend + (divisor - 1), divisor);
     }
-    template<typename T>
+    template<class T, typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
     inline T modFloor(const T dividend, const T divisor) {
         T remainder = dividend % divisor;
         if ((remainder != 0) && ((remainder < 0) != (divisor < 0))) remainder += divisor;
         return remainder;
     }
-    template<typename T>
+    template<class T, typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
     inline T modCeil(const T dividend, const T divisor) {
         return modFloor(dividend + (divisor - 1), divisor);
     }

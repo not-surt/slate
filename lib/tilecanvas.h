@@ -41,8 +41,10 @@ class SLATE_EXPORT TileCanvas : public ImageCanvas
     Q_OBJECT
     Q_PROPERTY(int cursorTilePixelX READ cursorTilePixelX NOTIFY cursorTilePixelXChanged)
     Q_PROPERTY(int cursorTilePixelY READ cursorTilePixelY NOTIFY cursorTilePixelYChanged)
+    Q_PROPERTY(QPoint cursorTile READ cursorTile NOTIFY cursorTileChanged)
     Q_PROPERTY(Mode mode READ mode WRITE setMode NOTIFY modeChanged)
     Q_PROPERTY(Tile *penTile READ penTile WRITE setPenTile NOTIFY penTileChanged)
+    Q_PROPERTY(bool tileIndicesVisible READ tileIndicesVisible WRITE setTileIndicesVisible NOTIFY tileIndicesVisibleChanged)
 
 public:
     enum Mode {
@@ -61,7 +63,8 @@ public:
     virtual QImage *imageForLayerAt(int layerIndex) override;
     virtual const QImage *imageForLayerAt(int layerIndex) const override;
 
-    virtual void paintOverlay(QPainter *const painter, const CanvasPane *const pane, const int paneIndex) const override;
+    virtual void paintContent(QPainter *const painter) override;
+    virtual void paintOverlay(QPainter *const painter) const override;
 
     int cursorTilePixelX() const;
     void setCursorTilePixelX(int cursorTilePixelX);
@@ -69,8 +72,14 @@ public:
     int cursorTilePixelY() const;
     void setCursorTilePixelY(int cursorTilePixelY);
 
+    QPoint cursorTile() const;
+    void setCursorTile(const QPoint cursorTile);
+
     Mode mode() const;
     void setMode(const Mode &mode);
+
+    bool tileIndicesVisible() const;
+    void setTileIndicesVisible(bool tileIndicesVisible);
 
     Tile *penTile() const;
     void setPenTile(Tile *penTile);
@@ -84,8 +93,10 @@ public:
 signals:
     void cursorTilePixelXChanged();
     void cursorTilePixelYChanged();
+    void cursorTileChanged();
     void modeChanged();
     void penTileChanged();
+    void tileIndicesVisibleChanged();
 
 public slots:
 //    void createNew(int width, int height, const QColor &penBackgroundColour);
@@ -106,8 +117,6 @@ protected:
     void toolChange() override;
     bool supportsSelectionTool() const override;
     virtual QImage getComposedImage() override;
-
-    void geometryChanged(const QRectF &newGeometry, const QRectF &oldGeometry) override;
 
     void onLoadedChanged() override;
 
@@ -150,9 +159,11 @@ private:
     // The position of the cursor in scene coordinates relative to the tile that it's in.
     int mCursorTilePixelX;
     int mCursorTilePixelY;
+    QPoint mCursorTile;
     Mode mMode;
     Tile *mPenTile;
     bool mTilePenPreview;
+    bool mTileIndicesVisible;
 };
 
 #endif // TILECANVAS_H

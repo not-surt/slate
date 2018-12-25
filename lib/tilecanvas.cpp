@@ -44,7 +44,8 @@ TileCanvas::TileCanvas() :
     mCursorTilePixelY(0),
     mMode(TileMode),
     mPenTile(nullptr),
-    mTilePenPreview(false)
+    mTilePenPreview(false),
+    mTileIndicesVisible(false)
 {
     qCDebug(lcImageCanvasLifecycle) << "constructing TileCanvas" << this;
 }
@@ -75,33 +76,94 @@ const QImage *TileCanvas::imageForLayerAt(int layerIndex) const
     return const_cast<TileCanvas *>(this)->imageForLayerAt(layerIndex);
 }
 
-void TileCanvas::paintOverlay(QPainter *const painter, const CanvasPane *const pane, const int paneIndex) const
+void TileCanvas::paintContent(QPainter *const painter)
 {
-    const TilesetProject *const tilesetProject = qobject_cast<TilesetProject*>(project());
-    Q_ASSERT(tilesetProject);
+    const QRect tilesRect(QPoint{0, 0}, QSize{mTilesetProject->tilesWide(), mTilesetProject->tilesHigh()});
 
-    const QSize zoomedTileSize = tilesetProject->tileSize() * pane->integerZoomLevel();
+    for (int y = tilesRect.top(); y <= tilesRect.bottom(); ++y) {
+        for (int x = tilesRect.left(); x <= tilesRect.right(); ++x) {
+            const QPoint pos{x * mTilesetProject->tileWidth(), y * mTilesetProject->tileHeight()};
+            const Tile *tile = mTilesetProject->tileAtTilePos(QPoint(x, y));
+            if (tile) {
+                painter->drawImage(pos, *tile->tileset()->image(), tile->sourceRect());
+            }
+        }
+    }
+}
 
-    const QRect tilesRect{QPoint{0, 0}, QSize{tilesetProject->tilesWide(), tilesetProject->tilesHigh()}};
+void TileCanvas::paintOverlay(QPainter *const painter) const
+{
+    Q_ASSERT(mTilesetProject);
+
+    const QSize &tileSize = mTilesetProject->tileSize();
+    const QRect tilesRect(QPoint{0, 0}, QSize{mTilesetProject->tilesWide(), mTilesetProject->tilesHigh()});
 
     if (mGridVisible) {
-        painter->setPen(mGridColour);
+        QPen pen;
+        pen.setWidth(0);
+        pen.setColor(mGridColour);
+        painter->setPen(pen);
+
         for (int y = tilesRect.top(); y <= tilesRect.bottom(); ++y) {
             for (int x = tilesRect.left(); x <= tilesRect.right(); ++x) {
                 // Draw top edge for tile
-                painter->drawLine(x * zoomedTileSize.width(), y * zoomedTileSize.height(), (x + 1) * zoomedTileSize.width(), y * zoomedTileSize.height());
+                painter->drawLine(x * tileSize.width(), y * tileSize.height(), (x + 1) * tileSize.width(), y * tileSize.height());
                 // Draw left edge for tile
-                painter->drawLine(x * zoomedTileSize.width(), y * zoomedTileSize.height(), x * zoomedTileSize.width(), (y + 1) * zoomedTileSize.height());
+                painter->drawLine(x * tileSize.width(), y * tileSize.height(), x * tileSize.width(), (y + 1) * tileSize.height());
             }
         }
         // Draw bottom-most edges
         for (int x = tilesRect.left(), y = tilesRect.bottom() + 1; x <= tilesRect.right(); ++x) {
-            painter->drawLine(x * zoomedTileSize.width(), y * zoomedTileSize.height(), (x + 1) * zoomedTileSize.width(), y * zoomedTileSize.height());
+            painter->drawLine(x * tileSize.width(), y * tileSize.height(), (x + 1) * tileSize.width(), y * tileSize.height());
         }
         // Draw right-most edges
         for (int y = tilesRect.top(), x = tilesRect.right() + 1; y <= tilesRect.bottom(); ++y) {
-            painter->drawLine(x * zoomedTileSize.width(), y * zoomedTileSize.height(), x * zoomedTileSize.width(), (y + 1) * zoomedTileSize.height());
+            painter->drawLine(x * tileSize.width(), y * tileSize.height(), x * tileSize.width(), (y + 1) * tileSize.height());
         }
+    }
+
+    // Draw tile indices
+    if (true/*mTileIndicesVisible*/) {
+        const int flags = Qt::AlignRight | Qt::AlignTop;
+        QFont font("Courier");
+        painter->setFont(font);
+        const qreal scale = 16.0 / qreal(painter->fontMetrics().height());
+        font.setPointSizeF(font.pointSizeF() * scale);
+        painter->setFont(font);
+        for (int y = tilesRect.top(); y <= tilesRect.bottom(); ++y) {
+            for (int x = tilesRect.left(); x <= tilesRect.right(); ++x) {
+                const Tile *tile = mTilesetProject->tileAtTilePos(QPoint(x, y));
+                if (tile) {
+                    const QString string = QString::number(tile->id())/*.rightJustified(3, '0')*/;
+                    const QRect rect = painter->transform().mapRect(QRect(QPoint(x * tileSize.width(), y * tileSize.height()), tileSize));
+//                    painter->save();
+//                    painter->resetTransform();
+//                    painter->setRenderHints(QPainter::HighQualityAntialiasing);
+//                    QPainterPath path;
+//                    path.addText(rect.topLeft(), painter->font(), string);////
+//                    painter->setPen(Qt::black);
+//                    painter->setBrush(Qt::white);
+//                    painter->drawPath(path);
+//                    painter->restore();
+                    painter->save();
+                    painter->resetTransform();
+                    painter->setPen(Qt::black);
+                    painter->drawText(rect.translated(1, 1), flags, string);
+                    painter->setPen(Qt::lightGray);
+                    painter->drawText(rect, flags, string);
+                    painter->restore();
+                }
+            }
+        }
+    }
+
+    // Draw tile cursor
+    if (mMode == TileMode && tilesRect.contains(mCursorTile)) {
+        const QRect cursorRect = painter->transform().mapRect(QRect(QPoint(mCursorTile.x() * tileSize.width(), mCursorTile.y() * tileSize.height()), tileSize));
+        painter->save();
+        painter->resetTransform();
+        Utils::strokeRectWithDashes(painter, cursorRect);
+        painter->restore();
     }
 }
 
@@ -117,6 +179,20 @@ void TileCanvas::setMode(const Mode &mode)
 
     mMode = mode;
     updateTilePenPreview();
+    emit modeChanged();
+}
+
+bool TileCanvas::tileIndicesVisible() const
+{
+    return mTileIndicesVisible;
+}
+
+void TileCanvas::setTileIndicesVisible(bool tileIndicesVisible)
+{
+    if (tileIndicesVisible == mTileIndicesVisible)
+        return;
+
+    mTileIndicesVisible = tileIndicesVisible;
     emit modeChanged();
 }
 
@@ -162,6 +238,20 @@ void TileCanvas::setCursorTilePixelY(int cursorTilePixelY)
     emit cursorTilePixelYChanged();
 }
 
+QPoint TileCanvas::cursorTile() const
+{
+    return mCursorTile;
+}
+
+void TileCanvas::setCursorTile(const QPoint cursorTile)
+{
+    if (cursorTile == mCursorTile)
+        return;
+
+    mCursorTile = cursorTile;
+    emit cursorTileChanged();
+}
+
 void TileCanvas::reset()
 {
 //    mFirstPane.reset();
@@ -178,6 +268,7 @@ void TileCanvas::reset()
 //    mCursorSceneY = 0;
     setCursorTilePixelX(0);
     setCursorTilePixelY(0);
+    setCursorTile({0, 0});
 //    mContainsMouse = false;
 //    mMouseButtonPressed = Qt::NoButton;
 //    mPressPosition = QPoint(0, 0);
@@ -287,25 +378,9 @@ QImage TileCanvas::getComposedImage()
     image.fill(qRgba(0, 0, 0, 0));
     QPainter painter(&image);
 
-    const QRect tilesRect{QPoint{0, 0}, QSize{mTilesetProject->tilesWide(), mTilesetProject->tilesHigh()}};
-
-    for (int y = tilesRect.top(); y <= tilesRect.bottom(); ++y) {
-        for (int x = tilesRect.left(); x <= tilesRect.right(); ++x) {
-            const QPoint pos(x * mTilesetProject->tileWidth(), y * mTilesetProject->tileHeight());
-            const Tile *tile = mTilesetProject->tileAtTilePos(QPoint(x, y));
-            if (tile) {
-                painter.drawImage(pos, *tile->tileset()->image(), tile->sourceRect());
-            }
-        }
-    }
+    paintContent(&painter);
 
     return image;
-}
-
-void TileCanvas::geometryChanged(const QRectF &newGeometry, const QRectF &oldGeometry)
-{
-    QQuickItem::geometryChanged(newGeometry, oldGeometry);
-    centrePanes();
 }
 
 TileCanvas::PixelCandidateData TileCanvas::fillPixelCandidates() const
@@ -392,8 +467,9 @@ void TileCanvas::applyCurrentTool(QUndoStack *const alternateStack)
                 return;
             }
 
-            const int xTile = scenePos.x() / mTilesetProject->tileWidth();
-            const int yTile = scenePos.y() / mTilesetProject->tileHeight();
+            const int xTile = Utils::divFloor(scenePos.x(), mTilesetProject->tileWidth());
+            const int yTile = Utils::divFloor(scenePos.y(), mTilesetProject->tileHeight());
+
             command = new ApplyTilePenCommand(this, QPoint(xTile, yTile), previousTileId, newTileId);
             command->setText(QLatin1String("TilePenTool"));
         }
@@ -418,8 +494,8 @@ void TileCanvas::applyCurrentTool(QUndoStack *const alternateStack)
                 return;
             }
 
-            const int xTile = scenePos.x() / mTilesetProject->tileWidth();
-            const int yTile = scenePos.y() / mTilesetProject->tileHeight();
+            const int xTile = Utils::divFloor(scenePos.x(), mTilesetProject->tileWidth());
+            const int yTile = Utils::divFloor(scenePos.y(), mTilesetProject->tileHeight());
 
             command = new ApplyTileEraserCommand(this, QPoint(xTile, yTile), previousTileId);
             command->setText(QLatin1String("PixelEraserTool"));
@@ -536,6 +612,7 @@ void TileCanvas::updateCursorPos(const QPoint &eventPos)
         mCursorSceneY = -1;
         setCursorTilePixelX(-1);
         setCursorTilePixelY(-1);
+        setCursorTile({-1, -1});
         // We could do this once at the beginning of the function, but we
         // try to avoid unnecessary property changes.
         setCursorPixelColour(QColor(Qt::black));
@@ -546,13 +623,14 @@ void TileCanvas::updateCursorPos(const QPoint &eventPos)
     const int zoomLevel = mCurrentPane->integerZoomLevel();
     mCursorSceneFX = qreal(mCursorPaneX - mCurrentPane->integerOffset().x()) / mTilesetProject->tileWidth() / zoomLevel * mTilesetProject->tileWidth();
     mCursorSceneFY = qreal(mCursorPaneY - mCurrentPane->integerOffset().y()) / mTilesetProject->tileHeight() / zoomLevel * mTilesetProject->tileHeight();
-    mCursorSceneX = mCursorSceneFX;
-    mCursorSceneY = mCursorSceneFY;
+    mCursorSceneX = qFloor(mCursorSceneFX);
+    mCursorSceneY = qFloor(mCursorSceneFY);
 
     if (mCursorSceneX < 0 || mCursorSceneX >= mTilesetProject->widthInPixels()
         || mCursorSceneY < 0 || mCursorSceneY >= mTilesetProject->heightInPixels()) {
         setCursorTilePixelX(-1);
         setCursorTilePixelY(-1);
+        setCursorTile({-1, -1});
 
         setTilePenPreview(false);
 
@@ -561,6 +639,7 @@ void TileCanvas::updateCursorPos(const QPoint &eventPos)
         const QPoint cursorPixelPos = scenePosToTilePixelPos(QPoint(mCursorSceneX, mCursorSceneY));
         setCursorTilePixelX(cursorPixelPos.x());
         setCursorTilePixelY(cursorPixelPos.y());
+        setCursorTile({Utils::divFloor(mCursorSceneX, mTilesetProject->tileSize().width()), Utils::divFloor(mCursorSceneY, mTilesetProject->tileSize().height())});
 
         updateTilePenPreview();
 
@@ -630,6 +709,7 @@ void TileCanvas::hoverLeaveEvent(QHoverEvent *event)
     // Don't reset the cursor position here, because it looks jarring.
     setCursorTilePixelX(-1);
     setCursorTilePixelY(-1);
+    setCursorTile({-1, -1});
 }
 
 void TileCanvas::focusInEvent(QFocusEvent *event)

@@ -22,11 +22,13 @@
 
 #include <QObject>
 #include <QPoint>
+#include <QRect>
 #include <QSize>
 
 #include "slate-global.h"
 
 class QJsonObject;
+class ImageCanvas;
 
 class SLATE_EXPORT CanvasPane : public QObject
 {
@@ -36,9 +38,15 @@ class SLATE_EXPORT CanvasPane : public QObject
     Q_PROPERTY(int integerZoomLevel READ integerZoomLevel NOTIFY zoomLevelChanged)
     Q_PROPERTY(int maxZoomLevel READ maxZoomLevel CONSTANT)
     Q_PROPERTY(QPoint integerOffset READ integerOffset WRITE setIntegerOffset NOTIFY integerOffsetChanged)
+    Q_PROPERTY(QRectF proportionalRect READ proportionalRect NOTIFY proportionalRectChanged)
 
 public:
-    explicit CanvasPane(QObject *parent = 0);
+    explicit CanvasPane(QObject *parent = nullptr);
+
+    QRectF proportionalRect() const;
+    void setProportionalRect(const QRectF &proportionalRect);
+
+    QRectF absoluteRect(const ImageCanvas *const canvas) const;
 
     qreal size() const;
     void setSize(const qreal &size);
@@ -67,10 +75,12 @@ public:
 
 signals:
     void zoomLevelChanged();
+    void proportionalRectChanged();
     void sizeChanged();
     void integerOffsetChanged();
 
 private:
+    QRectF mProportionalRect;
     qreal mSize;
     qreal mZoomLevel;
     int mMaxZoomLevel;

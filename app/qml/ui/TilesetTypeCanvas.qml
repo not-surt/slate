@@ -34,29 +34,8 @@ TileCanvas {
 
     onErrorOccurred: errorPopup.showError(errorMessage)
 
-    // TODO: tile pen preview shouldn't be visible with colour picker open
-
-    Repeater {
-        id: root
-        model: 2
-
-        CanvasPaneItem {
-            id: paneItem
-            objectName: "tileCanvasPaneItem" + index
-            canvas: tileCanvas
-            pane: canvas.paneAt(index)
-            paneIndex: index
-            anchors.fill: parent
-            visible: index === 0 || canvas.splitScreen
-
-            Rectangle {
-                x: index === 0 ? 0 : Math.floor(parent.width - width)
-                width: Math.floor(paneItem.pane.size * parent.width)
-                height: parent.height
-                color: CanvasColours.backgroundColour
-                z: -1
-            }
-        }
+    CanvasPaneRepeater {
+        canvas: tileCanvas
     }
 
     SplitterBar {

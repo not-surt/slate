@@ -51,7 +51,7 @@ public:
 
     AnimationPlayback *animationPlayback();
 
-    QImage exportedImage() const override;
+    virtual QImage exportedImage() const override;
 
 signals:
     void usingAnimationChanged();
