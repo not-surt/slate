@@ -49,8 +49,8 @@ Item {
 
     CrosshairCursor {
         id: crosshairCursor
-        x: canvas ? canvas.cursorX - width / 2 : 0
-        y: canvas ? canvas.cursorY - height / 2 : 0
+        x: canvas ? Math.floor(canvas.cursorPos.x - width / 2) : 0
+        y: canvas ? Math.floor(canvas.cursorPos.y - height / 2) : 0
         z: 1
         colour: canvas ? canvas.invertedCursorPixelColour : defaultColour
         visible: canvas && canvas.hasBlankCursor && !canvas.useIconCursor && (canvas.useCrosshairCursor || settings.alwaysShowCrosshair)
@@ -58,8 +58,8 @@ Item {
 
     RectangularCursor {
         id: rectangleCursor
-        x: canvas ? Math.floor(canvas.cursorX + canvas.brushRect.x * canvas.currentPaneZoomLevel) : 0
-        y: canvas ? Math.floor(canvas.cursorY + canvas.brushRect.y * canvas.currentPaneZoomLevel) : 0
+        x: canvas ? Math.floor(canvas.cursorPos.x + canvas.brushRect.x * canvas.currentPaneZoomLevel) : 0
+        y: canvas ? Math.floor(canvas.cursorPos.y + canvas.brushRect.y * canvas.currentPaneZoomLevel) : 0
         z: 1
         width: canvas ? canvas.brushRect.width * canvas.currentPaneZoomLevel : 0
         height: canvas ? canvas.brushRect.height * canvas.currentPaneZoomLevel : 0
@@ -68,8 +68,8 @@ Item {
 
     Label {
         id: iconCursor
-        x: canvas ? canvas.cursorX : 0
-        y: canvas ? canvas.cursorY - height + 3 : 0
+        x: canvas ? Math.floor(canvas.cursorPos.x + 1) : 0
+        y: canvas ? Math.floor(canvas.cursorPos.y - height + 3) : 0
         z: 1
         visible: canvas && canvas.hasBlankCursor && canvas.useIconCursor
         text: visible && checkedToolButton ? checkedToolButton.text : ""

@@ -21,7 +21,6 @@
 
 #include "canvaspane.h"
 #include "imagecanvas.h"
-#include "panedrawinghelper.h"
 #include "utils.h"
 
 #include <QPainter>
@@ -38,20 +37,27 @@ SelectionItem::SelectionItem(ImageCanvas *canvas) :
 
 void SelectionItem::paint(QPainter *painter)
 {
-    if (mCanvas->isSplitScreen()) {
-        drawPane(painter, mCanvas->secondPane(), 1);
+    for (int i = 0; i < mCanvas->panes().size(); ++i) {
+        if (mCanvas->panes()[i]->visible())
+            drawPane(painter, mCanvas->panes()[i]);
     }
-
-    drawPane(painter, mCanvas->firstPane(), 0);
 }
 
-void SelectionItem::drawPane(QPainter *painter, const CanvasPane *pane, int paneIndex)
+void SelectionItem::drawPane(QPainter *painter, const CanvasPane *pane)
 {
     if (!mCanvas->hasSelection())
         return;
 
-    PaneDrawingHelper paneDrawingHelper(mCanvas, painter, pane, paneIndex);
-    const QRect zoomedSelectionArea(mCanvas->selectionArea().topLeft() * pane->integerZoomLevel(),
-        pane->zoomedSize(mCanvas->selectionArea().size()));
-    Utils::strokeRectWithDashes(painter, zoomedSelectionArea);
+    painter->save();
+    const QTransform transform = pane->transform();
+    painter->setTransform(transform);
+    painter->setClipRect(transform.inverted().map(pane->geometry()).boundingRect());
+
+    const QRect rect = painter->transform().mapRect(mCanvas->selectionArea());
+    painter->save();
+    painter->resetTransform();
+    Utils::strokeRectWithDashes(painter, rect);
+    painter->restore();
+
+    painter->restore();
 }

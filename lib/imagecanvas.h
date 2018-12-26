@@ -39,6 +39,7 @@
 #include "splitter.h"
 #include "texturedfillparameters.h"
 #include "brush.h"
+#include "stroke.h"
 
 Q_DECLARE_LOGGING_CATEGORY(lcImageCanvas)
 Q_DECLARE_LOGGING_CATEGORY(lcImageCanvasLifecycle)
@@ -73,10 +74,10 @@ class SLATE_EXPORT ImageCanvas : public QQuickItem
     Q_PROPERTY(CanvasPane *currentPane READ currentPane NOTIFY currentPaneChanged)
     Q_PROPERTY(QColor rulerForegroundColour READ rulerForegroundColour WRITE setRulerForegroundColour)
     Q_PROPERTY(QColor rulerBackgroundColour READ rulerBackgroundColour WRITE setRulerBackgroundColour)
-    Q_PROPERTY(int cursorX READ cursorX NOTIFY cursorXChanged)
-    Q_PROPERTY(int cursorY READ cursorY NOTIFY cursorYChanged)
-    Q_PROPERTY(int cursorSceneX READ cursorSceneX NOTIFY cursorSceneXChanged)
-    Q_PROPERTY(int cursorSceneY READ cursorSceneY NOTIFY cursorSceneYChanged)
+    Q_PROPERTY(QPoint cursorPos READ cursorPos NOTIFY cursorPosChanged)
+    Q_PROPERTY(QPointF cursorScenePos READ cursorScenePos NOTIFY cursorScenePosChanged)
+    Q_PROPERTY(QPoint cursorScenePixel READ cursorScenePixel NOTIFY cursorScenePosChanged)
+    Q_PROPERTY(QPoint cursorScenePixelCorner READ cursorScenePixelCorner NOTIFY cursorScenePosChanged)
     Q_PROPERTY(QColor cursorPixelColour READ cursorPixelColour NOTIFY cursorPixelColourChanged)
     Q_PROPERTY(QColor invertedCursorPixelColour READ invertedCursorPixelColour NOTIFY cursorPixelColourChanged)
     Q_PROPERTY(bool containsMouse READ containsMouse NOTIFY containsMouseChanged)
@@ -132,17 +133,17 @@ public:
     Project *project() const;
     void setProject(Project *project);
 
-    int cursorX() const;
-    void setCursorX(int cursorX);
+    QPoint cursorPos() const;
+    void setCursorPos(const QPoint point);
 
-    int cursorY() const;
-    void setCursorY(int cursorY);
+    QPointF pressScenePos() const;
+    QPoint pressScenePixel() const;
+    QPoint pressScenePixelCorner() const;
 
-    int cursorSceneX() const;
-    void setCursorSceneX(int x);
-
-    int cursorSceneY() const;
-    void setCursorSceneY(int y);
+    QPointF cursorScenePos() const;
+    void setCursorScenePos(const QPointF point);
+    QPoint cursorScenePixel() const;
+    QPoint cursorScenePixelCorner() const;
 
     QColor cursorPixelColour() const;
     QColor invertedCursorPixelColour() const;
@@ -150,10 +151,6 @@ public:
 
     bool containsMouse() const;
     void setContainsMouse(bool containsMouse);
-
-    QRect firstPaneVisibleSceneArea() const;
-    QRect secondPaneVisibleSceneArea() const;
-    QRect paneVisibleSceneArea(int paneIndex) const;
 
     bool gridVisible() const;
     void setGridVisible(bool gridVisible);
@@ -203,7 +200,7 @@ public:
     CanvasPane *currentPane();
     Q_INVOKABLE CanvasPane *paneAt(int index);
     const CanvasPane *paneAt(int index) const;
-    QRectF paneAbsoluteRect(int index) const;
+    const QVector<CanvasPane *> &panes() const;
     int paneWidth(int index) const;
 
     QColor rulerForegroundColour() const;
@@ -265,76 +262,6 @@ public:
     bool isLineVisible() const;
     int lineLength() const;
     qreal lineAngle() const;
-
-    struct StrokePoint {
-        bool operator==(const StrokePoint &other) const {
-            return pos == other.pos && qFuzzyCompare(pressure, other.pressure);
-        }
-        bool operator!=(const StrokePoint &other) const {
-            return !(*this == other);
-        }
-
-        StrokePoint snapped(const QPointF snapOffset = {0.0, 0.0}) const {
-            return StrokePoint{{qRound(pos.x() + snapOffset.x()) - snapOffset.x(), qRound(pos.y() + snapOffset.y()) - snapOffset.y()}, pressure};
-        }
-
-        QPoint pixel() const {
-            return QPoint{qFloor(pos.x()), qFloor(pos.y())};
-        }
-
-        QPointF pos;
-        qreal pressure;
-    };
-
-    class Stroke : public QVector<StrokePoint> {
-    public:
-        using QVector::QVector;
-        Stroke(const QVector<StrokePoint> &vector) : QVector<StrokePoint>(vector) {}
-
-        static qreal strokeSegment(QPainter *const painter, const Brush &brush, const QColor &colour, const StrokePoint &point0, const StrokePoint &point1, const qreal scaleMin, const qreal scaleMax, const qreal stepOffset = 0.0) {
-            const QPointF posDelta = {point1.pos.x() - point0.pos.x(), point1.pos.y() - point0.pos.y()};
-            const qreal pressureDelta = point1.pressure - point0.pressure;
-            const qreal steps = qMax(qMax(qAbs(posDelta.x()), qAbs(posDelta.y())), 1.0);
-            const qreal step = 1.0 / steps;
-            qreal pos = stepOffset * step;
-            while (pos < 1.0 || qFuzzyCompare(pos, 1.0)) {
-                const QPointF point = point0.pos + pos * posDelta;
-                const qreal pressure = point0.pressure + pos * pressureDelta;
-                const qreal scale = scaleMin + pressure * (scaleMax - scaleMin);
-                drawBrush(painter, brush, colour, point, scale);
-                pos += step;
-            }
-            return (pos - 1.0) * steps;
-        }
-
-        StrokePoint snapped(const int index, const QPointF snapOffset = {0.0, 0.0}, const bool snapToPixel = true) {
-            if (!snapToPixel) return at(index);
-            else return at(index).snapped(snapOffset);
-        }
-
-        void draw(QPainter *const painter, const Brush &brush, const qreal scaleMin, const qreal scaleMax, const QColor &colour, const QPainter::CompositionMode mode, const bool snapToPixel = false) {
-            painter->save();
-            painter->setCompositionMode(mode);
-            if (length() == 1) {
-                strokeSegment(painter, brush, colour, snapped(0, brush.handle, snapToPixel), snapped(0, brush.handle, snapToPixel), scaleMin, scaleMax);
-            }
-            else {
-                qreal stepOffset = 0.0;
-                for (int i = 1; i < length(); ++i) {
-                    stepOffset = strokeSegment(painter, brush, colour, snapped(i - 1, brush.handle, snapToPixel), snapped(i, brush.handle, snapToPixel), scaleMin, scaleMax, stepOffset);
-                }
-            }
-            painter->restore();
-        }
-
-        QRect bounds(const Brush &brush, const qreal scaleMin, const qreal scaleMax) {
-            QRectF bounds;
-            for (auto point : *this) {
-                bounds = bounds.united(brush.bounds(scaleMin + point.pressure * (scaleMax - scaleMin)).translated(point.pos));
-            }
-            return bounds.toAlignedRect();
-        }
-    };
 
     static void drawBrush(QPainter *const painter, const Brush &brush, const QColor &colour, const QPointF pos, const qreal scale = 1.0, const qreal rotation = 0.0);
 
@@ -411,16 +338,13 @@ public:
         RollbackAdjustment,
         CommitAdjustment
     };
-
     Q_ENUM(AdjustmentAction)
 
 signals:
     void projectChanged();
     void zoomLevelChanged();
-    void cursorXChanged();
-    void cursorYChanged();
-    void cursorSceneXChanged();
-    void cursorSceneYChanged();
+    void cursorPosChanged();
+    void cursorScenePosChanged();
     void cursorPixelColourChanged();
     void containsMouseChanged();
     void backgroundColourChanged();
@@ -499,7 +423,7 @@ protected slots:
     void requestPaneContentPaint(int paneIndex);
     void updateWindowCursorShape();
     void onZoomLevelChanged();
-    void onPaneintegerOffsetChanged();
+    void onPaneOffsetChanged();
     void onPaneSizeChanged();
     void onSplitterPositionChanged();
     void onGuidesChanged();
@@ -514,10 +438,8 @@ protected:
     void resizeChildren();
 
     friend class ApplyGreedyPixelFillCommand;
-    friend class ApplyPixelEraserCommand;
     friend class ApplyPixelFillCommand;
     friend class ApplyPixelLineCommand;
-    friend class ApplyPixelPenCommand;
     friend class ModifyImageCanvasSelectionCommand;
     friend class DeleteImageCanvasSelectionCommand;
     friend class FlipImageCanvasSelectionCommand;
@@ -535,7 +457,7 @@ protected:
 
     QPainter::CompositionMode qPainterBlendMode() const;
     virtual void applyCurrentTool(QUndoStack *const alternateStack = nullptr);
-    virtual void applyPixelPenTool(int layerIndex, const QPoint &scenePos, const QColor &colour, bool markAsLastRelease = false);
+    virtual void applyPixelPenTool(int layerIndex, const QPoint &scenePos, const QColor &colour);
     void paintImageOntoPortionOfImage(int layerIndex, const QRect &portion, const QImage &replacementImage);
     void replacePortionOfImage(int layerIndex, const QRect &portion, const QImage &replacementImage);
     void erasePortionOfImage(int layerIndex, const QRect &portion);
@@ -548,7 +470,6 @@ protected:
     qreal pressure() const;
 
     virtual void updateCursorPos(const QPoint &eventPos);
-    void updateVisibleSceneArea();
     void error(const QString &message);
 
     Qt::MouseButton pressedMouseButton() const;
@@ -564,14 +485,12 @@ protected:
 
     void setCurrentPane(CanvasPane *pane);
     CanvasPane *hoveredPane(const QPoint &pos);
-    QPoint eventPosRelativeToCurrentPane(const QPoint &pos);
     virtual QImage getComposedImage();
-    void centrePanes(bool respectSceneCentred = true);
     enum ResetPaneSizePolicy {
         DontResetPaneSizes,
         ResetPaneSizes
     };
-    void doSetSplitScreen(bool splitScreen, ResetPaneSizePolicy resetPaneSizePolicy);
+    void doSetSplitScreen(bool splitScreen);
     void setDefaultPaneSizes();
     void updatePaneGeometry();
     bool mouseOverSplitterHandle(const QPoint &mousePos);
@@ -655,6 +574,7 @@ protected:
 
     // The background colour of the entire pane.
     QColor mBackgroundColour;
+    bool mRulersVisible;
     bool mGridVisible;
     QColor mGridColour;
     QColor mSplitColour;
@@ -667,6 +587,9 @@ protected:
     Splitter mSplitter;
     CanvasPane mFirstPane;
     CanvasPane mSecondPane;
+    QVector<CanvasPane *> mPanes;
+    QVector<Ruler *> mHorizontalRulers;
+    QVector<Ruler *> mVerticalRulers;
     CanvasPane *mCurrentPane;
     int mCurrentPaneIndex;
     Ruler *mFirstHorizontalRuler;
@@ -685,31 +608,25 @@ protected:
     QImage mCachedContentImage;
 
     // The position of the cursor in view coordinates.
-    int mCursorX;
-    int mCursorY;
+    QPoint mCursorPos;
     // The position of the cursor in view coordinates relative to a pane.
     int mCursorPaneX;
     int mCursorPaneY;
     // The position of the cursor in scene coordinates.
-    int mCursorSceneX;
-    int mCursorSceneY;
-    qreal mCursorSceneFX;
-    qreal mCursorSceneFY;
+    QPointF mCursorScenePos;
     QColor mCursorPixelColour;
     bool mContainsMouse;
+    QPoint oldMousePos;
     // The mouse button that is currently pressed.
     Qt::MouseButton mMouseButtonPressed;
     // The mouse button that was last pressed (could still be currently pressed).
     Qt::MouseButton mLastMouseButtonPressed;
     // The position at which the mouse is currently pressed.
     QPoint mPressPosition;
-    QPoint mPressScenePosition;
+    QPointF mPressScenePosition;
     bool mToolContinue;
     Stroke mOldStroke, mNewStroke;
     // The scene position at which the mouse was pressed before the most-recent press.
-    QPoint mCurrentPaneOffsetBeforePress;
-    QRect mFirstPaneVisibleSceneArea;
-    QRect mSecondPaneVisibleSceneArea;
     bool mScrollZoom;
     bool mGesturesEnabled;
 
@@ -730,12 +647,6 @@ protected:
     bool mBrushDirty;
 
     TexturedFillParameters mTexturedFillParameters;
-
-    // The scene position at which the mouse was last pressed.
-    // This is used by the pixel line tool to draw the line preview.
-    // It is set by the pixel tool as the last pixel in the command,
-    // and by the pixel line tool command.
-    QPoint mLastPixelPenPressScenePosition;
 
     bool mPotentiallySelecting;
     bool mHasSelection;
@@ -794,12 +705,6 @@ inline QDebug operator<<(QDebug debug, const ImageCanvas::SubImageInstance &subI
     debug.nospace() << "SubImageInstance(" << subImageInstance.index << ", " << subImageInstance.position << ')';
 
     return debug;
-}
-
-inline QDebug operator<<(QDebug debug, const ImageCanvas::StrokePoint &point)
-{
-    debug.nospace() << "StrokePoint(" << point.pos << ", " << point.pressure << ")";
-    return debug.space();
 }
 
 #endif // IMAGECANVAS_H

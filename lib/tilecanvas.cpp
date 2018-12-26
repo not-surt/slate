@@ -32,7 +32,6 @@
 #include "applytilefillcommand.h"
 #include "applytilepencommand.h"
 #include "fillalgorithms.h"
-#include "panedrawinghelper.h"
 #include "tileset.h"
 #include "tilesetproject.h"
 #include "utils.h"
@@ -159,10 +158,10 @@ void TileCanvas::paintOverlay(QPainter *const painter) const
 
     // Draw tile cursor
     if (mMode == TileMode && tilesRect.contains(mCursorTile)) {
-        const QRect cursorRect = painter->transform().mapRect(QRect(QPoint(mCursorTile.x() * tileSize.width(), mCursorTile.y() * tileSize.height()), tileSize));
+        const QRect rect = painter->transform().mapRect(QRect(QPoint(mCursorTile.x() * tileSize.width(), mCursorTile.y() * tileSize.height()), tileSize));
         painter->save();
         painter->resetTransform();
-        Utils::strokeRectWithDashes(painter, cursorRect);
+        Utils::strokeRectWithDashes(painter, rect);
         painter->restore();
     }
 }
@@ -264,8 +263,8 @@ void TileCanvas::reset()
 //    setCursorY(0);
 //    mCursorPaneX = 0;
 //    mCursorPaneY = 0;
-//    mCursorSceneX = 0;
-//    mCursorSceneY = 0;
+//    cursorSceneX() = 0;
+//    cursorSceneY() = 0;
     setCursorTilePixelX(0);
     setCursorTilePixelY(0);
     setCursorTile({0, 0});
@@ -387,7 +386,7 @@ TileCanvas::PixelCandidateData TileCanvas::fillPixelCandidates() const
 {
     PixelCandidateData candidateData;
 
-    const QPoint tilePos = QPoint(mCursorSceneX, mCursorSceneY);
+    const QPoint tilePos = QPoint(cursorScenePixel().x(), cursorScenePixel().y());
     Tile *tile = mTilesetProject->tileAt(tilePos);
     if (!tile) {
         return candidateData;
@@ -422,7 +421,7 @@ TileCanvas::TileCandidateData TileCanvas::fillTileCandidates() const
 {
     TileCandidateData candidateData;
 
-    const QPoint scenePos = QPoint(mCursorSceneX, mCursorSceneY);
+    const QPoint scenePos = cursorScenePixel();
     const Tile *tile = mTilesetProject->tileAt(scenePos);
     const int previousTileId = tile ? tile->id() : Tile::invalidId();
     const int newTileId = mPenTile ? mPenTile->id() : -1;
@@ -458,7 +457,7 @@ void TileCanvas::applyCurrentTool(QUndoStack *const alternateStack)
     switch (mTool) {
     case PenTool: {
         if (mMode == TileMode) {
-            const QPoint scenePos = QPoint(mCursorSceneX, mCursorSceneY);
+            const QPoint scenePos = cursorScenePixel();
             const Tile *tile = mTilesetProject->tileAt(scenePos);
             const int previousTileId = tile ? tile->id() : Tile::invalidId();
             const int newTileId = mPenTile ? mPenTile->id() : -1;
@@ -477,7 +476,7 @@ void TileCanvas::applyCurrentTool(QUndoStack *const alternateStack)
     }
     case EyeDropperTool: {
         if (mMode == TileMode) {
-            const QPoint tilePos = QPoint(mCursorSceneX, mCursorSceneY);
+            const QPoint tilePos = cursorScenePixel();
             Tile *tile = mTilesetProject->tileAt(tilePos);
             if (tile) {
                 setPenTile(tile);
@@ -487,7 +486,7 @@ void TileCanvas::applyCurrentTool(QUndoStack *const alternateStack)
     }
     case EraserTool: {
         if (mMode == TileMode) {
-            const QPoint scenePos = QPoint(mCursorSceneX, mCursorSceneY);
+            const QPoint scenePos = cursorScenePixel();
             const Tile *tile = mTilesetProject->tileAt(scenePos);
             const int previousTileId = tile ? tile->id() : Tile::invalidId();
             if (previousTileId == Tile::invalidId()) {
@@ -568,7 +567,7 @@ QList<ImageCanvas::SubImageInstance> TileCanvas::subImageInstancesInBounds(const
 }
 
 // This function actually operates on the image.
-void TileCanvas::applyPixelPenTool(int layerIndex, const QPoint &scenePos, const QColor &colour, bool markAsLastRelease)
+void TileCanvas::applyPixelPenTool(int layerIndex, const QPoint &scenePos, const QColor &colour)
 {
     Q_ASSERT(layerIndex == -1);
 
@@ -578,8 +577,6 @@ void TileCanvas::applyPixelPenTool(int layerIndex, const QPoint &scenePos, const
     const QPoint pixelPos = scenePosToTilePixelPos(scenePos);
     const QPoint tilsetPixelPos = tile->sourceRect().topLeft() + pixelPos;
     mTilesetProject->tileset()->setPixelColor(tilsetPixelPos.x(), tilsetPixelPos.y(), colour);
-    if (markAsLastRelease)
-        mLastPixelPenPressScenePosition = scenePos;
     requestContentPaint();
 }
 
@@ -591,67 +588,32 @@ void TileCanvas::applyTilePenTool(const QPoint &tilePos, int id)
 
 void TileCanvas::updateCursorPos(const QPoint &eventPos)
 {
-    setCursorX(eventPos.x());
-    setCursorY(eventPos.y());
-    // Don't change current panes if panning, as the mouse position should
-    // be allowed to go outside of the original pane.
-    if (!mSpacePressed) {
-        setCurrentPane(hoveredPane(eventPos));
-    }
+    ImageCanvas::updateCursorPos(eventPos);
 
-    const int firstPaneWidth = paneWidth(0);
-    const bool inFirstPane = eventPos.x() <= firstPaneWidth;
-    mCursorPaneX = eventPos.x() - (!inFirstPane ? firstPaneWidth : 0);
-    mCursorPaneY = eventPos.y();
+    CanvasPane *const pane = hoveredPane(eventPos);
 
-    const QSize zoomedTileSize = mCurrentPane->zoomedSize(mTilesetProject->tileSize());
-    if (zoomedTileSize.isEmpty()) {
-        mCursorSceneFX = -1;
-        mCursorSceneFY = -1;
-        mCursorSceneX = -1;
-        mCursorSceneY = -1;
+    if (!mProject->hasLoaded() || !pane) {
         setCursorTilePixelX(-1);
         setCursorTilePixelY(-1);
         setCursorTile({-1, -1});
-        // We could do this once at the beginning of the function, but we
-        // try to avoid unnecessary property changes.
-        setCursorPixelColour(QColor(Qt::black));
         return;
     }
 
-    // We need the position as floating point numbers so that pen sizes > 1 work properly.
-    const int zoomLevel = mCurrentPane->integerZoomLevel();
-    mCursorSceneFX = qreal(mCursorPaneX - mCurrentPane->integerOffset().x()) / mTilesetProject->tileWidth() / zoomLevel * mTilesetProject->tileWidth();
-    mCursorSceneFY = qreal(mCursorPaneY - mCurrentPane->integerOffset().y()) / mTilesetProject->tileHeight() / zoomLevel * mTilesetProject->tileHeight();
-    mCursorSceneX = qFloor(mCursorSceneFX);
-    mCursorSceneY = qFloor(mCursorSceneFY);
-
-    if (mCursorSceneX < 0 || mCursorSceneX >= mTilesetProject->widthInPixels()
-        || mCursorSceneY < 0 || mCursorSceneY >= mTilesetProject->heightInPixels()) {
+    if (cursorScenePixel().x() < 0 || cursorScenePixel().x() >= mTilesetProject->widthInPixels()
+        || cursorScenePixel().y() < 0 || cursorScenePixel().y() >= mTilesetProject->heightInPixels()) {
         setCursorTilePixelX(-1);
         setCursorTilePixelY(-1);
         setCursorTile({-1, -1});
 
         setTilePenPreview(false);
-
-        setCursorPixelColour(QColor(Qt::black));
-    } else {
-        const QPoint cursorPixelPos = scenePosToTilePixelPos(QPoint(mCursorSceneX, mCursorSceneY));
+    }
+    else {
+        const QPoint cursorPixelPos = scenePosToTilePixelPos(cursorScenePixel());
         setCursorTilePixelX(cursorPixelPos.x());
         setCursorTilePixelY(cursorPixelPos.y());
-        setCursorTile({Utils::divFloor(mCursorSceneX, mTilesetProject->tileSize().width()), Utils::divFloor(mCursorSceneY, mTilesetProject->tileSize().height())});
+        setCursorTile({Utils::divFloor(cursorScenePixel().x(), mTilesetProject->tileSize().width()), Utils::divFloor(cursorScenePixel().y(), mTilesetProject->tileSize().height())});
 
         updateTilePenPreview();
-
-        const QPoint cursorScenePos = QPoint(mCursorSceneX, mCursorSceneY);
-        const Tile *tile = mTilesetProject->tileAt(cursorScenePos);
-        if (!tile) {
-            setCursorPixelColour(QColor(Qt::black));
-        } else {
-            const QPoint tilePixelPos = scenePosToTilePixelPos(cursorScenePos);
-            setCursorPixelColour(tile->pixelColor(tilePixelPos));
-        }
-
         if (mTilePenPreview) {
             requestContentPaint();
         }
@@ -661,19 +623,12 @@ void TileCanvas::updateCursorPos(const QPoint &eventPos)
 void TileCanvas::onLoadedChanged()
 {
     if (mTilesetProject->hasLoaded()) {
-        centrePanes();
-
         setPenTile(mTilesetProject->tilesetTileAt(0, 0));
     } else {
         setPenTile(nullptr);
     }
 
     updateWindowCursorShape();
-}
-
-QColor TileCanvas::penColour() const
-{
-    return mMouseButtonPressed == Qt::LeftButton ? mPenForegroundColour : mPenBackgroundColour;
 }
 
 void TileCanvas::setHasBlankCursor(bool hasCustomCursor)

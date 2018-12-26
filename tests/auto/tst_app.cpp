@@ -470,16 +470,16 @@ void tst_App::saveAsAndLoad()
     QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, splitterCentre);
     QTest::mouseMove(window, QPoint(canvas->width() / 4, canvas->height() / 2));
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, QPoint(canvas->width() / 4, canvas->height() / 2));
-    QVERIFY(qAbs(canvas->firstPane()->size() - 0.25) < 0.001);
-    QVERIFY(qAbs(canvas->secondPane()->size() - 0.75) < 0.001);
+    QVERIFY(qAbs(canvas->splitter()->position() - 0.25) < 0.001);
+    QVERIFY(qAbs((1.0 - canvas->splitter()->position()) - 0.75) < 0.001);
 
     // Store the original offsets, etc.
     const QPoint firstPaneOffset = canvas->firstPane()->integerOffset();
     const int firstPaneZoomLevel = canvas->firstPane()->integerZoomLevel();
-    const qreal firstPaneSize = canvas->firstPane()->size();
+    const qreal firstPaneSize = canvas->splitter()->position();
     const QPoint secondPaneOffset = canvas->secondPane()->integerOffset();
     const int secondPaneZoomLevel = canvas->secondPane()->integerZoomLevel();
-    const qreal secondPaneSize = canvas->secondPane()->size();
+    const qreal secondPaneSize = 1.0 - canvas->splitter()->position();
 
     // Save the project.
     const QString savedProjectPath = tempProjectDir->path() + "/saveAsAndLoad-project." + projectExtension;
@@ -497,10 +497,10 @@ void tst_App::saveAsAndLoad()
     QCOMPARE(project->guides().first().position(), 10);
     QCOMPARE(canvas->firstPane()->integerOffset(), firstPaneOffset);
     QCOMPARE(canvas->firstPane()->integerZoomLevel(), firstPaneZoomLevel);
-    QCOMPARE(canvas->firstPane()->size(), firstPaneSize);
+    QCOMPARE(canvas->splitter()->position(), firstPaneSize);
     QCOMPARE(canvas->secondPane()->integerOffset(), secondPaneOffset);
     QCOMPARE(canvas->secondPane()->integerZoomLevel(), secondPaneZoomLevel);
-    QCOMPARE(canvas->secondPane()->size(), secondPaneSize);
+    QCOMPARE(1.0 - canvas->splitter()->position(), secondPaneSize);
 
     if (projectType == Project::LayeredImageType) {
         // Test that the save shortcut works by drawing and then saving.
@@ -1918,9 +1918,9 @@ void tst_App::panes()
 {
     QVERIFY2(createNewTilesetProject(), failureMessage);
     QVERIFY(tileCanvas->firstPane());
-    QCOMPARE(tileCanvas->firstPane()->size(), 0.5);
+    QCOMPARE(canvas->splitter()->position(), 0.5);
     QVERIFY(tileCanvas->secondPane());
-    QCOMPARE(tileCanvas->secondPane()->size(), 0.5);
+    QCOMPARE(1.0 - canvas->splitter()->position(), 0.5);
     QCOMPARE(tileCanvas->tool(), TileCanvas::PenTool);
 
     QVERIFY2(switchMode(TileCanvas::TileMode), failureMessage);
@@ -1944,14 +1944,14 @@ void tst_App::panes()
     // Remove split.
     QVERIFY2(triggerSplitScreen(), failureMessage);
     QVERIFY(!canvas->isSplitScreen());
-    QCOMPARE(tileCanvas->firstPane()->size(), 1.0);
-    QCOMPARE(tileCanvas->secondPane()->size(), 0.0);
+    QCOMPARE(canvas->splitter()->position(), 1.0);
+    QCOMPARE(1.0 - canvas->splitter()->position(), 0.0);
 
     // Add it back again.
     QVERIFY2(triggerSplitScreen(), failureMessage);
     QVERIFY(canvas->isSplitScreen());
-    QCOMPARE(tileCanvas->firstPane()->size(), 0.5);
-    QCOMPARE(tileCanvas->secondPane()->size(), 0.5);
+    QCOMPARE(canvas->splitter()->position(), 0.5);
+    QCOMPARE(1.0 - canvas->splitter()->position(), 0.5);
 }
 
 void tst_App::altEyedropper()
@@ -2060,7 +2060,7 @@ void tst_App::zoomAndCentre()
 
     QVERIFY2(triggerCentre(), failureMessage);
     const QPoint expectedOffset(
-        currentPane->size() * tileCanvas->width() / 2 - (tilesetProject->widthInPixels() * currentPane->integerZoomLevel()) / 2,
+        canvas->splitter()->position() * tileCanvas->width() / 2 - (tilesetProject->widthInPixels() * currentPane->integerZoomLevel()) / 2,
         tileCanvas->height() / 2 - (tilesetProject->heightInPixels() * currentPane->integerZoomLevel()) / 2);
     // A one pixel difference was introduced here at some point.. not sure why, but it's not important.
     const int xDiff = qAbs(currentPane->integerOffset().x() - expectedOffset.x());
@@ -2449,8 +2449,8 @@ void tst_App::splitterSettingsMouse()
 
     // Split screen is on by default for auto tests.
     QCOMPARE(canvas->isSplitScreen(), true);
-    QCOMPARE(canvas->firstPane()->size(), 0.5);
-    QCOMPARE(canvas->secondPane()->size(), 0.5);
+    QCOMPARE(canvas->splitter()->position(), 0.5);
+    QCOMPARE(1.0 - canvas->splitter()->position(), 0.5);
     QCOMPARE(splitScreenToolButton->isEnabled(), true);
     QCOMPARE(splitScreenToolButton->property("checked").toBool(), true);
     // The splitter is always locked by default.
@@ -2461,8 +2461,8 @@ void tst_App::splitterSettingsMouse()
     // Turn split screen off.
     mouseEventOnCentre(splitScreenToolButton, MouseClick);
     QCOMPARE(canvas->isSplitScreen(), false);
-    QCOMPARE(canvas->firstPane()->size(), 1.0);
-    QCOMPARE(canvas->secondPane()->size(), 0.0);
+    QCOMPARE(canvas->splitter()->position(), 1.0);
+    QCOMPARE(1.0 - canvas->splitter()->position(), 0.0);
     QCOMPARE(splitScreenToolButton->isEnabled(), true);
     QCOMPARE(splitScreenToolButton->property("checked").toBool(), false);
     // The lock splitter tool button should be disabled but retain its original value.
@@ -2473,8 +2473,8 @@ void tst_App::splitterSettingsMouse()
     // Turn split screen back on.
     mouseEventOnCentre(splitScreenToolButton, MouseClick);
     QCOMPARE(canvas->isSplitScreen(), true);
-    QCOMPARE(canvas->firstPane()->size(), 0.5);
-    QCOMPARE(canvas->secondPane()->size(), 0.5);
+    QCOMPARE(canvas->splitter()->position(), 0.5);
+    QCOMPARE(1.0 - canvas->splitter()->position(), 0.5);
     QCOMPARE(splitScreenToolButton->isEnabled(), true);
     QCOMPARE(splitScreenToolButton->property("checked").toBool(), true);
     QCOMPARE(canvas->splitter()->isEnabled(), false);
@@ -2484,8 +2484,8 @@ void tst_App::splitterSettingsMouse()
     // Enable the splitter.
     mouseEventOnCentre(lockSplitterToolButton, MouseClick);
     QCOMPARE(canvas->isSplitScreen(), true);
-    QCOMPARE(canvas->firstPane()->size(), 0.5);
-    QCOMPARE(canvas->secondPane()->size(), 0.5);
+    QCOMPARE(canvas->splitter()->position(), 0.5);
+    QCOMPARE(1.0 - canvas->splitter()->position(), 0.5);
     QCOMPARE(splitScreenToolButton->isEnabled(), true);
     QCOMPARE(splitScreenToolButton->property("checked").toBool(), true);
     QCOMPARE(canvas->splitter()->isEnabled(), true);

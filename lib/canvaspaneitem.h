@@ -27,7 +27,6 @@
 class CanvasPane;
 class Guide;
 class ImageCanvas;
-class PaneDrawingHelper;
 
 class SLATE_EXPORT CanvasPaneItem : public QQuickPaintedItem
 {

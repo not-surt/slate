@@ -1071,7 +1071,7 @@ QPoint TestHelper::canvasSceneCentre() const
 
 QPoint TestHelper::firstPaneSceneCentre() const
 {
-    return canvas->mapToScene(QPointF((canvas->firstPane()->size() * canvas->width()) / 2, canvas->height() / 2)).toPoint();
+    return canvas->mapToScene(QPointF(canvas->firstPane()->geometry().x() + canvas->firstPane()->geometry().width() / 2.0, canvas->firstPane()->geometry().y() + canvas->firstPane()->geometry().height() / 2.0)).toPoint();
 }
 
 void TestHelper::setCursorPosInPixels(const QPoint &posInPixels)

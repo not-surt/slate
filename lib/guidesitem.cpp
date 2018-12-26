@@ -22,7 +22,6 @@
 #include "canvaspane.h"
 #include "guide.h"
 #include "imagecanvas.h"
-#include "panedrawinghelper.h"
 #include "project.h"
 
 #include <QPainter>
@@ -41,19 +40,20 @@ GuidesItem::~GuidesItem()
 
 void GuidesItem::paint(QPainter *painter)
 {
-    if (mCanvas->isSplitScreen()) {
-        drawPane(painter, mCanvas->secondPane(), 1);
+    for (int i = 0; i < mCanvas->panes().size(); ++i) {
+        if (mCanvas->panes()[i]->visible()) drawPane(painter, mCanvas->panes()[i]);
     }
-
-    drawPane(painter, mCanvas->firstPane(), 0);
 }
 
-void GuidesItem::drawPane(QPainter *painter, const CanvasPane *pane, int paneIndex)
+void GuidesItem::drawPane(QPainter *painter, const CanvasPane *pane)
 {
     if (!mCanvas->project()->hasLoaded())
         return;
 
-    PaneDrawingHelper paneDrawingHelper(mCanvas, painter, pane, paneIndex);
+    painter->save();
+    const QTransform transform = pane->transform();
+    painter->setTransform(transform);
+    painter->setClipRect(transform.inverted().map(pane->geometry()).boundingRect());
 
     QPen pen;
     pen.setColor(Qt::gray);
@@ -64,50 +64,46 @@ void GuidesItem::drawPane(QPainter *painter, const CanvasPane *pane, int paneInd
     QVector<Guide> guides = mCanvas->project()->guides();
     for (int i = 0; i < guides.size(); ++i) {
         const Guide guide = guides.at(i);
-        drawGuide(&paneDrawingHelper, &guide, i);
+        drawGuide(painter, pane, &guide, i);
     }
 
     // Draw the guide that's being dragged from the ruler, if any.
     if (mCanvas->pressedRuler()) {
         const bool horizontal = mCanvas->pressedRuler()->orientation() == Qt::Horizontal;
-        const Guide guide(horizontal ? mCanvas->cursorSceneY() : mCanvas->cursorSceneX(), mCanvas->pressedRuler()->orientation());
-        drawGuide(&paneDrawingHelper, &guide, -1);
+        const Guide guide(horizontal ? mCanvas->cursorScenePixelCorner().y() : mCanvas->cursorScenePixelCorner().x(), mCanvas->pressedRuler()->orientation());
+        drawGuide(painter, pane, &guide, -1);
     }
+
+    painter->restore();
 }
 
-void GuidesItem::drawGuide(PaneDrawingHelper *paneDrawingHelper, const Guide *guide, int guideIndex)
+void GuidesItem::drawGuide(QPainter *painter, const CanvasPane *pane, const Guide *guide, int guideIndex)
 {
-    QPainter *painter = paneDrawingHelper->painter();
-    const CanvasPane *pane = paneDrawingHelper->pane();
-    const int paneIndex = paneDrawingHelper->paneIndex();
-
     // If this is an existing guide that is currently being dragged, draw it in its dragged position.
     const bool draggingExistingGuide = mCanvas->pressedGuideIndex() != -1 && mCanvas->pressedGuideIndex() == guideIndex;
     const bool vertical = guide->orientation() == Qt::Vertical;
-    const int guidePosition = draggingExistingGuide ? (vertical ? mCanvas->cursorSceneX() : mCanvas->cursorSceneY()) : guide->position();
-    const qreal zoomedGuidePosition = guidePosition * pane->integerZoomLevel() + painter->pen().widthF() / 2.0;
+    const int guidePosition = draggingExistingGuide ? (vertical ? mCanvas->cursorScenePixelCorner().x() : mCanvas->cursorScenePixelCorner().y()) : guide->position();
 
     painter->save();
-    painter->setPen(Qt::cyan);
+    QPen pen;
+    pen.setColor(Qt::cyan);
+    pen.setWidth(0);
+    painter->setPen(pen);
 
-    const QRect visibleSceneArea = mCanvas->paneVisibleSceneArea(paneIndex);
+    const QRect visibleSceneArea = pane->transform().inverted().map(pane->geometry()).boundingRect().toAlignedRect();
 
     if (vertical) {
-//        if (paneIndex == 0 && guideIndex == 0)
-//            qDebug() << "index" << guideIndex << "guidePosition" << guidePosition;
         // Don't bother drawing it if it's not visible within the scene.
         // Use visibleSceneArea.x()/y() to ensure that that coordinate is within the
         // scene area, as we don't care about it and are only testing the other coordinate.
         if (visibleSceneArea.contains(QPoint(guidePosition, visibleSceneArea.y()))) {
             // Don't need to account for the vertical offset anymore, as vertical guides go across the whole height of the pane.
-            painter->translate(0, -pane->integerOffset().y());
-            painter->drawLine(QLineF(zoomedGuidePosition, 0, zoomedGuidePosition, height()));
+            painter->drawLine(QLineF(guidePosition, visibleSceneArea.top(), guidePosition, visibleSceneArea.bottom()));
         }
     } else {
         if (visibleSceneArea.contains(QPoint(visibleSceneArea.x(), guidePosition))) {
             // Don't need to account for the horizontal offset anymore, as horizontal guides go across the whole width of the pane.
-            painter->translate(-pane->integerOffset().x(), 0);
-            painter->drawLine(QLineF(0, zoomedGuidePosition, mCanvas->paneWidth(paneIndex), zoomedGuidePosition));
+            painter->drawLine(QLineF(visibleSceneArea.left(), guidePosition, visibleSceneArea.right(), guidePosition));
         }
     }
     painter->restore();

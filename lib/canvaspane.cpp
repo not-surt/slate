@@ -28,45 +28,38 @@ Q_LOGGING_CATEGORY(lcCanvasPane, "app.canvasPane")
 
 CanvasPane::CanvasPane(QObject *parent) :
     QObject(parent),
+    mGeometry(),
+    mVisible(true),
     mSize(0.5),
     mZoomLevel(1.0),
-    mMaxZoomLevel(48),
-    mSceneCentered(true)
+    mMaxZoomLevel(48)
 {
 }
 
-QRectF CanvasPane::proportionalRect() const
+QRectF CanvasPane::geometry() const
 {
-    return mProportionalRect;
+    return mGeometry;
 }
 
-void CanvasPane::setProportionalRect(const QRectF &proportionalRect)
+void CanvasPane::setGeometry(const QRectF &geometry)
 {
-    if (proportionalRect == mProportionalRect) return;
+    if (geometry == mGeometry) return;
 
-    mProportionalRect = proportionalRect;
-    emit proportionalRectChanged();
+    mGeometry = geometry;
+    emit geometryChanged();
 }
 
-QRectF CanvasPane::absoluteRect(const ImageCanvas *const canvas) const
+bool CanvasPane::visible() const
 {
-    return QRectF(QPointF(mProportionalRect.x() * canvas->width(), mProportionalRect.y() * canvas->height()),
-                  QSizeF(mProportionalRect.width() * canvas->width(), mProportionalRect.height() * canvas->height()));
+    return mVisible;
 }
 
-qreal CanvasPane::size() const
+void CanvasPane::setVisible(const bool visible)
 {
-    return mSize;
-}
+    if (visible == mVisible) return;
 
-void CanvasPane::setSize(const qreal &size)
-{
-    if (size == mSize) {
-        return;
-    }
-
-    mSize = size;
-    emit sizeChanged();
+    mVisible = visible;
+    emit visibleChanged();
 }
 
 qreal CanvasPane::zoomLevel() const
@@ -94,9 +87,16 @@ int CanvasPane::maxZoomLevel() const
     return mMaxZoomLevel;
 }
 
-QSize CanvasPane::zoomedSize(const QSize &size) const
+QTransform CanvasPane::transform() const
 {
-    return size * integerZoomLevel();
+    // Canvas to scene transform
+    QTransform transform;
+    const QPointF offset = QPointF(qRound(mGeometry.width() / 2.0), qRound(mGeometry.height() / 2.0)) + mGeometry.topLeft();
+    transform.translate(offset.x(), offset.y());
+    transform.scale(mZoomLevel, mZoomLevel);
+    const QPointF pan = mOffset;
+    transform.translate(pan.x(), pan.y());
+    return transform;
 }
 
 QPoint CanvasPane::integerOffset() const
@@ -124,32 +124,17 @@ void CanvasPane::setOffset(const QPointF &offset)
     qCDebug(lcCanvasPane) << "setting offset of" << objectName() << "to" << offset;
 
     mOffset = offset;
+    emit offsetChanged();
+    qDebug() << offset << this->offset();
 
     if (integerOffset() != oldIntegerOffset)
         emit integerOffsetChanged();
 }
 
-QPoint CanvasPane::zoomedOffset() const
-{
-    return integerOffset() * integerZoomLevel();
-}
-
-bool CanvasPane::isSceneCentered() const
-{
-    return mSceneCentered;
-}
-
-void CanvasPane::setSceneCentered(bool centreScene)
-{
-    mSceneCentered = centreScene;
-}
-
 void CanvasPane::read(const QJsonObject &json)
 {
-    setSize(json.value(QLatin1String("size")).toDouble());
-    setZoomLevel(json.value(QLatin1String("zoomLevel")).toInt());
-    setIntegerOffset(QPoint(json.value(QLatin1String("offsetX")).toInt(), json.value(QLatin1String("offsetY")).toInt()));
-    setSceneCentered(json.value(QLatin1String("sceneCentered")).toBool());
+    setZoomLevel(json.value(QLatin1String("zoomLevel")).toDouble());
+    setOffset(QPointF(json.value(QLatin1String("offsetX")).toDouble(), json.value(QLatin1String("offsetY")).toDouble()));
 }
 
 void CanvasPane::write(QJsonObject &json) const
@@ -157,27 +142,24 @@ void CanvasPane::write(QJsonObject &json) const
     json[QLatin1String("size")] = mSize;
     // It's only important that the zoom level is a real while zooming
     // to ensure that zooming is not too quick.
-    json[QLatin1String("zoomLevel")] = integerZoomLevel();
+    json[QLatin1String("zoomLevel")] = zoomLevel();
     json[QLatin1String("offsetX")] = mOffset.x();
     json[QLatin1String("offsetY")] = mOffset.y();
-    json[QLatin1String("sceneCentered")] = mSceneCentered;
 }
 
 void CanvasPane::reset()
 {
-    setSize(0.5);
     setZoomLevel(1.0);
-    setIntegerOffset(QPoint(0, 0));
-    setSceneCentered(true);
+    setOffset(QPointF(0.0, 0.0));
 }
 
 QDebug operator<<(QDebug debug, const CanvasPane *pane)
 {
     QDebugStateSaver stateSaver(debug);
     debug.nospace() << "(CanvasPane objectName=" << pane->objectName()
-        << "offset=" << pane->integerOffset()
-        << " size=" << pane->size()
+        << " offset=" << pane->integerOffset()
         << " zoomLevel=" << pane->zoomLevel()
+        << " geometry=" << pane->geometry()
         << ")";
     return debug.space();
 }

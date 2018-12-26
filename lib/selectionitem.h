@@ -37,7 +37,7 @@ public:
     void paint(QPainter *painter) override;
 
 private:
-    void drawPane(QPainter *painter, const CanvasPane *pane, int paneIndex);
+    void drawPane(QPainter *painter, const CanvasPane *pane);
 
     ImageCanvas *mCanvas;
 };

@@ -24,13 +24,14 @@
 #include <QPointF>
 #include <QUndoCommand>
 
-#include "imagecanvas.h"
 #include "slate-global.h"
+#include "imagecanvas.h"
+#include "stroke.h"
 
 class SLATE_EXPORT ApplyPixelLineCommand : public QUndoCommand
 {
 public:
-    ApplyPixelLineCommand(ImageCanvas *const canvas, const int layerIndex, const ImageCanvas::Stroke &stroke, const qreal scaleMin, const qreal scaleMax, const Brush &brush, const QColor &colour,
+    ApplyPixelLineCommand(ImageCanvas *const canvas, const int layerIndex, const Stroke &stroke, const qreal scaleMin, const qreal scaleMax, const Brush &brush, const QColor &colour,
         const QPainter::CompositionMode compositionMode, const QUndoCommand *const previousCommand = nullptr, QUndoCommand *const parent = nullptr);
     virtual ~ApplyPixelLineCommand() override;
 
@@ -53,10 +54,10 @@ private:
     Brush mBrush;
     QColor mColour;
     qreal mScaleMin, mScaleMax;
-    ImageCanvas::Stroke mOldStroke;
+    Stroke mOldStroke;
     QPainter::CompositionMode mCompositionMode;
 
-    ImageCanvas::Stroke mStroke;
+    Stroke mStroke;
     int mStrokeUpdateStartIndex;
     QRegion mBufferRegion;
     QImage mUndoBuffer;

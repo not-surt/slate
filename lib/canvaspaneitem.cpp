@@ -22,7 +22,6 @@
 #include "canvaspane.h"
 #include "guide.h"
 #include "imagecanvas.h"
-#include "panedrawinghelper.h"
 #include "project.h"
 #include "utils.h"
 
@@ -128,15 +127,14 @@ void CanvasPaneItem::paint(QPainter *painter)
     if (!mCanvas->project() || !mCanvas->project()->hasLoaded())
         return;
 
-    PaneDrawingHelper paneDrawingHelper(mCanvas, painter, mPane, mPaneIndex);
-
-    QTransform zoomTransform;
-    zoomTransform.scale(mPane->integerZoomLevel(), mPane->integerZoomLevel());
-    painter->setTransform(zoomTransform, true);
-
-    qDebug() << mPaneIndex << mPane->proportionalRect() << mPane->absoluteRect(mCanvas);/////////////////////////////////////////////
+    painter->save();
+    const QTransform transform = mPane->transform();
+    painter->setTransform(transform);
+    painter->setClipRect(transform.inverted().map(mPane->geometry()).boundingRect());
 
     mCanvas->paintBackground(painter);
     mCanvas->paintContentWithPreview(painter);
     mCanvas->paintOverlay(painter);
+
+    painter->restore();
 }

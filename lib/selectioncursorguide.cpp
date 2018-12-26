@@ -21,7 +21,6 @@
 
 #include "canvaspane.h"
 #include "imagecanvas.h"
-#include "panedrawinghelper.h"
 
 #include <QPainter>
 
@@ -41,39 +40,32 @@ SelectionCursorGuide::~SelectionCursorGuide()
 
 void SelectionCursorGuide::paint(QPainter *painter)
 {
-    if (mCanvas->isSplitScreen()) {
-        drawPane(painter, mCanvas->secondPane(), 1);
+    for (int i = 0; i < mCanvas->panes().size(); ++i) {
+        if (mCanvas->panes()[i]->visible())
+            drawPane(painter, mCanvas->panes()[i]);
     }
-
-    drawPane(painter, mCanvas->firstPane(), 0);
 }
 
-void SelectionCursorGuide::drawPane(QPainter *painter, const CanvasPane *pane, int paneIndex)
+void SelectionCursorGuide::drawPane(QPainter *painter, const CanvasPane *pane)
 {
-    PaneDrawingHelper paneDrawingHelper(mCanvas, painter, pane, paneIndex);
-
     painter->save();
+    const QTransform transform = pane->transform();
+    painter->setTransform(transform);
+    painter->setClipRect(transform.inverted().map(pane->geometry()).boundingRect());
 
     QPen pen;
+    pen.setWidth(0);
     pen.setColor(Qt::gray);
     pen.setStyle(Qt::DotLine);
     painter->setPen(pen);
 
+    const QRect visibleSceneArea = pane->transform().inverted().map(pane->geometry()).boundingRect().toAlignedRect();
+
     // Draw the vertical cursor selection guide.
-    painter->save();
-
-    int guidePosition = mCanvas->cursorSceneX();
-    qreal zoomedGuidePosition = (guidePosition * pane->integerZoomLevel()) + (painter->pen().widthF() / 2.0);
-    painter->translate(0, -pane->integerOffset().y());
-    painter->drawLine(QLineF(zoomedGuidePosition, 0, zoomedGuidePosition, height()));
-
-    painter->restore();
+    painter->drawLine(QLineF(mCanvas->cursorScenePixelCorner().x(), visibleSceneArea.top(), mCanvas->cursorScenePixelCorner().x(), visibleSceneArea.bottom()));
 
     // Draw the horizontal cursor selection guide.
-    guidePosition = mCanvas->cursorSceneY();
-    zoomedGuidePosition = (guidePosition * pane->integerZoomLevel()) + (painter->pen().widthF() / 2.0);
-    painter->translate(-pane->integerOffset().x(), 0);
-    painter->drawLine(QLineF(0, zoomedGuidePosition, mCanvas->paneWidth(paneIndex), zoomedGuidePosition));
+    painter->drawLine(QLineF(visibleSceneArea.left(), mCanvas->cursorScenePixelCorner().y(), visibleSceneArea.right(),  mCanvas->cursorScenePixelCorner().y()));
 
     painter->restore();
 }

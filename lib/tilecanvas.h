@@ -140,12 +140,10 @@ private:
     TileCandidateData fillTileCandidates() const;
 
     void applyCurrentTool(QUndoStack *const alternateStack = nullptr) override;
-    void applyPixelPenTool(int layerIndex, const QPoint &scenePos, const QColor &colour, bool markAsLastRelease = false) override;
+    void applyPixelPenTool(int layerIndex, const QPoint &scenePos, const QColor &colour) override;
     void applyTilePenTool(const QPoint &tilePos, int id);
 
     void updateCursorPos(const QPoint &eventPos) override;
-    void error(const QString &message);
-    QColor penColour() const;
     void setHasBlankCursor(bool hasBlankCursor);
     void updateTilePenPreview();
     void setTilePenPreview(bool tilePenPreview);

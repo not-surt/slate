@@ -24,6 +24,7 @@
 #include <QPoint>
 #include <QRect>
 #include <QSize>
+#include <QTransform>
 
 #include "slate-global.h"
 
@@ -33,40 +34,33 @@ class ImageCanvas;
 class SLATE_EXPORT CanvasPane : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(qreal size READ size WRITE setSize NOTIFY sizeChanged)
     Q_PROPERTY(qreal zoomLevel READ zoomLevel WRITE setZoomLevel NOTIFY zoomLevelChanged)
     Q_PROPERTY(int integerZoomLevel READ integerZoomLevel NOTIFY zoomLevelChanged)
     Q_PROPERTY(int maxZoomLevel READ maxZoomLevel CONSTANT)
     Q_PROPERTY(QPoint integerOffset READ integerOffset WRITE setIntegerOffset NOTIFY integerOffsetChanged)
-    Q_PROPERTY(QRectF proportionalRect READ proportionalRect NOTIFY proportionalRectChanged)
+    Q_PROPERTY(QRectF geometry READ geometry NOTIFY geometryChanged)
+    Q_PROPERTY(bool visible READ visible NOTIFY visibleChanged)
 
 public:
     explicit CanvasPane(QObject *parent = nullptr);
 
-    QRectF proportionalRect() const;
-    void setProportionalRect(const QRectF &proportionalRect);
+    QRectF geometry() const;
+    void setGeometry(const QRectF &geometry);
 
-    QRectF absoluteRect(const ImageCanvas *const canvas) const;
-
-    qreal size() const;
-    void setSize(const qreal &size);
+    bool visible() const;
+    void setVisible(const bool visible);
 
     qreal zoomLevel() const;
     int integerZoomLevel() const;
     void setZoomLevel(qreal zoomLevel);
     int maxZoomLevel() const;
 
-    QSize zoomedSize(const QSize &size) const;
+    QTransform transform() const;
 
     QPoint integerOffset() const;
     void setIntegerOffset(const QPoint &integerOffset);
     QPointF offset() const;
     void setOffset(const QPointF &offset);
-
-    QPoint zoomedOffset() const;
-
-    bool isSceneCentered() const;
-    void setSceneCentered(bool isSceneCentered);
 
     void read(const QJsonObject &json);
     void write(QJsonObject &json) const;
@@ -75,19 +69,19 @@ public:
 
 signals:
     void zoomLevelChanged();
-    void proportionalRectChanged();
+    void geometryChanged();
+    void visibleChanged();
     void sizeChanged();
     void integerOffsetChanged();
+    void offsetChanged();
 
 private:
-    QRectF mProportionalRect;
+    QRectF mGeometry;
+    bool mVisible;
     qreal mSize;
     qreal mZoomLevel;
     int mMaxZoomLevel;
-    // From the top left of the canvas.
     QPointF mOffset;
-    // Scenes are centered in each pane until the view is panned or zoomed.
-    bool mSceneCentered;
 };
 
 SLATE_EXPORT QDebug operator<<(QDebug debug, const CanvasPane *pane);

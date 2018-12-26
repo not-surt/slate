@@ -27,7 +27,6 @@
 class CanvasPane;
 class Guide;
 class ImageCanvas;
-class PaneDrawingHelper;
 
 class SLATE_EXPORT GuidesItem : public QQuickPaintedItem
 {
@@ -35,13 +34,13 @@ class SLATE_EXPORT GuidesItem : public QQuickPaintedItem
 
 public:
     explicit GuidesItem(ImageCanvas *canvas);
-    ~GuidesItem();
+    virtual ~GuidesItem() override;
 
     void paint(QPainter *painter) override;
 
 private:
-    void drawPane(QPainter *painter, const CanvasPane *pane, int paneIndex);
-    void drawGuide(PaneDrawingHelper *paneDrawingHelper, const Guide *guide, int guideIndex);
+    void drawPane(QPainter *painter, const CanvasPane *pane);
+    void drawGuide(QPainter *painter, const CanvasPane *pane, const Guide *guide, int guideIndex);
 
     ImageCanvas *mCanvas;
 };

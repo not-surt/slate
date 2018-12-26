@@ -1,4 +1,4 @@
-/*
+﻿/*
     Copyright 2018, Mitch Curtis
 
     This file is part of Slate.
@@ -43,7 +43,6 @@
 #include "imageproject.h"
 #include "modifyimagecanvasselectioncommand.h"
 #include "moveguidecommand.h"
-#include "panedrawinghelper.h"
 #include "pasteimagecanvascommand.h"
 #include "project.h"
 #include "selectioncursorguide.h"
@@ -62,6 +61,7 @@ ImageCanvas::ImageCanvas() :
     mProject(nullptr),
     mImageProject(nullptr),
     mBackgroundColour(Qt::gray),
+    mRulersVisible(true),
     mGridVisible(false),
     mGridColour(Qt::black),
     mSplitColour(Qt::black),
@@ -71,6 +71,9 @@ ImageCanvas::ImageCanvas() :
     mSplitter(this),
     mCurrentPane(&mFirstPane),
     mCurrentPaneIndex(0),
+    mPanes(),
+    mHorizontalRulers(),
+    mVerticalRulers(),
     mFirstHorizontalRuler(nullptr),
     mFirstVerticalRuler(nullptr),
     mSecondHorizontalRuler(nullptr),
@@ -81,14 +84,10 @@ ImageCanvas::ImageCanvas() :
     mGuidePositionBeforePress(0),
     mPressedGuideIndex(-1),
     mGuidesItem(nullptr),
-    mCursorX(0),
-    mCursorY(0),
+    mCursorPos(),
     mCursorPaneX(0),
     mCursorPaneY(0),
-    mCursorSceneX(0),
-    mCursorSceneY(0),
-    mCursorSceneFX(0),
-    mCursorSceneFY(0),
+    mCursorScenePos(),
     mCursorPixelColour(Qt::black),
     mContainsMouse(false),
     mMouseButtonPressed(Qt::NoButton),
@@ -131,7 +130,10 @@ ImageCanvas::ImageCanvas() :
     QQmlEngine::setObjectOwnership(&mFirstPane, QQmlEngine::CppOwnership);
     mSecondPane.setObjectName("secondPane");
     QQmlEngine::setObjectOwnership(&mSecondPane, QQmlEngine::CppOwnership);
-    mSplitter.setPosition(mFirstPane.size());
+    mSplitter.setPosition(0.5);
+
+//    mPanes = {new CanvasPane(), new CanvasPane()};
+    mPanes = {&mFirstPane, &mSecondPane};
 
     // We create child items in the body rather than the initialiser list
     // in order to ensure the correct drawing order.
@@ -163,6 +165,9 @@ ImageCanvas::ImageCanvas() :
     mSecondVerticalRuler->setDrawCorner(true);
     mSecondVerticalRuler->setZ(itemZ++);
 
+    mHorizontalRulers = {mFirstHorizontalRuler, mSecondHorizontalRuler};
+    mVerticalRulers = {mFirstVerticalRuler, mSecondVerticalRuler};
+
     // Give some defaults so that the range slider handles aren't stuck together.
     mTexturedFillParameters.hue()->setVarianceLowerBound(-0.2);
     mTexturedFillParameters.hue()->setVarianceUpperBound(0.2);
@@ -172,13 +177,12 @@ ImageCanvas::ImageCanvas() :
     mTexturedFillParameters.lightness()->setVarianceLowerBound(-0.2);
     mTexturedFillParameters.lightness()->setVarianceUpperBound(0.2);
 
-    connect(&mFirstPane, SIGNAL(zoomLevelChanged()), this, SLOT(onZoomLevelChanged()));
-    connect(&mFirstPane, SIGNAL(integerOffsetChanged()), this, SLOT(onPaneintegerOffsetChanged()));
-    connect(&mFirstPane, SIGNAL(sizeChanged()), this, SLOT(onPaneSizeChanged()));
-    connect(&mSecondPane, SIGNAL(zoomLevelChanged()), this, SLOT(onZoomLevelChanged()));
-    connect(&mSecondPane, SIGNAL(integerOffsetChanged()), this, SLOT(onPaneintegerOffsetChanged()));
-    connect(&mSecondPane, SIGNAL(sizeChanged()), this, SLOT(onPaneSizeChanged()));
-    connect(&mSplitter, SIGNAL(positionChanged()), this, SLOT(onSplitterPositionChanged()));
+    for (int i = 0; i < mPanes.size(); ++i) {
+        connect(mPanes[i], &CanvasPane::zoomLevelChanged, this, &ImageCanvas::onZoomLevelChanged);
+        connect(mPanes[i], &CanvasPane::offsetChanged, this, &ImageCanvas::onPaneOffsetChanged);
+        connect(mPanes[i], &CanvasPane::sizeChanged, this, &ImageCanvas::onPaneSizeChanged);
+    }
+    connect(&mSplitter, &Splitter::positionChanged, this, &ImageCanvas::onSplitterPositionChanged);
 
     recreateCheckerImage();
 
@@ -191,6 +195,8 @@ ImageCanvas::ImageCanvas() :
 
 ImageCanvas::~ImageCanvas()
 {
+//    qDeleteAll(mPanes);
+
     qCDebug(lcImageCanvasLifecycle) << "destructing ImageCanvas" << this;
 }
 
@@ -232,17 +238,16 @@ void ImageCanvas::setProject(Project *project)
             mFirstPane.read(cachedProjectJson->value("firstPane").toObject());
             readPanes = true;
         }
-        if (cachedProjectJson->contains("firstPane")) {
+        if (cachedProjectJson->contains("secondPane")) {
             mSecondPane.read(cachedProjectJson->value("secondPane").toObject());
             readPanes = true;
         }
-        doSetSplitScreen(cachedProjectJson->value("splitScreen").toBool(false), DontResetPaneSizes);
+        doSetSplitScreen(cachedProjectJson->value("splitScreen").toBool(false));
         mSplitter.setEnabled(cachedProjectJson->value("splitterLocked").toBool(false));
         if (!readPanes) {
             // If there were no panes stored, then the project hasn't been saved yet,
             // so we can do what we want with the panes.
             setDefaultPaneSizes();
-            centrePanes();
         }
 
         setAcceptedMouseButtons(Qt::AllButtons);
@@ -289,18 +294,23 @@ void ImageCanvas::setGridColour(const QColor &gridColour)
 
 bool ImageCanvas::rulersVisible() const
 {
-    return mFirstHorizontalRuler->isVisible();
+    return mRulersVisible;
 }
 
 void ImageCanvas::setRulersVisible(bool rulersVisible)
 {
-    if (rulersVisible == mFirstHorizontalRuler->isVisible())
+    if (rulersVisible == mRulersVisible)
         return;
 
-    mFirstHorizontalRuler->setVisible(rulersVisible);
-    mFirstVerticalRuler->setVisible(rulersVisible);
-    mSecondHorizontalRuler->setVisible(rulersVisible && mSplitScreen);
-    mSecondVerticalRuler->setVisible(rulersVisible && mSplitScreen);
+    mRulersVisible = rulersVisible;
+
+    mHorizontalRulers[0]->setVisible(rulersVisible);
+    mVerticalRulers[0]->setVisible(rulersVisible);
+    for (int i = 1; i < mPanes.size(); ++i) {
+        mHorizontalRulers[i]->setVisible(rulersVisible && mSplitScreen);
+        mVerticalRulers[i]->setVisible(rulersVisible && mSplitScreen);
+    }
+
     emit rulersVisibleChanged();
 }
 
@@ -397,64 +407,59 @@ void ImageCanvas::setBackgroundColour(const QColor &backgroundColour)
     emit backgroundColourChanged();
 }
 
-int ImageCanvas::cursorX() const
+QPoint ImageCanvas::cursorPos() const
 {
-    return mCursorX;
+    return mCursorPos;
 }
 
-void ImageCanvas::setCursorX(int cursorX)
+void ImageCanvas::setCursorPos(const QPoint point)
 {
-    if (cursorX == mCursorX)
+    if (point == mCursorPos)
         return;
 
-    mCursorX = cursorX;
-    emit cursorXChanged();
+    mCursorPos = point;
+    emit cursorPosChanged();
 }
 
-int ImageCanvas::cursorY() const
+QPointF ImageCanvas::pressScenePos() const
 {
-    return mCursorY;
+    return mPressScenePosition;
 }
 
-void ImageCanvas::setCursorY(int cursorY)
+QPoint ImageCanvas::pressScenePixel() const
 {
-    if (cursorY == mCursorY)
+    return QPoint(qFloor(mPressScenePosition.x()), qFloor(mPressScenePosition.y()));
+}
+
+QPoint ImageCanvas::pressScenePixelCorner() const
+{
+    return QPoint(qRound(mPressScenePosition.x()), qRound(mPressScenePosition.y()));
+}
+
+QPointF ImageCanvas::cursorScenePos() const
+{
+    return mCursorScenePos;
+}
+
+void ImageCanvas::setCursorScenePos(const QPointF point)
+{
+    if (point == mCursorScenePos)
         return;
 
-    mCursorY = cursorY;
-    emit cursorYChanged();
-}
-
-int ImageCanvas::cursorSceneX() const
-{
-    return mCursorSceneX;
-}
-
-void ImageCanvas::setCursorSceneX(int x)
-{
-    if (x == mCursorSceneX)
-        return;
-
-    mCursorSceneX = x;
+    mCursorScenePos = point;
     if (isLineVisible())
         emit lineLengthChanged();
-    emit cursorSceneXChanged();
+    emit cursorScenePosChanged();
 }
 
-int ImageCanvas::cursorSceneY() const
+QPoint ImageCanvas::cursorScenePixel() const
 {
-    return mCursorSceneY;
+    return QPoint(qFloor(mCursorScenePos.x()), qFloor(mCursorScenePos.y()));
 }
 
-void ImageCanvas::setCursorSceneY(int y)
+QPoint ImageCanvas::cursorScenePixelCorner() const
 {
-    if (y == mCursorSceneY)
-        return;
-
-    mCursorSceneY = y;
-    if (isLineVisible())
-        emit lineLengthChanged();
-    emit cursorSceneYChanged();
+    return QPoint(qRound(mCursorScenePos.x()), qRound(mCursorScenePos.y()));
 }
 
 ImageCanvas::Tool ImageCanvas::tool() const
@@ -772,21 +777,6 @@ void ImageCanvas::setContainsMouse(bool containsMouse)
     emit containsMouseChanged();
 }
 
-QRect ImageCanvas::firstPaneVisibleSceneArea() const
-{
-    return mFirstPaneVisibleSceneArea;
-}
-
-QRect ImageCanvas::secondPaneVisibleSceneArea() const
-{
-    return mSecondPaneVisibleSceneArea;
-}
-
-QRect ImageCanvas::paneVisibleSceneArea(int paneIndex) const
-{
-    return paneIndex == 0 ? mFirstPaneVisibleSceneArea : mSecondPaneVisibleSceneArea;
-}
-
 bool ImageCanvas::isSplitScreen() const
 {
     return mSplitScreen;
@@ -794,7 +784,7 @@ bool ImageCanvas::isSplitScreen() const
 
 void ImageCanvas::setSplitScreen(bool splitScreen)
 {
-    doSetSplitScreen(splitScreen, ResetPaneSizes);
+    doSetSplitScreen(splitScreen);
 }
 
 bool ImageCanvas::scrollZoom() const
@@ -862,52 +852,51 @@ CanvasPane *ImageCanvas::currentPane()
 
 CanvasPane *ImageCanvas::paneAt(int index)
 {
-    if (index < 0 || index >= 2)
+    if (index < 0 || index >= mPanes.size())
         return nullptr;
 
-    return index == 0 ? &mFirstPane : &mSecondPane;
+    return mPanes[index];
 }
 
 const CanvasPane *ImageCanvas::paneAt(int index) const
 {
-    const_cast<ImageCanvas *>(this)->paneAt(index);
+    return const_cast<ImageCanvas *>(this)->paneAt(index);
 }
 
-QRectF ImageCanvas::paneAbsoluteRect(int index) const
+const QVector<CanvasPane *> &ImageCanvas::panes() const
 {
-    const CanvasPane *const pane = paneAt(index);
-    return pane->absoluteRect(this);
+    return mPanes;
 }
 
 int ImageCanvas::paneWidth(int index) const
 {
-    return index == 0 ? mFirstPane.size() * width() : width() - mFirstPane.size() * width();
+    return qRound(mPanes[index]->geometry().width());
 }
 
 QColor ImageCanvas::rulerForegroundColour() const
 {
-    return mFirstHorizontalRuler->foregroundColour();
+    return mHorizontalRulers[0]->foregroundColour();
 }
 
 void ImageCanvas::setRulerForegroundColour(const QColor &foregroundColour) const
 {
-    mFirstHorizontalRuler->setForegroundColour(foregroundColour);
-    mFirstVerticalRuler->setForegroundColour(foregroundColour);
-    mSecondHorizontalRuler->setForegroundColour(foregroundColour);
-    mSecondVerticalRuler->setForegroundColour(foregroundColour);
+    for (int i = 0; i < mPanes.size(); ++i) {
+        mHorizontalRulers[i]->setForegroundColour(foregroundColour);
+        mVerticalRulers[i]->setForegroundColour(foregroundColour);
+    }
 }
 
 QColor ImageCanvas::rulerBackgroundColour() const
 {
-    return mFirstHorizontalRuler->backgroundColour();
+    return mHorizontalRulers[0]->backgroundColour();
 }
 
 void ImageCanvas::setRulerBackgroundColour(const QColor &backgroundColour) const
 {
-    mFirstHorizontalRuler->setBackgroundColour(backgroundColour);
-    mFirstVerticalRuler->setBackgroundColour(backgroundColour);
-    mSecondHorizontalRuler->setBackgroundColour(backgroundColour);
-    mSecondVerticalRuler->setBackgroundColour(backgroundColour);
+    for (int i = 0; i < mPanes.size(); ++i) {
+        mHorizontalRulers[i]->setBackgroundColour(backgroundColour);
+        mVerticalRulers[i]->setBackgroundColour(backgroundColour);
+    }
 }
 
 Splitter *ImageCanvas::splitter()
@@ -930,7 +919,7 @@ bool ImageCanvas::isLineVisible() const
     // Don't show line info in the status bar if there hasn't been a mouse press yet.
     // This is the same as what penColour() does.
     const Qt::MouseButton lastButtonPressed = mMouseButtonPressed == Qt::NoButton ? mLastMouseButtonPressed : mMouseButtonPressed;
-    return mShiftPressed && mTool == PenTool && lastButtonPressed != Qt::NoButton;
+    return !mOldStroke.isEmpty() && mShiftPressed && mTool == PenTool && lastButtonPressed != Qt::NoButton;
 }
 
 int ImageCanvas::lineLength() const
@@ -939,7 +928,7 @@ int ImageCanvas::lineLength() const
         return 0;
 
     const QPointF point1 = mOldStroke.last().pixel();
-    const QPointF point2 = QPointF(mCursorSceneX, mCursorSceneY);
+    const QPointF point2 = mCursorScenePos;
     const QLineF line(point1, point2);
     return qRound(line.length());
 }
@@ -950,7 +939,7 @@ qreal ImageCanvas::lineAngle() const
         return 0;
 
     const QPointF point1 = mOldStroke.last().pixel();
-    const QPointF point2 = QPointF(mCursorSceneX, mCursorSceneY);
+    const QPointF point2 = mCursorScenePos;
     const QLineF line(point1, point2);
     return line.angle();
 }
@@ -1056,19 +1045,12 @@ bool ImageCanvas::hasBlankCursor() const
 
 void ImageCanvas::onSplitterPositionChanged()
 {
-    const qreal split = mSplitter.position();
-    mFirstPane.setSize(split);
-    mFirstPane.setProportionalRect(QRectF(QPointF(0.0, 0.0), QSizeF(split, 1.0)));
-    mSecondPane.setSize(1.0 - split);
-    mSecondPane.setProportionalRect(QRectF(QPointF(split, 0.0), QSizeF(1.0 - split, 1.0)));
     updatePaneGeometry();
 }
 
 void ImageCanvas::componentComplete()
 {
     QQuickItem::componentComplete();
-
-    updateVisibleSceneArea();
 
     // For some reason, we need to force this stuff to update when creating a
     // tileset project after a layered image project.
@@ -1089,12 +1071,11 @@ void ImageCanvas::geometryChanged(const QRectF &newGeometry, const QRectF &oldGe
 
     if (newGeometry == oldGeometry) return;
 
-    centrePanes();
     updatePaneGeometry();
     resizeChildren();
 
     if (mProject)
-        updateCursorPos(QPoint(mCursorX, mCursorY));
+        updateCursorPos(mCursorPos);
 }
 
 void ImageCanvas::resizeChildren()
@@ -1181,60 +1162,18 @@ QImage ImageCanvas::getComposedImage()
     return !shouldDrawSelectionPreviewImage() ? *currentProjectImage() : mSelectionPreviewImage;
 }
 
-void ImageCanvas::drawBrush(QPainter *const painter, const Brush &brush, const QColor &colour, const QPointF pos, const qreal scale, const qreal rotation)
-{
-    QTransform brushTransform;
-    brushTransform.rotate(rotation);
-    brushTransform.scale(scale, scale);
-
-    painter->save();
-    // Transform to cursor position
-    painter->translate(pos);
-    painter->setTransform(brushTransform, true);
-    // Draw brush image
-    brush.draw(painter,  {0.0, 0.0}, colour);
-    painter->restore();
-}
-
-void ImageCanvas::centrePanes(bool respectSceneCentred)
-{
-    if (!mProject)
-        return;
-
-    if (!respectSceneCentred || (respectSceneCentred && mFirstPane.isSceneCentered())) {
-        const QPoint newOffset(paneWidth(0) / 2 - (mProject->widthInPixels() * mFirstPane.integerZoomLevel()) / 2,
-            height() / 2 - (mProject->heightInPixels() * mFirstPane.integerZoomLevel()) / 2);
-        mFirstPane.setIntegerOffset(newOffset);
-    }
-
-    if (!respectSceneCentred || (respectSceneCentred && mSecondPane.isSceneCentered())) {
-        const QPoint newOffset(paneWidth(1) / 2 - (mProject->widthInPixels() * mFirstPane.integerZoomLevel()) / 2,
-            height() / 2 - (mProject->heightInPixels() * mFirstPane.integerZoomLevel()) / 2);
-        mSecondPane.setIntegerOffset(newOffset);
-    }
-
-    requestContentPaint();
-}
-
-void ImageCanvas::doSetSplitScreen(bool splitScreen, ImageCanvas::ResetPaneSizePolicy resetPaneSizePolicy)
+void ImageCanvas::doSetSplitScreen(bool splitScreen)
 {
     if (splitScreen == mSplitScreen)
         return;
 
     mSplitScreen = splitScreen;
 
-    if (mCurrentPane == &mSecondPane) {
-        setCurrentPane(&mFirstPane);
-    }
-
-    if (resetPaneSizePolicy == ResetPaneSizes) {
-        setDefaultPaneSizes();
-        centrePanes();
+    for (int i = 1; i < mPanes.size(); ++i) {
+        mPanes[i]->setVisible(mSplitScreen);
     }
 
     updatePaneGeometry();
-
-    updateVisibleSceneArea();
     updateRulerVisibility();
 
     requestContentPaint();
@@ -1250,12 +1189,9 @@ void ImageCanvas::setDefaultPaneSizes()
 void ImageCanvas::updatePaneGeometry()
 {
     const qreal split = mSplitScreen ? mSplitter.position() : 1.0;
-    mFirstPane.setSize(split);
-    mFirstPane.setProportionalRect(QRectF(QPointF(0.0, 0.0), QSizeF(split, 1.0)));
-    mSecondPane.setSize(1.0 - split);
-    mSecondPane.setProportionalRect(QRectF(QPointF(split, 0.0), QSizeF(1.0 - split, 1.0)));
+    mFirstPane.setGeometry(QRectF(QPointF(0.0, 0.0), QSizeF(split * width(), height())));
+    mSecondPane.setGeometry(QRectF(QPointF(split * width(), 0.0), QSizeF((1.0 - split) * width(), height())));
 
-    updateVisibleSceneArea();
     resizeRulers();
     if (mGuidesVisible) mGuidesItem->update();
     mSelectionItem->update();
@@ -1271,24 +1207,19 @@ bool ImageCanvas::mouseOverSplitterHandle(const QPoint &mousePos)
 
 void ImageCanvas::updateRulerVisibility()
 {
-    mSecondHorizontalRuler->setVisible(mSplitScreen);
-    mSecondVerticalRuler->setVisible(mSplitScreen);
+    for (int i = 0; i < mPanes.size(); ++i) {
+        mHorizontalRulers[i]->setVisible(mRulersVisible && mPanes[i]->visible());
+        mVerticalRulers[i]->setVisible(mRulersVisible && mPanes[i]->visible());
+    }
 }
 
 void ImageCanvas::resizeRulers()
 {
-    const bool splitScreen = isSplitScreen();
-    const int firstPaneWidth = paneWidth(0);
-
-    mFirstHorizontalRuler->setSize(QSizeF(splitScreen ? firstPaneWidth : width(), 20));
-    mFirstVerticalRuler->setSize(QSizeF(20, height()));
-
-    if (splitScreen) {
-        const int secondPaneWidth = paneWidth(1);
-        mSecondHorizontalRuler->setX(firstPaneWidth);
-        mSecondHorizontalRuler->setSize(QSizeF(secondPaneWidth, 20));
-        mSecondVerticalRuler->setX(firstPaneWidth);
-        mSecondVerticalRuler->setSize(QSizeF(20, height()));
+    for (int i = 0; i < mPanes.size(); ++i) {
+        mHorizontalRulers[i]->setPosition(mPanes[i]->geometry().topLeft());
+        mHorizontalRulers[i]->setSize(QSizeF(mPanes[i]->geometry().width(), 20));
+        mVerticalRulers[i]->setPosition(mPanes[i]->geometry().topLeft());
+        mVerticalRulers[i]->setSize(QSizeF(20, mPanes[i]->geometry().height()));
     }
 }
 
@@ -1299,19 +1230,15 @@ void ImageCanvas::updatePressedRuler()
 
 Ruler *ImageCanvas::rulerAtCursorPos()
 {
-    QPointF cursorPos = QPointF(mCursorX, mCursorY);
     Ruler *ruler = nullptr;
 
-    if (mFirstHorizontalRuler->contains(mapToItem(mFirstHorizontalRuler, cursorPos))) {
-        ruler = mFirstHorizontalRuler;
-    } else if (mFirstVerticalRuler->contains(mapToItem(mFirstVerticalRuler, cursorPos))) {
-        ruler = mFirstVerticalRuler;
-    } else if (mSecondHorizontalRuler->isVisible()
-        && mSecondHorizontalRuler->contains(mapToItem(mSecondHorizontalRuler, cursorPos))) {
-        ruler = mSecondHorizontalRuler;
-    } else if (mSecondVerticalRuler->isVisible()
-        && mSecondVerticalRuler->contains(mapToItem(mSecondVerticalRuler, cursorPos))) {
-        ruler = mSecondVerticalRuler;
+    for (int i = 0; i < mPanes.size(); ++i) {
+        if (mHorizontalRulers[i]->isVisible() && mHorizontalRulers[i]->contains(mapToItem(mHorizontalRulers[i], mCursorPos))) {
+            ruler = mHorizontalRulers[i];
+        }
+        else if (mVerticalRulers[i]->isVisible() && mVerticalRulers[i]->contains(mapToItem(mVerticalRulers[i], mCursorPos))) {
+            ruler = mVerticalRulers[i];
+        }
     }
 
     return ruler;
@@ -1321,7 +1248,7 @@ void ImageCanvas::addNewGuide()
 {
     mProject->beginMacro(QLatin1String("AddGuide"));
     mProject->addChange(new AddGuideCommand(mProject, Guide(
-        mPressedRuler->orientation() == Qt::Horizontal ? mCursorSceneY : mCursorSceneX,
+        mPressedRuler->orientation() == Qt::Horizontal ? cursorScenePixel().y() : cursorScenePixel().x(),
         mPressedRuler->orientation())));
     mProject->endMacro();
 
@@ -1334,7 +1261,7 @@ void ImageCanvas::moveGuide()
 
     mProject->beginMacro(QLatin1String("MoveGuide"));
     mProject->addChange(new MoveGuideCommand(mProject, guide,
-        guide.orientation() == Qt::Horizontal ? mCursorSceneY : mCursorSceneX));
+        guide.orientation() == Qt::Horizontal ? cursorScenePixel().y() : cursorScenePixel().x()));
     mProject->endMacro();
 }
 
@@ -1361,11 +1288,11 @@ int ImageCanvas::guideIndexAtCursorPos()
     for (int i = 0; i < guides.size(); ++i) {
         const Guide guide = guides.at(i);
         if (guide.orientation() == Qt::Horizontal) {
-            if (mCursorSceneY == guide.position()) {
+            if (cursorScenePixel().y() == guide.position()) {
                 return i;
             }
         } else {
-            if (mCursorSceneX == guide.position()) {
+            if (cursorScenePixel().x() == guide.position()) {
                 return i;
             }
         }
@@ -1484,11 +1411,9 @@ void ImageCanvas::updateSelectionArea()
         return;
     }
 
-    QRect newSelectionArea(mPressScenePosition.x(), mPressScenePosition.y(),
-        mCursorSceneX - mPressScenePosition.x(), mCursorSceneY - mPressScenePosition.y());
-
-    newSelectionArea = clampSelectionArea(newSelectionArea.normalized());
-
+    QRect newSelectionArea(QPoint(qMin(pressScenePixelCorner().x(), cursorScenePixelCorner().x()), qMin(pressScenePixelCorner().y(), cursorScenePixelCorner().y())),
+                           QPoint(qMax(pressScenePixelCorner().x(), cursorScenePixelCorner().x()) - 1, qMax(pressScenePixelCorner().y(), cursorScenePixelCorner().y()) - 1));
+    newSelectionArea = clampSelectionArea(newSelectionArea);
     setSelectionArea(newSelectionArea);
 }
 
@@ -1520,7 +1445,7 @@ void ImageCanvas::moveSelectionArea()
 //    qCDebug(lcImageCanvasSelection) << "moving selection area... mIsSelectionFromPaste =" << mIsSelectionFromPaste;
 
     QRect newSelectionArea = mSelectionAreaBeforeLastMove;
-    const QPoint distanceMoved(mCursorSceneX - mPressScenePosition.x(), mCursorSceneY - mPressScenePosition.y());
+    const QPoint distanceMoved(cursorScenePixel().x() - pressScenePixel().x(), cursorScenePixel().y() - pressScenePixel().y());
     newSelectionArea.translate(distanceMoved);
     setSelectionArea(boundSelectionArea(newSelectionArea));
 
@@ -1667,7 +1592,7 @@ void ImageCanvas::setMovingSelection(bool movingSelection)
 
 bool ImageCanvas::cursorOverSelection() const
 {
-    return mHasSelection ? mSelectionArea.contains(QPoint(mCursorSceneX, mCursorSceneY)) : false;
+    return mHasSelection ? mSelectionArea.contains(cursorScenePixel()) : false;
 }
 
 bool ImageCanvas::shouldDrawSelectionPreviewImage() const
@@ -1730,12 +1655,12 @@ void ImageCanvas::panWithSelectionIfAtEdge(ImageCanvas::SelectionPanReason reaso
     QPoint baseOffsetChange;
 
     // Check the left edge.
-    if (mCursorX < 0) {
-        baseOffsetChange.rx() += qMin(qAbs(mCursorX), maxVelocity);
+    if (mCursorPos.x() < 0) {
+        baseOffsetChange.rx() += qMin(qAbs(mCursorPos.x()), maxVelocity);
         panned = true;
     } else {
         // Check the right edge.
-        const int distancePastRight = mCursorX - width();
+        const int distancePastRight = mCursorPos.x() - width();
         if (distancePastRight > 0) {
             baseOffsetChange.rx() += qMax(-distancePastRight, -maxVelocity);
             panned = true;
@@ -1743,12 +1668,12 @@ void ImageCanvas::panWithSelectionIfAtEdge(ImageCanvas::SelectionPanReason reaso
     }
 
     // Check the top edge.
-    if (mCursorY < 0) {
-        baseOffsetChange.ry() += qMin(qAbs(mCursorY), maxVelocity);
+    if (mCursorPos.y() < 0) {
+        baseOffsetChange.ry() += qMin(qAbs(mCursorPos.y()), maxVelocity);
         panned = true;
     } else {
         // Check the bottom edge.
-        const int distancePastBottom = mCursorY - height();
+        const int distancePastBottom = mCursorPos.y() - height();
         if (distancePastBottom > 0) {
             baseOffsetChange.ry() += qMax(-distancePastBottom, -maxVelocity);
             panned = true;
@@ -1790,7 +1715,7 @@ void ImageCanvas::panWithSelectionIfAtEdge(ImageCanvas::SelectionPanReason reaso
 
         // The pane offset changing causes the cursor scene position to change, which
         // in turn affects the selection area.
-        updateCursorPos(QPoint(mCursorX, mCursorY));
+        updateCursorPos(mCursorPos);
         updateOrMoveSelectionArea();
 
         requestContentPaint();
@@ -1830,7 +1755,7 @@ void ImageCanvas::reset()
     mFirstPane.reset();
     mSecondPane.reset();
     setCurrentPane(nullptr);
-    mSplitter.setPosition(mFirstPane.size());
+    mSplitter.setPosition(0.5);
     mSplitter.setPressed(false);
     mSplitter.setHovered(false);
 
@@ -1838,20 +1763,15 @@ void ImageCanvas::reset()
     mGuidePositionBeforePress = 0;
     mPressedGuideIndex = -1;
 
-    setCursorX(0);
-    setCursorY(0);
+    setCursorPos(QPoint());
     mCursorPaneX = 0;
     mCursorPaneY = 0;
-    mCursorSceneX = 0;
-    mCursorSceneY = 0;
+    mCursorScenePos = QPointF();
     mContainsMouse = false;
     mMouseButtonPressed = Qt::NoButton;
     mLastMouseButtonPressed = Qt::NoButton;
     mPressPosition = QPoint(0, 0);
     mPressScenePosition = QPoint(0, 0);
-    mCurrentPaneOffsetBeforePress = QPoint(0, 0);
-    mFirstPaneVisibleSceneArea = QRect();
-    mSecondPaneVisibleSceneArea = QRect();
 
     mIsTabletEvent = false;
     mTabletPressure = 0.0;
@@ -1860,8 +1780,6 @@ void ImageCanvas::reset()
     markBrushDirty();
 
     mTexturedFillParameters.reset();
-
-    mLastPixelPenPressScenePosition = QPoint(0, 0);
 
     mCropArea = QRect();
 
@@ -1881,7 +1799,13 @@ void ImageCanvas::reset()
 
 void ImageCanvas::centreView()
 {
-    centrePanes(false);
+    CanvasPane *pane = currentPane();
+    if (!pane)
+        return;
+
+    const QPointF centre(qreal(mProject->heightInPixels()) / 2.0, qreal(mProject->heightInPixels()) / 2.0);
+    pane->setOffset(-centre);
+    requestContentPaint();
 }
 
 void ImageCanvas::zoomIn()
@@ -2150,7 +2074,7 @@ void ImageCanvas::cycleFillTools()
 
 QImage ImageCanvas::fillPixels() const
 {
-    const QPoint scenePos = QPoint(mCursorSceneX, mCursorSceneY);
+    const QPoint scenePos = cursorScenePixel();
     if (!isWithinImage(scenePos))
         return QImage();
 
@@ -2164,7 +2088,7 @@ QImage ImageCanvas::fillPixels() const
 
 QImage ImageCanvas::greedyFillPixels() const
 {
-    const QPoint scenePos = QPoint(mCursorSceneX, mCursorSceneY);
+    const QPoint scenePos = cursorScenePixel();
     if (!isWithinImage(scenePos))
         return QImage();
 
@@ -2177,7 +2101,7 @@ QImage ImageCanvas::greedyFillPixels() const
 
 QImage ImageCanvas::texturedFillPixels() const
 {
-    const QPoint scenePos = QPoint(mCursorSceneX, mCursorSceneY);
+    const QPoint scenePos = cursorScenePixel();
     if (!isWithinImage(scenePos))
         return QImage();
 
@@ -2190,7 +2114,7 @@ QImage ImageCanvas::texturedFillPixels() const
 
 QImage ImageCanvas::greedyTexturedFillPixels() const
 {
-    const QPoint scenePos = QPoint(mCursorSceneX, mCursorSceneY);
+    const QPoint scenePos = cursorScenePixel();
     if (!isWithinImage(scenePos))
         return QImage();
 
@@ -2287,11 +2211,9 @@ void ImageCanvas::applyCurrentTool(QUndoStack *const alternateStack)
 }
 
 // This function actually operates on the image.
-void ImageCanvas::applyPixelPenTool(int layerIndex, const QPoint &scenePos, const QColor &colour, bool markAsLastRelease)
+void ImageCanvas::applyPixelPenTool(int layerIndex, const QPoint &scenePos, const QColor &colour)
 {
     imageForLayerAt(layerIndex)->setPixelColor(scenePos, colour);
-    if (markAsLastRelease)
-        mLastPixelPenPressScenePosition = scenePos;
     requestContentPaint();
 }
 
@@ -2373,82 +2295,38 @@ qreal ImageCanvas::pressure() const
 
 void ImageCanvas::updateCursorPos(const QPoint &eventPos)
 {
-    setCursorX(eventPos.x());
-    setCursorY(eventPos.y());
+    CanvasPane *const pane = hoveredPane(eventPos);
+
+    setCursorPos(eventPos);
+
     // Don't change current panes if panning, as the mouse position should
     // be allowed to go outside of the original pane.
-    if (!isPanning()) {
-        setCurrentPane(hoveredPane(eventPos));
+    // If we're creating or moving a selection, don't let the current pane be changed.
+    if (!mSpacePressed && !(mHasSelection && mMouseButtonPressed == Qt::LeftButton) && mMouseButtonPressed != Qt::NoButton) {
+        if (pane) setCurrentPane(pane);
     }
 
-    const int firstPaneWidth = paneWidth(0);
-    const bool inFirstPane = hoveredPane(eventPos) == &mFirstPane;
-    mCursorPaneX = eventPos.x() - (!inFirstPane ? firstPaneWidth : 0);
-    mCursorPaneY = eventPos.y();
-
-    if (!mProject->hasLoaded()) {
-        mCursorSceneFX = -1;
-        mCursorSceneFY = -1;
-        setCursorSceneX(-1);
-        setCursorSceneY(-1);
+    if (!mProject->hasLoaded() || !pane) {
+        setCursorScenePos(QPointF());
         // We could do this once at the beginning of the function, but we
         // try to avoid unnecessary property changes.
         setCursorPixelColour(QColor(Qt::black));
         return;
     }
 
+    const QPoint oldCursorSceneInteger = cursorScenePixel();
+
     // We need the position as floating point numbers so that pen sizes > 1 work properly.
-    mCursorSceneFX = qreal(mCursorPaneX - mCurrentPane->integerOffset().x()) / mCurrentPane->integerZoomLevel();
-    mCursorSceneFY = qreal(mCursorPaneY - mCurrentPane->integerOffset().y()) / mCurrentPane->integerZoomLevel();
+    setCursorScenePos(pane->transform().inverted().map(QPointF(eventPos)));
 
-    const int oldCursorSceneX = mCursorSceneX;
-    const int oldCursorSceneY = mCursorSceneY;
-    setCursorSceneX(mCursorSceneFX);
-    setCursorSceneY(mCursorSceneFY);
+    setCursorPixelColour(pickColour(cursorScenePixel()));
 
-    if (mCursorSceneX < 0 || mCursorSceneX >= mProject->widthInPixels()
-        || mCursorSceneY < 0 || mCursorSceneY >= mProject->heightInPixels()
-        // The cached contents can be null for some reason during tests; probably because
-        // the canvas gets events before it has rendered. No big deal, it wouldn't be visible yet anyway.
-        || mCachedContentImage.isNull()) {
-        setCursorPixelColour(QColor(Qt::black));
-    } else {
-        const QPoint cursorScenePos = QPoint(mCursorSceneX, mCursorSceneY);
-        setCursorPixelColour(mCachedContentImage.pixelColor(cursorScenePos));
-    }
-
-    const bool cursorScenePosChanged = mCursorSceneX != oldCursorSceneX || mCursorSceneY != oldCursorSceneY;
-    if (cursorScenePosChanged && mSelectionCursorGuide->isVisible())
+    if (cursorScenePixel() != oldCursorSceneInteger && mSelectionCursorGuide->isVisible())
         mSelectionCursorGuide->update();
-}
-
-void ImageCanvas::updateVisibleSceneArea()
-{
-    int integerZoomLevel = mFirstPane.integerZoomLevel();
-
-    mFirstPaneVisibleSceneArea = QRect(
-        -mFirstPane.integerOffset().x() / integerZoomLevel,
-        -mFirstPane.integerOffset().y() / integerZoomLevel,
-        paneWidth(0) / integerZoomLevel,
-        height() / integerZoomLevel);
-
-    if (mSplitScreen) {
-        integerZoomLevel = mSecondPane.integerZoomLevel();
-
-        mSecondPaneVisibleSceneArea = QRect(
-            -mSecondPane.integerOffset().x() / integerZoomLevel,
-            -mSecondPane.integerOffset().y() / integerZoomLevel,
-            paneWidth(1) / integerZoomLevel,
-            height() / integerZoomLevel);
-    }
 }
 
 void ImageCanvas::onLoadedChanged()
 {
-    if (mProject->hasLoaded()) {
-        centrePanes();
-    }
-
     updateWindowCursorShape();
 }
 
@@ -2470,23 +2348,7 @@ void ImageCanvas::updateWindowCursorShape()
     if (!mProject)
         return;
 
-    bool overRuler = false;
-    if (rulersVisible()) {
-        // TODO: use rulerAtCursorPos()?
-        const QPointF cursorPos(mCursorX, mCursorY);
-        overRuler = mFirstHorizontalRuler->contains(cursorPos) || mFirstVerticalRuler->contains(cursorPos);
-
-        if (isSplitScreen() && !overRuler) {
-            QPointF mappedCursorPos = mSecondHorizontalRuler->mapFromItem(this, cursorPos);
-            overRuler = mSecondHorizontalRuler->contains(mappedCursorPos);
-
-            if (!overRuler) {
-                mappedCursorPos = mSecondVerticalRuler->mapFromItem(this, cursorPos);
-                overRuler = mSecondVerticalRuler->contains(mappedCursorPos);
-            }
-        }
-    }
-
+    const bool overRuler = (rulerAtCursorPos() != nullptr);
     bool overGuide = false;
     if (guidesVisible() && !guidesLocked() && !overRuler) {
         overGuide = guideIndexAtCursorPos() != -1;
@@ -2535,12 +2397,10 @@ void ImageCanvas::updateWindowCursorShape()
 
 void ImageCanvas::onZoomLevelChanged()
 {
-    updateVisibleSceneArea();
-
-    mFirstHorizontalRuler->setZoomLevel(mFirstPane.integerZoomLevel());
-    mFirstVerticalRuler->setZoomLevel(mFirstPane.integerZoomLevel());
-    mSecondHorizontalRuler->setZoomLevel(mSecondPane.integerZoomLevel());
-    mSecondVerticalRuler->setZoomLevel(mSecondPane.integerZoomLevel());
+    for (int i = 0; i < mPanes.size(); ++i) {
+        mHorizontalRulers[i]->setZoomLevel(mPanes[i]->zoomLevel());
+        mVerticalRulers[i]->setZoomLevel(mPanes[i]->zoomLevel());
+    }
 
     requestContentPaint();
 
@@ -2550,15 +2410,13 @@ void ImageCanvas::onZoomLevelChanged()
     mSelectionItem->update();
 }
 
-void ImageCanvas::onPaneintegerOffsetChanged()
+void ImageCanvas::onPaneOffsetChanged()
 {
-    updateVisibleSceneArea();
-
-    mFirstHorizontalRuler->setFrom(mFirstPane.integerOffset().x());
-    mFirstVerticalRuler->setFrom(mFirstPane.integerOffset().y());
-
-    mSecondHorizontalRuler->setFrom(mSecondPane.integerOffset().x());
-    mSecondVerticalRuler->setFrom(mSecondPane.integerOffset().y());
+    for (int i = 0; i < mPanes.size(); ++i) {
+        const QPointF offset = mPanes[i]->transform().map(-mPanes[i]->geometry().topLeft());
+        mHorizontalRulers[i]->setFrom(qFloor(offset.x()));
+        mVerticalRulers[i]->setFrom(qFloor(offset.y()));
+    }
 
     if (mGuidesVisible)
         mGuidesItem->update();
@@ -2568,8 +2426,6 @@ void ImageCanvas::onPaneintegerOffsetChanged()
 
 void ImageCanvas::onPaneSizeChanged()
 {
-    updateVisibleSceneArea();
-
     resizeRulers();
 
     if (mGuidesVisible)
@@ -2625,25 +2481,10 @@ void ImageCanvas::setCurrentPane(CanvasPane *pane)
 
 CanvasPane *ImageCanvas::hoveredPane(const QPoint &pos)
 {
-    // Can only hover the first pane if there's only one screen.
-    if (!mSplitScreen)
-        return &mFirstPane;
-
-    // If we're creating or moving a selection, don't let the current pane be changed.
-    if (mHasSelection && mMouseButtonPressed == Qt::LeftButton)
-        return mCurrentPane;
-
-    const int firstPaneWidth = paneWidth(0);
-    return pos.x() <= firstPaneWidth ? &mFirstPane : &mSecondPane;
-}
-
-QPoint ImageCanvas::eventPosRelativeToCurrentPane(const QPoint &pos)
-{
-    if (!mCurrentPane || mCurrentPane == &mFirstPane) {
-        return pos;
+    for (int i = 0; i < mPanes.size(); ++i) {
+        if (mPanes[i]->geometry().contains(pos)) return mPanes[i];
     }
-
-    return pos - QPoint(paneWidth(1), 0);
+    return nullptr;
 }
 
 void ImageCanvas::restoreToolBeforeAltPressed()
@@ -2693,12 +2534,11 @@ bool ImageCanvas::event(QEvent *event)
                 || gestureEvent->gestureType() == Qt::BeginNativeGesture
                 || gestureEvent->gestureType() == Qt::EndNativeGesture) {
             if (!qFuzzyIsNull(gestureEvent->value())) {
-                mCurrentPane->setSceneCentered(false);
-
                 // Zooming is a bit slow without this.
                 static const qreal minZoomFactor = 3.0;
                 static const qreal maxZoomFactor = 10.0;
 
+                // TODO
                 // Apply an easing curve to make zooming faster the more zoomed-in we are.
                 const qreal percentageOfMaxZoomLevel = mCurrentPane->zoomLevel() / mCurrentPane->maxZoomLevel();
                 const QEasingCurve zoomCurve(QEasingCurve::OutQuart);
@@ -2717,17 +2557,15 @@ bool ImageCanvas::event(QEvent *event)
 
 void ImageCanvas::applyZoom(qreal zoom, const QPoint &origin)
 {
-    const qreal oldZoomLevel = qreal(mCurrentPane->integerZoomLevel());
-
+    // Get point before transform
+    const QPointF pointBefore = mCurrentPane->transform().inverted().map(QPointF(origin));
+    // Apply transform
     mCurrentPane->setZoomLevel(zoom);
-
-    // From: http://stackoverflow.com/a/38302057/904422
-    const QPoint relativeEventPos = eventPosRelativeToCurrentPane(origin);
-    // We still want to use integer zoom levels here; the real-based zoom level just allows
-    // smaller changes in zoom level, rather than incrementing/decrementing by one every time
-    // we get a wheel event.
-    mCurrentPane->setIntegerOffset(relativeEventPos -
-        qreal(mCurrentPane->integerZoomLevel()) / oldZoomLevel * (relativeEventPos - mCurrentPane->integerOffset()));
+    // Get point after transform
+    const QPointF pointAfter = mCurrentPane->transform().inverted().map(QPointF(origin));
+    // Offset by difference between points
+    const QPointF delta = pointAfter - pointBefore;
+    mCurrentPane->setOffset(mCurrentPane->offset() + delta);
 }
 
 void ImageCanvas::wheelEvent(QWheelEvent *event)
@@ -2736,11 +2574,6 @@ void ImageCanvas::wheelEvent(QWheelEvent *event)
         event->ignore();
         return;
     }
-
-    // We set this here rather than in applyZoom() because the user should
-    // probably be able to use the menu items to zoom in without the
-    // centered scene setting being disrupted.
-    mCurrentPane->setSceneCentered(false);
 
     const QPoint pixelDelta = event->pixelDelta();
     const QPoint angleDelta = event->angleDelta();
@@ -2785,8 +2618,7 @@ void ImageCanvas::mousePressEvent(QMouseEvent *event)
     mMouseButtonPressed = event->button();
     mLastMouseButtonPressed = mMouseButtonPressed;
     mPressPosition = event->pos();
-    mPressScenePosition = QPoint(mCursorSceneX, mCursorSceneY);
-    mCurrentPaneOffsetBeforePress = mCurrentPane->integerOffset();
+    mPressScenePosition = mCursorScenePos;
     setContainsMouse(true);
 
     if (!isPanning()) {
@@ -2809,7 +2641,7 @@ void ImageCanvas::mousePressEvent(QMouseEvent *event)
             }
         }
 
-        mNewStroke = {StrokePoint{{mCursorSceneFX, mCursorSceneFY}, pressure()}};
+        mNewStroke = {StrokePoint{mCursorScenePos, pressure()}};
         if (mShiftPressed && !mOldStroke.isEmpty()) {
             mToolContinue = true;
             mNewStroke.prepend(mOldStroke.last());
@@ -2835,13 +2667,14 @@ void ImageCanvas::mousePressEvent(QMouseEvent *event)
     } else {
         updateWindowCursorShape();
     }
+
+    oldMousePos = event->pos();
 }
 
 void ImageCanvas::mouseMoveEvent(QMouseEvent *event)
 {
     QQuickItem::mouseMoveEvent(event);
 
-    const QPointF oldCursorScenePosition = QPointF(mCursorSceneFX, mCursorSceneFY);
     updateCursorPos(event->pos());
 
     if (!mProject->hasLoaded())
@@ -2851,7 +2684,7 @@ void ImageCanvas::mouseMoveEvent(QMouseEvent *event)
 
     if (mMouseButtonPressed) {
         if (mSplitter.isEnabled() && mSplitter.isPressed()) {
-            mSplitter.setPosition(mCursorX / width());
+            mSplitter.setPosition(mCursorPos.x() / width());
         } else if (mPressedRuler) {
             requestContentPaint();
             // Ensure that the guide being created is drawn.
@@ -2862,11 +2695,11 @@ void ImageCanvas::mouseMoveEvent(QMouseEvent *event)
             if (!isPanning()) {
                 if (mTool != SelectionTool) {
                     mToolContinue = true;
-                    mNewStroke = {StrokePoint{{mCursorSceneFX, mCursorSceneFY}, pressure()}};
+                    mNewStroke = {StrokePoint{mCursorScenePos, pressure()}};
                     if (!mOldStroke.isEmpty()) {
                         mNewStroke.prepend(mOldStroke.last());
                     }
-                    mPressScenePosition = QPoint(mCursorSceneX, mCursorSceneY);
+                    mPressScenePosition = mCursorScenePos;
                     applyCurrentTool();
                 } else {
                     panWithSelectionIfAtEdge(SelectionPanMouseMovementReason);
@@ -2874,13 +2707,15 @@ void ImageCanvas::mouseMoveEvent(QMouseEvent *event)
                     updateOrMoveSelectionArea();
                 }
             } else {
-                // Panning.
-                mCurrentPane->setSceneCentered(false);
-                mCurrentPane->setIntegerOffset(mCurrentPaneOffsetBeforePress + (event->pos() - mPressPosition));
+                // Panning
+                const QPointF delta = mCurrentPane->transform().inverted().map(QPointF(event->pos())) - mCurrentPane->transform().inverted().map(QPointF(oldMousePos));
+                mCurrentPane->setOffset(mCurrentPane->offset() + delta);
                 requestPaneContentPaint(mCurrentPaneIndex);
             }
         }
     }
+
+    oldMousePos = event->pos();
 }
 
 void ImageCanvas::mouseReleaseEvent(QMouseEvent *event)
@@ -2978,7 +2813,6 @@ void ImageCanvas::mouseReleaseEvent(QMouseEvent *event)
 
     mPressPosition = QPoint(0, 0);
     mPressScenePosition = QPoint(0, 0);
-    mCurrentPaneOffsetBeforePress = QPoint(0, 0);
     updateWindowCursorShape();
     mSplitter.setPressed(false);
     mPressedRuler = nullptr;
@@ -3012,7 +2846,7 @@ void ImageCanvas::hoverMoveEvent(QHoverEvent *event)
 
     updateWindowCursorShape();
 
-    mNewStroke = {{{mCursorSceneFX, mCursorSceneFY}, 1.0}};
+    mNewStroke = {{mCursorScenePos, 1.0}};
     if (isLineVisible() && !mOldStroke.isEmpty()) mNewStroke.prepend(mOldStroke.last());
     if (isLineVisible() || mProject->settings()->isBrushPreviewVisible()) {
         requestContentPaint();
