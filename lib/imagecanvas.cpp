@@ -1162,8 +1162,11 @@ void ImageCanvas::paintContentWithPreview(QPainter *const painter)
 }
 
 QImage ImageCanvas::contentImage()
+{
     mCachedContentImage = getComposedImage();
     return mCachedContentImage;
+}
+
 QImage ImageCanvas::getComposedImage()
 {
     return !shouldDrawSelectionPreviewImage() ? *currentProjectImage() : mSelectionPreviewImage;
