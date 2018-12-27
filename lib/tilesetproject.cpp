@@ -30,6 +30,7 @@
 
 #include "changetilecanvassizecommand.h"
 #include "jsonutils.h"
+#include "utils.h"
 
 TilesetProject::TilesetProject() :
     Project(),
@@ -317,8 +318,8 @@ void TilesetProject::doSaveAs(const QUrl &url)
 
 int TilesetProject::tileIdFromPosInTileset(int x, int y) const
 {
-    const int column = x / mTileWidth;
-    const int row = y / mTileHeight;
+    const int column = Utils::divFloor(x, mTileWidth);
+    const int row = Utils::divFloor(y, mTileHeight);
     return tileIdFromTilePosInTileset(column, row);
 }
 
@@ -491,7 +492,7 @@ int TilesetProject::heightInPixels() const
 
 QRect TilesetProject::bounds() const
 {
-    return QRect(0, 0, mTilesWide, mTilesHigh);
+    return QRect(0, 0, mTilesWide * mTileWidth, mTilesHigh * mTileHeight);
 }
 
 QImage TilesetProject::exportedImage() const
@@ -544,8 +545,8 @@ const Tile *TilesetProject::tileAt(const QPoint &scenePos) const
         return nullptr;
     }
 
-    const int xTile = scenePos.x() / mTileWidth;
-    const int yTile = scenePos.y() / mTileHeight;
+    const int xTile = Utils::divFloor(scenePos.x(), mTileWidth);
+    const int yTile = Utils::divFloor(scenePos.y(), mTileHeight);
     const int tileIndex = yTile * mTilesWide + xTile;
     if (tileIndex >= mTiles.size())
         return nullptr;

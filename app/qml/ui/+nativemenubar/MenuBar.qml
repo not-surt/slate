@@ -372,7 +372,7 @@ Item {
                 text: qsTr("Show Brush Preview")
                 checkable: true
                 checked: settings.brushPreviewVisible
-                onCheckedChanged: settings.brushPreviewVisible = checked
+                onTriggered: settings.brushPreviewVisible = checked
             }
 
             Platform.MenuItem {

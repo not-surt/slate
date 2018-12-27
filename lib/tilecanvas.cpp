@@ -524,10 +524,10 @@ void TileCanvas::applyCurrentTool(QUndoStack *const alternateStack)
         break;
     }
 
-    if (command) {
-//        mProject->addChange(command);
-        stack->push(command);
-    }
+    if (alternateStack)
+        alternateStack->push(command);
+    else
+        mProject->addChange(command);
 }
 
 QPoint TileCanvas::scenePosToTilePixelPos(const QPoint &scenePos) const

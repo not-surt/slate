@@ -544,6 +544,7 @@ void Project::addChange(QUndoCommand *undoCommand)
 {
     qCDebug(lcProject) << "adding change" << undoCommand;
     mUndoStack.push(undoCommand);
+    emit canSaveChanged();
 }
 
 void Project::clearChanges()
