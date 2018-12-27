@@ -354,8 +354,8 @@ void TileCanvas::applyCurrentTool(QUndoStack *const alternateStack)
                 return;
             }
 
-            const int xTile = scenePos.x() / mTilesetProject->tileWidth();
-            const int yTile = scenePos.y() / mTilesetProject->tileHeight();
+            const int xTile = Utils::divFloor(scenePos.x(), mTilesetProject->tileWidth());
+            const int yTile = Utils::divFloor(scenePos.y(), mTilesetProject->tileHeight());
             command = new ApplyTilePenCommand(this, QPoint(xTile, yTile), previousTileId, newTileId);
             command->setText(QLatin1String("TilePenTool"));
         }
