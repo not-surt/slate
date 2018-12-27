@@ -55,11 +55,11 @@ void tst_MemoryUsage::pen()
     QVERIFY2(panTopLeftTo(100, 100), failureMessage);
 
     // Draw horizontal lines.
-    for (int y = 1; y < project->heightInPixels() - 1; ++y) {
+    for (int y = 1; y < project->bounds().height() - 1; ++y) {
         setCursorPosInScenePixels(1, y);
         QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
 
-        for (int x = 1; x < project->widthInPixels() - 1; ++x) {
+        for (int x = 1; x < project->bounds().width() - 1; ++x) {
             setCursorPosInScenePixels(x, y);
             QTest::mouseMove(window, cursorWindowPos);
         }

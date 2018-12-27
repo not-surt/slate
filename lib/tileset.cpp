@@ -19,7 +19,6 @@
 
 #include "tileset.h"
 
-#include <QDebug>
 #include <QPainter>
 
 #include "utils.h"
@@ -28,9 +27,10 @@ Tileset::Tileset(const QString &fileName, int tilesWide, int tilesHigh, QObject 
     QObject(parent),
     mFileName(fileName),
     mImage(fileName),
-    mTilesWide(tilesWide),
-    mTilesHigh(tilesHigh)
+    mSize(tilesWide, tilesHigh),
+    mTileSize(mImage.width() / mSize.width(), mImage.height() / mSize.height())
 {
+    qDebug() << mImage.size() << mSize << mTileSize;////////////////////////
 }
 
 bool Tileset::isValid() const
@@ -61,6 +61,34 @@ QImage *Tileset::image()
     return &mImage;
 }
 
+void Tileset::setSize(QSize size)
+{
+    if (mSize == size)
+        return;
+
+    mSize = size;
+    emit sizeChanged();
+}
+
+QSize Tileset::size() const
+{
+    return mSize;
+}
+
+void Tileset::setTileSize(QSize tileSize)
+{
+    if (mTileSize == tileSize)
+        return;
+
+    mTileSize = tileSize;
+    emit tileSizeChanged();
+}
+
+QSize Tileset::tileSize() const
+{
+    return mTileSize;
+}
+
 void Tileset::setPixelColor(int x, int y, const QColor &colour)
 {
     mImage.setPixelColor(x, y, colour);
@@ -69,15 +97,12 @@ void Tileset::setPixelColor(int x, int y, const QColor &colour)
 
 void Tileset::copy(const QPoint &sourceTopLeft, const QPoint &targetTopLeft)
 {
-    const int tileW = tileWidth();
-    const int tileH = tileWidth();
-
     if (!validTopLeft(sourceTopLeft) || !validTopLeft(targetTopLeft)) {
         return;
     }
 
-    for (int y = 0; y < tileH; ++y) {
-        for (int x = 0; x < tileW; ++x) {
+    for (int y = 0; y < tileSize().height(); ++y) {
+        for (int x = 0; x < tileSize().width(); ++x) {
             const QColor sourceColour = mImage.pixelColor(sourceTopLeft + QPoint(x, y));
             mImage.setPixelColor(targetTopLeft.x() + x, targetTopLeft.y() + y, sourceColour);
         }
@@ -95,14 +120,14 @@ void Tileset::rotateClockwise(const QPoint &tileTopLeft)
     rotate(tileTopLeft, 90);
 }
 
-int Tileset::tilesWide() const
+QSize Tileset::pixelSize() const
 {
-    return mTilesWide;
+    return QSize(size().width() * tileSize().width(), size().height() * tileSize().height());
 }
 
-int Tileset::tilesHigh() const
+void Tileset::resize(const QSize size, const QSize tileSize)
 {
-    return mTilesHigh;
+
 }
 
 // It's easier to just allow calling code to modify the tileset image through
@@ -113,28 +138,15 @@ void Tileset::notifyImageChanged()
     emit imageChanged();
 }
 
-// TODO: this information could be set by the project
-int Tileset::tileWidth() const
-{
-    return mImage.width() / mTilesWide;
-}
-
-int Tileset::tileHeight() const
-{
-    return mImage.height() / mTilesHigh;
-}
-
 bool Tileset::validTopLeft(const QPoint &topLeft) const
 {
     const QRect imageRect(0, 0, mImage.width(), mImage.height());
-    const int tileWidth = mImage.width() / mTilesWide;
-    const int tileHeight = mImage.height() / mTilesHigh;
-    if (!imageRect.contains(QRect(topLeft.x(), topLeft.y(), tileWidth, tileHeight))) {
+    if (!imageRect.contains(QRect(topLeft, mTileSize))) {
         qWarning() << "Tileset top-left" << topLeft << "is outside of tileset bounds" << imageRect;
         return false;
     }
 
-    if (topLeft.x() % tileWidth != 0 || topLeft.y() % tileHeight != 0) {
+    if (topLeft.x() % mTileSize.width() != 0 || topLeft.y() % mTileSize.height() != 0) {
         qWarning() << "Tileset top-left" << topLeft << "is not a multiple of the tile size";
         return false;
     }
@@ -148,7 +160,7 @@ void Tileset::rotate(const QPoint &tileTopLeft, int angle)
         return;
     }
 
-    const QImage tileImage = mImage.copy(tileTopLeft.x(), tileTopLeft.y(), tileWidth(), tileHeight());
+    const QImage tileImage = mImage.copy(QRect(tileTopLeft, tileSize()));
     const QImage rotatedImage = Utils::rotate(tileImage, angle);
     QPainter painter(&mImage);
     // Make sure that we clear the previous tile image before painting on the newly rotated one.

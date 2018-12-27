@@ -51,7 +51,7 @@ class SLATE_EXPORT Project : public QObject
     Q_PROPERTY(QUrl url READ url NOTIFY urlChanged)
     Q_PROPERTY(QUrl dirUrl READ dirUrl NOTIFY urlChanged)
     Q_PROPERTY(QString displayUrl READ displayUrl NOTIFY urlChanged)
-    Q_PROPERTY(QSize size READ size WRITE setSize NOTIFY sizeChanged)
+    Q_PROPERTY(QSize size READ size WRITE resize NOTIFY sizeChanged)
     Q_PROPERTY(QUndoStack *undoStack READ undoStack CONSTANT)
     Q_PROPERTY(ApplicationSettings *settings READ settings WRITE setSettings NOTIFY settingsChanged)
     Q_PROPERTY(Swatch *swatch READ swatch CONSTANT)
@@ -84,9 +84,7 @@ public:
     QString fileBaseName() const;
 
     virtual QSize size() const;
-    virtual void setSize(const QSize &size);
-    virtual int widthInPixels() const;
-    virtual int heightInPixels() const;
+    virtual void resize(const QSize &size);
     virtual QRect bounds() const;
 
     QVector<Guide> guides() const;

@@ -31,15 +31,15 @@
 
 class Tileset;
 
-class SLATE_EXPORT Tile : public QObject
+class SLATE_EXPORT TileObject : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(int id READ id CONSTANT)
     Q_PROPERTY(QRect sourceRect READ sourceRect CONSTANT)
 
 public:
-    Tile();
-    Tile(int id, const Tileset *tileset, const QRect &sourceRect, QObject *parent);
+    TileObject();
+    TileObject(int id, const Tileset *tileset, const QRect &sourceRect, QObject *parent);
 
     bool isValid() const;
     int id() const;
@@ -57,6 +57,6 @@ private:
     QPointer<const Tileset> mTileset;
 };
 
-QDebug operator<<(QDebug debug, const Tile *tile);
+QDebug operator<<(QDebug debug, const TileObject *tile);
 
 #endif // TILE_H

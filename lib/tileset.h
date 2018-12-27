@@ -29,8 +29,9 @@
 class SLATE_EXPORT Tileset : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(int tilesWide READ tilesWide CONSTANT)
-    Q_PROPERTY(int tilesHigh READ tilesHigh CONSTANT)
+
+    Q_PROPERTY(QSize size READ size WRITE setSize NOTIFY sizeChanged)
+    Q_PROPERTY(QSize tileSize READ tileSize WRITE setTileSize NOTIFY tileSizeChanged)
 
 public:
     Tileset(const QString &fileName, int tilesWide, int tilesHigh, QObject *parent);
@@ -44,27 +45,37 @@ public:
     void copy(const QPoint &sourceTopLeft, const QPoint &targetTopLeft);
     void rotateCounterClockwise(const QPoint &tileTopLeft);
     void rotateClockwise(const QPoint &tileTopLeft);
-    int tilesWide() const;
-    int tilesHigh() const;
+
+    QSize pixelSize() const;
+
+    void resize(const QSize size, const QSize tileSize);
 
     void notifyImageChanged();
 
+    QSize size() const;
+
+    QSize tileSize() const;
+
 public slots:
+
+    void setSize(QSize size);
+
+    void setTileSize(QSize tileSize);
 
 signals:
     void imageChanged();
+    void sizeChanged();
+    void tileSizeChanged();
 
 private:
-    int tileWidth() const;
-    int tileHeight() const;
     bool validTopLeft(const QPoint &topLeft) const;
 
     void rotate(const QPoint &tileTopLeft, int angle);
 
     QString mFileName;
     QImage mImage;
-    int mTilesWide;
-    int mTilesHigh;
+    QSize mSize;
+    QSize mTileSize;
 };
 
 #endif // TILESET_H

@@ -397,23 +397,13 @@ QSize Project::size() const
     return QSize(0, 0);
 }
 
-void Project::setSize(const QSize &)
+void Project::resize(const QSize &)
 {
 }
 
 QRect Project::bounds() const
 {
     return QRect();
-}
-
-int Project::widthInPixels() const
-{
-    return 0;
-}
-
-int Project::heightInPixels() const
-{
-    return 0;
 }
 
 QVector<Guide> Project::guides() const

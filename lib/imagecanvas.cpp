@@ -429,17 +429,17 @@ void ImageCanvas::setCursorPos(const QPoint point)
 
 QPointF ImageCanvas::pressScenePos() const
 {
-    return mPressScenePosition;
+    return mPressScenePos;
 }
 
-QPoint ImageCanvas::pressScenePixel() const
+QPoint ImageCanvas::pressScenePixelCoord() const
 {
-    return QPoint(qFloor(mPressScenePosition.x()), qFloor(mPressScenePosition.y()));
+    return QPoint(qFloor(mPressScenePos.x()), qFloor(mPressScenePos.y()));
 }
 
 QPoint ImageCanvas::pressScenePixelCorner() const
 {
-    return QPoint(qRound(mPressScenePosition.x()), qRound(mPressScenePosition.y()));
+    return QPoint(qRound(mPressScenePos.x()), qRound(mPressScenePos.y()));
 }
 
 QPointF ImageCanvas::cursorScenePos() const
@@ -458,7 +458,7 @@ void ImageCanvas::setCursorScenePos(const QPointF point)
     emit cursorScenePosChanged();
 }
 
-QPoint ImageCanvas::cursorScenePixel() const
+QPoint ImageCanvas::cursorScenePixelCoord() const
 {
     return QPoint(qFloor(mCursorScenePos.x()), qFloor(mCursorScenePos.y()));
 }
@@ -860,7 +860,7 @@ CanvasPane *ImageCanvas::currentPane()
     return mCurrentPane;
 }
 
-CanvasPane *ImageCanvas::paneAt(int index)
+const CanvasPane *ImageCanvas::paneAt(int index) const
 {
     if (index < 0 || index >= mPanes.size())
         return nullptr;
@@ -868,9 +868,9 @@ CanvasPane *ImageCanvas::paneAt(int index)
     return mPanes[index];
 }
 
-const CanvasPane *ImageCanvas::paneAt(int index) const
+CanvasPane *ImageCanvas::paneAt(int index)
 {
-    return const_cast<ImageCanvas *>(this)->paneAt(index);
+    return const_cast<CanvasPane *>(const_cast<const ImageCanvas *>(this)->paneAt(index));
 }
 
 const QVector<CanvasPane *> &ImageCanvas::panes() const
@@ -1100,25 +1100,25 @@ void ImageCanvas::resizeChildren()
     mSelectionItem->setHeight(height());
 }
 
-QImage *ImageCanvas::currentProjectImage()
+const QImage *ImageCanvas::currentProjectImage() const
 {
     return mImageProject->image();
 }
 
-const QImage *ImageCanvas::currentProjectImage() const
+QImage *ImageCanvas::currentProjectImage()
 {
-    return const_cast<ImageCanvas *>(this)->currentProjectImage();
+    return const_cast<QImage *>(const_cast<const ImageCanvas *>(this)->currentProjectImage());
 }
 
-QImage *ImageCanvas::imageForLayerAt(int layerIndex)
+const QImage *ImageCanvas::imageForLayerAt(const int layerIndex) const
 {
     Q_ASSERT(layerIndex == -1);
     return mImageProject->image();
 }
 
-const QImage *ImageCanvas::imageForLayerAt(int layerIndex) const
+QImage *ImageCanvas::imageForLayerAt(const int layerIndex)
 {
-    return const_cast<ImageCanvas *>(this)->imageForLayerAt(layerIndex);
+    return  const_cast<QImage *>(const_cast<const ImageCanvas *>(this)->imageForLayerAt(layerIndex));
 }
 
 int ImageCanvas::currentLayerIndex() const
@@ -1126,22 +1126,22 @@ int ImageCanvas::currentLayerIndex() const
     return -1;
 }
 
-void ImageCanvas::paintBackground(QPainter *const painter) const
+void ImageCanvas::paintBackground(QPainter *const painter, const QRect rect) const
 {
     QBrush brush(mCheckerPixmap);
     // Invert painter transform for background pattern so unaffected by painter zoom and pan
     brush.setTransform(painter->transform().inverted());
 
     // Draw the checkered pixmap that acts as an indicator for transparency
-    painter->fillRect(0, 0, currentProjectImage()->width(), currentProjectImage()->height(), brush);
+    painter->fillRect(mProject->bounds(), brush);
 }
 
-void ImageCanvas::paintContent(QPainter *const painter)
+void ImageCanvas::paintContent(QPainter *const painter, const QRect rect)
 {
     painter->drawImage(QPointF(0, 0), getComposedImage());
 }
 
-void ImageCanvas::paintContentWithPreview(QPainter *const painter)
+void ImageCanvas::paintContentWithPreview(QPainter *const painter, const QRect rect)
 {
     static const QSet<Tool> previewTools{PenTool, EraserTool};
     QUndoStack tempUndoStack;
@@ -1153,7 +1153,7 @@ void ImageCanvas::paintContentWithPreview(QPainter *const painter)
         applyCurrentTool(&tempUndoStack);
     }
 
-    paintContent(painter);
+    paintContent(painter, rect);
 
     // Undo drawing the brush/line preview
     if (showPreview) {
@@ -1163,8 +1163,7 @@ void ImageCanvas::paintContentWithPreview(QPainter *const painter)
 
 QImage ImageCanvas::contentImage()
 {
-    mCachedContentImage = getComposedImage();
-    return mCachedContentImage;
+    return getComposedImage();
 }
 
 QImage ImageCanvas::getComposedImage()
@@ -1258,7 +1257,7 @@ void ImageCanvas::addNewGuide()
 {
     mProject->beginMacro(QLatin1String("AddGuide"));
     mProject->addChange(new AddGuideCommand(mProject, Guide(
-        mPressedRuler->orientation() == Qt::Horizontal ? cursorScenePixel().y() : cursorScenePixel().x(),
+        mPressedRuler->orientation() == Qt::Horizontal ? cursorScenePixelCoord().y() : cursorScenePixelCoord().x(),
         mPressedRuler->orientation())));
     mProject->endMacro();
 
@@ -1271,7 +1270,7 @@ void ImageCanvas::moveGuide()
 
     mProject->beginMacro(QLatin1String("MoveGuide"));
     mProject->addChange(new MoveGuideCommand(mProject, guide,
-        guide.orientation() == Qt::Horizontal ? cursorScenePixel().y() : cursorScenePixel().x()));
+        guide.orientation() == Qt::Horizontal ? cursorScenePixelCoord().y() : cursorScenePixelCoord().x()));
     mProject->endMacro();
 }
 
@@ -1298,11 +1297,11 @@ int ImageCanvas::guideIndexAtCursorPos()
     for (int i = 0; i < guides.size(); ++i) {
         const Guide guide = guides.at(i);
         if (guide.orientation() == Qt::Horizontal) {
-            if (cursorScenePixel().y() == guide.position()) {
+            if (cursorScenePixelCoord().y() == guide.position()) {
                 return i;
             }
         } else {
-            if (cursorScenePixel().x() == guide.position()) {
+            if (cursorScenePixelCoord().x() == guide.position()) {
                 return i;
             }
         }
@@ -1455,7 +1454,7 @@ void ImageCanvas::moveSelectionArea()
 //    qCDebug(lcImageCanvasSelection) << "moving selection area... mIsSelectionFromPaste =" << mIsSelectionFromPaste;
 
     QRect newSelectionArea = mSelectionAreaBeforeLastMove;
-    const QPoint distanceMoved(cursorScenePixel().x() - pressScenePixel().x(), cursorScenePixel().y() - pressScenePixel().y());
+    const QPoint distanceMoved(cursorScenePixelCoord().x() - pressScenePixelCoord().x(), cursorScenePixelCoord().y() - pressScenePixelCoord().y());
     newSelectionArea.translate(distanceMoved);
     setSelectionArea(boundSelectionArea(newSelectionArea));
 
@@ -1529,17 +1528,17 @@ QRect ImageCanvas::clampSelectionArea(const QRect &selectionArea) const
     }
 
     if (newSelectionArea.width() < 0 || newSelectionArea.height() < 0
-            || newSelectionArea.x() >= mProject->widthInPixels()
-            || newSelectionArea.y() >= mProject->heightInPixels()) {
+            || newSelectionArea.x() >= mProject->bounds().width()
+            || newSelectionArea.y() >= mProject->bounds().height()) {
         newSelectionArea.setSize(QSize(0, 0));
     }
 
-    if (newSelectionArea.x() + newSelectionArea.width() > mProject->widthInPixels()) {
-        newSelectionArea.setWidth(mProject->widthInPixels() - newSelectionArea.x());
+    if (newSelectionArea.x() + newSelectionArea.width() > mProject->bounds().width()) {
+        newSelectionArea.setWidth(mProject->bounds().width() - newSelectionArea.x());
     }
 
-    if (newSelectionArea.y() + newSelectionArea.height() > mProject->heightInPixels()) {
-        newSelectionArea.setHeight(mProject->heightInPixels() - newSelectionArea.y());
+    if (newSelectionArea.y() + newSelectionArea.height() > mProject->bounds().height()) {
+        newSelectionArea.setHeight(mProject->bounds().height() - newSelectionArea.y());
     }
 
     if (newSelectionArea.width() < 0 || newSelectionArea.height() < 0) {
@@ -1553,7 +1552,7 @@ QRect ImageCanvas::clampSelectionArea(const QRect &selectionArea) const
 // This should be used when the selection area has already been created and is being dragged.
 QRect ImageCanvas::boundSelectionArea(const QRect &selectionArea) const
 {
-    return Utils::ensureWithinArea(selectionArea, mProject->size());
+    return Utils::ensureWithinArea(selectionArea, mProject->bounds().size());
 }
 
 void ImageCanvas::clearSelection()
@@ -1602,7 +1601,7 @@ void ImageCanvas::setMovingSelection(bool movingSelection)
 
 bool ImageCanvas::cursorOverSelection() const
 {
-    return mHasSelection ? mSelectionArea.contains(cursorScenePixel()) : false;
+    return mHasSelection ? mSelectionArea.contains(cursorScenePixelCoord()) : false;
 }
 
 bool ImageCanvas::shouldDrawSelectionPreviewImage() const
@@ -1781,7 +1780,7 @@ void ImageCanvas::reset()
     mMouseButtonPressed = Qt::NoButton;
     mLastMouseButtonPressed = Qt::NoButton;
     mPressPosition = QPoint(0, 0);
-    mPressScenePosition = QPoint(0, 0);
+    mPressScenePos = QPoint(0, 0);
 
     mIsTabletEvent = false;
     mTabletPressure = 0.0;
@@ -1813,7 +1812,8 @@ void ImageCanvas::centreView()
     if (!pane)
         return;
 
-    const QPointF centre(qreal(mProject->heightInPixels()) / 2.0, qreal(mProject->heightInPixels()) / 2.0);
+    const QPointF centre(mProject->bounds().x() + mProject->bounds().width() / 2.0,
+                         mProject->bounds().y() + mProject->bounds().height() / 2.0);
     pane->setOffset(-centre);
     requestContentPaint();
 }
@@ -1877,7 +1877,7 @@ void ImageCanvas::rotateSelection(int angle)
         const QImage image = *imageForLayerAt(currentLayerIndex());
         mSelectionContents = Utils::rotateAreaWithinImage(image, mSelectionArea, angle, rotatedArea);
     } else {
-        QImage image(mProject->size(), QImage::Format_ARGB32_Premultiplied);
+        QImage image(mProject->bounds().size(), QImage::Format_ARGB32_Premultiplied);
         image.fill(Qt::transparent);
         QPainter painter(&image);
         painter.drawImage(mSelectionArea, mSelectionContents);
@@ -2005,8 +2005,8 @@ void ImageCanvas::paste()
 
     setTool(SelectionTool);
 
-    const QSize adjustedSize(qMin(clipboardImage.width(), mProject->widthInPixels()),
-        qMin(clipboardImage.height(), mProject->heightInPixels()));
+    const QSize adjustedSize(qMin(clipboardImage.width(), mProject->bounds().width()),
+        qMin(clipboardImage.height(), mProject->bounds().height()));
     if (fromExternalSource) {
         // If the paste was from an external source, or there was no
         // selection prior to pasting, we just paste it at 0, 0.
@@ -2062,7 +2062,7 @@ void ImageCanvas::selectAll()
         setTool(SelectionTool);
     }
 
-    setSelectionArea(QRect(0, 0, mProject->widthInPixels(), mProject->heightInPixels()));
+    setSelectionArea(mProject->bounds());
 }
 
 void ImageCanvas::brushFromSelection()
@@ -2082,7 +2082,7 @@ void ImageCanvas::cycleFillTools()
 
 QImage ImageCanvas::fillPixels() const
 {
-    const QPoint scenePos = cursorScenePixel();
+    const QPoint scenePos = cursorScenePixelCoord();
     if (!isWithinImage(scenePos))
         return QImage();
 
@@ -2096,7 +2096,7 @@ QImage ImageCanvas::fillPixels() const
 
 QImage ImageCanvas::greedyFillPixels() const
 {
-    const QPoint scenePos = cursorScenePixel();
+    const QPoint scenePos = cursorScenePixelCoord();
     if (!isWithinImage(scenePos))
         return QImage();
 
@@ -2109,7 +2109,7 @@ QImage ImageCanvas::greedyFillPixels() const
 
 QImage ImageCanvas::texturedFillPixels() const
 {
-    const QPoint scenePos = cursorScenePixel();
+    const QPoint scenePos = cursorScenePixelCoord();
     if (!isWithinImage(scenePos))
         return QImage();
 
@@ -2122,7 +2122,7 @@ QImage ImageCanvas::texturedFillPixels() const
 
 QImage ImageCanvas::greedyTexturedFillPixels() const
 {
-    const QPoint scenePos = cursorScenePixel();
+    const QPoint scenePos = cursorScenePixelCoord();
     if (!isWithinImage(scenePos))
         return QImage();
 
@@ -2305,7 +2305,7 @@ void ImageCanvas::updateCursorPos(const QPoint &eventPos)
     // Don't change current panes if panning, as the mouse position should
     // be allowed to go outside of the original pane.
     // If we're creating or moving a selection, don't let the current pane be changed.
-    if (!mSpacePressed && !(mHasSelection && mMouseButtonPressed == Qt::LeftButton) && mMouseButtonPressed != Qt::NoButton) {
+    if (!mSpacePressed && !(mHasSelection && mMouseButtonPressed == Qt::LeftButton) && mMouseButtonPressed == Qt::NoButton) {
         if (pane) setCurrentPane(pane);
     }
 
@@ -2317,14 +2317,14 @@ void ImageCanvas::updateCursorPos(const QPoint &eventPos)
         return;
     }
 
-    const QPoint oldCursorSceneInteger = cursorScenePixel();
+    const QPoint oldCursorSceneInteger = cursorScenePixelCoord();
 
     // We need the position as floating point numbers so that pen sizes > 1 work properly.
     setCursorScenePos(pane->transform().inverted().map(QPointF(eventPos)));
 
-    setCursorPixelColour(pickColour(cursorScenePixel()));
+    setCursorPixelColour(pickColour(cursorScenePixelCoord()));
 
-    if (cursorScenePixel() != oldCursorSceneInteger && mSelectionCursorGuide->isVisible())
+    if (cursorScenePixelCoord() != oldCursorSceneInteger && mSelectionCursorGuide->isVisible())
         mSelectionCursorGuide->update();
 }
 
@@ -2615,7 +2615,7 @@ void ImageCanvas::mousePressEvent(QMouseEvent *event)
     mMouseButtonPressed = event->button();
     mLastMouseButtonPressed = mMouseButtonPressed;
     mPressPosition = event->pos();
-    mPressScenePosition = mCursorScenePos;
+    mPressScenePos = mCursorScenePos;
     setContainsMouse(true);
 
     if (!isPanning()) {
@@ -2696,7 +2696,7 @@ void ImageCanvas::mouseMoveEvent(QMouseEvent *event)
                     if (!mOldStroke.isEmpty()) {
                         mNewStroke.prepend(mOldStroke.last());
                     }
-                    mPressScenePosition = mCursorScenePos;
+                    mPressScenePos = mCursorScenePos;
                     applyCurrentTool();
                 } else {
                     panWithSelectionIfAtEdge(SelectionPanMouseMovementReason);
@@ -2809,7 +2809,7 @@ void ImageCanvas::mouseReleaseEvent(QMouseEvent *event)
     }
 
     mPressPosition = QPoint(0, 0);
-    mPressScenePosition = QPoint(0, 0);
+    mPressScenePos = QPoint(0, 0);
     updateWindowCursorShape();
     mSplitter.setPressed(false);
     mPressedRuler = nullptr;

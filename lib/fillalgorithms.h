@@ -28,7 +28,7 @@ class QVector;
 
 class TexturedFillParameters;
 class TilesetProject;
-class Tile;
+class TileObject;
 
 class FillColourProvider
 {
@@ -56,10 +56,10 @@ QImage texturedFill(const QImage *image, const QPoint &startPos,
 QImage greedyTexturedFill(const QImage *image, const QPoint &startPos,
     const QColor &targetColour, const QColor &replacementColour, const TexturedFillParameters &parameters);
 
-void tilesetPixelFloodFill(const Tile *tile, const QPoint &pos, const QColor &targetColour,
+void tilesetPixelFloodFill(const TileObject *tile, const QPoint &pos, const QColor &targetColour,
     const QColor &replacementColour, QVector<QPoint> &filledPositions);
 
-void tilesetTileFloodFill(const TilesetProject *project, const Tile *tile, const QPoint &tilePos, int targetTile,
+void tilesetTileFloodFill(const TilesetProject *project, const TileObject *tile, const QPoint &tilePos, int targetTile,
     int replacementTile, QVector<QPoint> &filledTilePositions);
 
 #endif // FILLALGORITHMS_H

@@ -107,7 +107,7 @@ QSize LayeredImageProject::size() const
     return !mLayers.isEmpty() ? mLayers.first()->size() : QSize();
 }
 
-void LayeredImageProject::setSize(const QSize &newSize)
+void LayeredImageProject::resize(const QSize &newSize)
 {
     if (newSize == size())
         return;
@@ -124,16 +124,6 @@ void LayeredImageProject::setSize(const QSize &newSize)
     beginMacro(QLatin1String("ChangeLayeredImageCanvasSize"));
     addChange(new ChangeLayeredImageCanvasSizeCommand(this, previousImages, newImages));
     endMacro();
-}
-
-int LayeredImageProject::widthInPixels() const
-{
-    return size().width();
-}
-
-int LayeredImageProject::heightInPixels() const
-{
-    return size().height();
 }
 
 QRect LayeredImageProject::bounds() const
@@ -680,7 +670,7 @@ void LayeredImageProject::moveContents(int x, int y, bool onlyVisibleContents)
 
 void LayeredImageProject::addNewLayer()
 {
-    addNewLayer(widthInPixels(), heightInPixels(), true);
+    addNewLayer(bounds().width(), bounds().height(), true);
 }
 
 void LayeredImageProject::deleteCurrentLayer()

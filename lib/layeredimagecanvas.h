@@ -52,8 +52,9 @@ protected slots:
 protected:
     void connectSignals() override;
     void disconnectSignals() override;
-    QImage *currentProjectImage() override;
     const QImage *currentProjectImage() const override;
+    QImage *currentProjectImage() override;
+    const QImage *imageForLayerAt(int layerIndex) const override;
     QImage *imageForLayerAt(int layerIndex) override;
     int currentLayerIndex() const override;
     virtual QImage getComposedImage() override;

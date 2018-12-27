@@ -311,7 +311,7 @@ QImage greedyTexturedFill(const QImage *image, const QPoint &startPos, const QCo
 }
 
 // TODO: convert these to non-recursive algorithms as above
-void tilesetPixelFloodFill(const Tile *tile, const QPoint &pos, const QColor &targetColour,
+void tilesetPixelFloodFill(const TileObject *tile, const QPoint &pos, const QColor &targetColour,
     const QColor &replacementColour, QVector<QPoint> &filledPositions)
 {
     qCDebug(lcPixelFloodFill) << "attempting to fill pixel at" << pos << "...";
@@ -363,7 +363,7 @@ void tilesetPixelFloodFill(const Tile *tile, const QPoint &pos, const QColor &ta
     }
 }
 
-void tilesetTileFloodFill(const TilesetProject *project, const Tile *tile, const QPoint &tilePos,
+void tilesetTileFloodFill(const TilesetProject *project, const TileObject *tile, const QPoint &tilePos,
     int targetTile, int replacementTile, QVector<QPoint> &filledTilePositions)
 {
     qCDebug(lcTileFloodFill) << "attempting to fill pixel at" << tilePos << "...";
@@ -374,7 +374,7 @@ void tilesetTileFloodFill(const TilesetProject *project, const Tile *tile, const
         return;
     }
 
-    const int tileIdAtTilePos = project->tileIdAtTilePos(tilePos);
+    const int tileIdAtTilePos = project->tileIndexAt(tilePos);
     if (tileIdAtTilePos == replacementTile) {
         qCDebug(lcTileFloodFill) << "hit the same tile as replacement tile; returning";
         return;
