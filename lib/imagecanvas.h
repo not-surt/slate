@@ -263,8 +263,6 @@ public:
     int lineLength() const;
     qreal lineAngle() const;
 
-    static void drawBrush(QPainter *const painter, const Brush &brush, const QColor &colour, const QPointF pos, const qreal scale = 1.0, const qreal rotation = 0.0);
-
     struct SubImage {
         bool operator==(const SubImage &other) const {
             return imageIndex == other.imageIndex && bounds == other.bounds && origin == other.origin;
@@ -465,7 +463,7 @@ protected:
     void doFlipSelection(int layerIndex, const QRect &area, Qt::Orientation orientation);
     QRect doRotateSelection(int layerIndex, const QRect &area, int angle);
 
-    void markBrushDirty();
+    void updateBrush();
     const Brush &brush();
     qreal pressure() const;
 
@@ -644,7 +642,6 @@ protected:
     QColor mPenForegroundColour;
     QColor mPenBackgroundColour;
     Brush mBrush;
-    bool mBrushDirty;
 
     TexturedFillParameters mTexturedFillParameters;
 

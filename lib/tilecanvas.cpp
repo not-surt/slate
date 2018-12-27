@@ -372,7 +372,6 @@ bool TileCanvas::supportsSelectionTool() const
 QImage TileCanvas::getComposedImage()
 {
     const QSize size(mTilesetProject->tilesWide() * mTilesetProject->tileWidth(), mTilesetProject->tilesHigh() * mTilesetProject->tileHeight());
-
     QImage image(size,  QImage::Format_ARGB32);
     image.fill(qRgba(0, 0, 0, 0));
     QPainter painter(&image);

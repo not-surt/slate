@@ -102,12 +102,16 @@ ImageCanvas::ImageCanvas() :
     mBrushType(Brush::SquareType),
     mToolBlendMode(ReplaceToolBlendMode),
     mLastFillToolUsed(FillTool),
-    mLowerToolSize(1), mUpperToolSize(1), mMaxToolSize(100), mToolSizeUsePressure(false),
-    mLowerToolOpacity(0.0), mUpperToolOpacity(1.0), mToolOpacityUsePressure(false),
+    mLowerToolSize(0),
+    mUpperToolSize(1),
+    mMaxToolSize(100),
+    mToolSizeUsePressure(false),
+    mLowerToolOpacity(0.0),
+    mUpperToolOpacity(1.0),
+    mToolOpacityUsePressure(false),
     mPenForegroundColour(Qt::black),
     mPenBackgroundColour(Qt::white),
     mBrush(),
-    mBrushDirty(true),
     mPotentiallySelecting(false),
     mHasSelection(false),
     mMovingSelection(false),
@@ -185,6 +189,8 @@ ImageCanvas::ImageCanvas() :
     connect(&mSplitter, &Splitter::positionChanged, this, &ImageCanvas::onSplitterPositionChanged);
 
     recreateCheckerImage();
+
+    updateBrush();
 
     // Need to capture tablet events from application and window
     qApp->installEventFilter(this);
@@ -506,7 +512,7 @@ void ImageCanvas::setBrushType(const Brush::Type &brushType)
     mBrushType = brushType;
 
     emit brushTypeChanged();
-    markBrushDirty();
+    updateBrush();
 }
 
 ImageCanvas::ToolBlendMode ImageCanvas::toolBlendMode() const
@@ -547,12 +553,14 @@ int ImageCanvas::lowerToolSize() const
 
 void ImageCanvas::setLowerToolSize(int lowerToolSize)
 {
-    const int clamped = qBound(1, lowerToolSize, mMaxToolSize);
+    const int clamped = qBound(0, lowerToolSize, mMaxToolSize);
     if (clamped == mLowerToolSize)
         return;
 
     mLowerToolSize = clamped;
     emit lowerToolSizeChanged();
+    if (mLowerToolSize > mUpperToolSize)
+        setUpperToolSize(mLowerToolSize);
 }
 
 int ImageCanvas::upperToolSize() const
@@ -568,7 +576,10 @@ void ImageCanvas::setUpperToolSize(int upperToolSize)
 
     mUpperToolSize = clamped;
     emit upperToolSizeChanged();
-    markBrushDirty();
+    if (mUpperToolSize < mLowerToolSize)
+        setLowerToolSize(mUpperToolSize);
+
+    updateBrush();
 }
 
 int ImageCanvas::maxToolSize() const
@@ -576,7 +587,8 @@ int ImageCanvas::maxToolSize() const
     return mMaxToolSize;
 }
 
-bool ImageCanvas::toolSizeUsePressure() const {
+bool ImageCanvas::toolSizeUsePressure() const
+{
     return mToolSizeUsePressure;
 }
 
@@ -592,7 +604,7 @@ void ImageCanvas::setToolSizeUsePressure(bool toolSizeUsePressure)
 
 QRectF ImageCanvas::brushRect()
 {
-    return mBrush.bounds(1.0);
+    return mBrush.bounds();
 }
 
 qreal ImageCanvas::lowerToolOpacity() const
@@ -657,7 +669,6 @@ void ImageCanvas::setPenForegroundColour(const QColor &penForegroundColour)
 
     mPenForegroundColour = colour;
     emit penForegroundColourChanged();
-    markBrushDirty();
 }
 
 QColor ImageCanvas::penBackgroundColour() const
@@ -678,7 +689,6 @@ void ImageCanvas::setPenBackgroundColour(const QColor &penBackgroundColour)
 
     mPenBackgroundColour = colour;
     emit penBackgroundColourChanged();
-    markBrushDirty();
 }
 
 TexturedFillParameters *ImageCanvas::texturedFillParameters()
@@ -1152,11 +1162,8 @@ void ImageCanvas::paintContentWithPreview(QPainter *const painter)
 }
 
 QImage ImageCanvas::contentImage()
-{
     mCachedContentImage = getComposedImage();
     return mCachedContentImage;
-}
-
 QImage ImageCanvas::getComposedImage()
 {
     return !shouldDrawSelectionPreviewImage() ? *currentProjectImage() : mSelectionPreviewImage;
@@ -1777,7 +1784,7 @@ void ImageCanvas::reset()
     mTabletPressure = 0.0;
     setPenForegroundColour(Qt::black);
     setPenBackgroundColour(Qt::white);
-    markBrushDirty();
+    updateBrush();
 
     mTexturedFillParameters.reset();
 
@@ -2061,8 +2068,6 @@ void ImageCanvas::brushFromSelection()
         return;
 
     mBrush = Brush(currentProjectImage()->copy(mSelectionArea));
-    mBrushDirty = false;
-
     setBrushType(Brush::ImageType);
     setUpperToolSize(qMax(mBrush.size.width(), mBrush.size.height()));
 }
@@ -2128,8 +2133,8 @@ QImage ImageCanvas::greedyTexturedFillPixels() const
 QPainter::CompositionMode ImageCanvas::qPainterBlendMode() const
 {
     static const QMap<ToolBlendMode, QPainter::CompositionMode> mapping{
-        {BlendToolBlendMode, QPainter::CompositionMode_SourceOver},
-        {ReplaceToolBlendMode, QPainter::CompositionMode_Source},
+        { BlendToolBlendMode, QPainter::CompositionMode_SourceOver },
+        { ReplaceToolBlendMode, QPainter::CompositionMode_Source },
     };
     return mapping[mToolBlendMode];
 }
@@ -2156,7 +2161,8 @@ void ImageCanvas::applyCurrentTool(QUndoStack *const alternateStack)
     }
     case EyeDropperTool: {
         const QColor pickedColour = pickColour(mNewStroke.last().pos);
-        if (pickedColour.isValid()) setPenColour(pickedColour);
+        if (pickedColour.isValid())
+            setPenColour(pickedColour);
         break;
     }
     case EraserTool: {
@@ -2267,23 +2273,17 @@ QRect ImageCanvas::doRotateSelection(int layerIndex, const QRect &area, int angl
     return area.united(rotatedArea);
 }
 
-void ImageCanvas::markBrushDirty()
+void ImageCanvas::updateBrush()
 {
-    mBrushDirty = true;
+    // Create new brush if not image brush
+    if (mBrushType != Brush::ImageType) {
+        mBrush = Brush(mBrushType, {mUpperToolSize, mUpperToolSize});
+    }
+    emit brushRectChanged();
 }
 
 const Brush &ImageCanvas::brush()
 {
-    if (mBrushDirty) {
-        if (mBrushType == Brush::ImageType) {
-
-        }
-        else {
-            mBrush = Brush(mBrushType, {mUpperToolSize, mUpperToolSize});
-        }
-        mBrushDirty = false;
-        emit brushRectChanged();
-    }
     return mBrush;
 }
 
@@ -2500,26 +2500,20 @@ bool ImageCanvas::areToolsForbidden() const
 
 bool ImageCanvas::eventFilter(QObject *watched, QEvent *event)
 {
+    // When cursor on canvas call tablet event handler with duplicate event
     static const QSet<QEvent::Type> tabletEvents {
         QEvent::TabletMove, QEvent::TabletPress, QEvent::TabletRelease,
         QEvent::TabletEnterProximity, QEvent::TabletLeaveProximity,
         QEvent::TabletTrackingChange
     };
-//    if (tabletEvents.contains(event->type())) return QCoreApplication::sendEvent(this, static_cast<QTabletEvent *>(event));
-    if (tabletEvents.contains(event->type())) {
+    if (mContainsMouse && tabletEvents.contains(event->type())) {
         const QTabletEvent *const other = static_cast<QTabletEvent *>(event);
         QTabletEvent own(other->type(), mapFromGlobal(other->globalPosF()), other->globalPosF(),
                                     other->device(), other->pointerType(), other->pressure(),
                                     other->xTilt(), other->yTilt(), other->tangentialPressure(),
                                     other->rotation(), other->z(), other->modifiers(), other->uniqueId(),
                                     other->button(), other->buttons());
-        // Filter out when on canvas, not perfect as still activates when in popup sitting on top of canvas
-        if (mContainsMouse) {
-            tabletEvent(&own);
-//            return true;
-        }
-        // Don't filter out when off canvas so can still generate mouse events for gui
-        else return false;
+        tabletEvent(&own);
     }
 
     return QQuickItem::eventFilter(watched, event);
