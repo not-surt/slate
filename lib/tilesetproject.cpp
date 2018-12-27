@@ -491,7 +491,7 @@ int TilesetProject::heightInPixels() const
 
 QRect TilesetProject::bounds() const
 {
-    return QRect(0, 0, mTilesWide, mTilesHigh);
+    return QRect(0, 0, mTilesWide * mTileWidth, mTilesHigh * mTileHeight);
 }
 
 QImage TilesetProject::exportedImage() const
