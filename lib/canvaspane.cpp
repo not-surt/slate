@@ -125,7 +125,6 @@ void CanvasPane::setOffset(const QPointF &offset)
 
     mOffset = offset;
     emit offsetChanged();
-    qDebug() << offset << this->offset();
 
     if (integerOffset() != oldIntegerOffset)
         emit integerOffsetChanged();

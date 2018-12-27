@@ -32,18 +32,16 @@
 #include "slate-global.h"
 
 class Project;
-class Tile;
+class TileObject;
 class Tileset;
 class TilesetProject;
 
 class SLATE_EXPORT TileCanvas : public ImageCanvas
 {
     Q_OBJECT
-    Q_PROPERTY(int cursorTilePixelX READ cursorTilePixelX NOTIFY cursorTilePixelXChanged)
-    Q_PROPERTY(int cursorTilePixelY READ cursorTilePixelY NOTIFY cursorTilePixelYChanged)
-    Q_PROPERTY(QPoint cursorTile READ cursorTile NOTIFY cursorTileChanged)
+    Q_PROPERTY(QPoint cursorSceneTileCoord READ cursorSceneTileCoord NOTIFY cursorScenePosChanged)
     Q_PROPERTY(Mode mode READ mode WRITE setMode NOTIFY modeChanged)
-    Q_PROPERTY(Tile *penTile READ penTile WRITE setPenTile NOTIFY penTileChanged)
+    Q_PROPERTY(TileObject *penTile READ penTile WRITE setPenTile NOTIFY penTileChanged)
     Q_PROPERTY(bool tileIndicesVisible READ tileIndicesVisible WRITE setTileIndicesVisible NOTIFY tileIndicesVisibleChanged)
 
 public:
@@ -57,23 +55,22 @@ public:
     TileCanvas();
     ~TileCanvas() override;
 
-    virtual QImage *currentProjectImage() override;
     virtual const QImage *currentProjectImage() const override;
+    virtual QImage *currentProjectImage() override;
 
-    virtual QImage *imageForLayerAt(int layerIndex) override;
     virtual const QImage *imageForLayerAt(int layerIndex) const override;
+    virtual QImage *imageForLayerAt(int layerIndex) override;
 
     virtual void paintContent(QPainter *const painter) override;
     virtual void paintOverlay(QPainter *const painter) const override;
 
-    int cursorTilePixelX() const;
-    void setCursorTilePixelX(int cursorTilePixelX);
+    QPointF pressSceneTilePos() const;
+    QPoint pressSceneTileCoord() const;
+    QPoint pressSceneTileCorner() const;
 
-    int cursorTilePixelY() const;
-    void setCursorTilePixelY(int cursorTilePixelY);
-
-    QPoint cursorTile() const;
-    void setCursorTile(const QPoint cursorTile);
+    QPointF cursorSceneTilePos() const;
+    QPoint cursorSceneTileCoord() const;
+    QPoint cursorSceneTileCorner() const;
 
     Mode mode() const;
     void setMode(const Mode &mode);
@@ -81,8 +78,8 @@ public:
     bool tileIndicesVisible() const;
     void setTileIndicesVisible(bool tileIndicesVisible);
 
-    Tile *penTile() const;
-    void setPenTile(Tile *penTile);
+    TileObject *penTile() const;
+    void setPenTile(TileObject *penTile);
 
     QPoint scenePosToTilePixelPos(const QPoint &scenePos) const;
     QRect sceneRectToTileRect(const QRect &sceneRect) const;
@@ -91,9 +88,6 @@ public:
     virtual QList<SubImageInstance> subImageInstancesInBounds(const QRect &bounds) const override;
 
 signals:
-    void cursorTilePixelXChanged();
-    void cursorTilePixelYChanged();
-    void cursorTileChanged();
     void modeChanged();
     void penTileChanged();
     void tileIndicesVisibleChanged();
@@ -108,13 +102,9 @@ public slots:
     void swatchDown();
     void onTilesetChanged(Tileset *oldTileset, Tileset *newTileset);
 
-protected slots:
-    void reset() override;
-
 protected:
     void connectSignals() override;
     void disconnectSignals() override;
-    void toolChange() override;
     bool supportsSelectionTool() const override;
     virtual QImage getComposedImage() override;
 
@@ -143,24 +133,14 @@ private:
     void applyPixelPenTool(int layerIndex, const QPoint &scenePos, const QColor &colour) override;
     void applyTilePenTool(const QPoint &tilePos, int id);
 
-    void updateCursorPos(const QPoint &eventPos) override;
-    void setHasBlankCursor(bool hasBlankCursor);
-    void updateTilePenPreview();
-    void setTilePenPreview(bool tilePenPreview);
-
-    void hoverLeaveEvent(QHoverEvent *event) override;
-    void focusInEvent(QFocusEvent *event) override;
-    void focusOutEvent(QFocusEvent *event) override;
-
     TilesetProject *mTilesetProject;
 
     // The position of the cursor in scene coordinates relative to the tile that it's in.
     int mCursorTilePixelX;
     int mCursorTilePixelY;
-    QPoint mCursorTile;
+    QPoint mCursorSceneTile;
     Mode mMode;
-    Tile *mPenTile;
-    bool mTilePenPreview;
+    TileObject *mPenTile;
     bool mTileIndicesVisible;
 };
 

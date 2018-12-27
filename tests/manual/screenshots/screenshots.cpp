@@ -316,7 +316,7 @@ void tst_Screenshots::animation()
     // Select the background layer and fill it.
     QVERIFY2(selectLayer("background", 2), failureMessage);
     QVERIFY2(switchTool(TileCanvas::FillTool), failureMessage);
-    setCursorPosInScenePixels(QPoint(project->widthInPixels() - 1, 0));
+    setCursorPosInScenePixels(QPoint(project->bounds().width() - 1, 0));
     canvas->setPenForegroundColour(Qt::white);
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
 

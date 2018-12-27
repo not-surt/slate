@@ -126,16 +126,6 @@ void LayeredImageProject::setSize(const QSize &newSize)
     endMacro();
 }
 
-int LayeredImageProject::widthInPixels() const
-{
-    return size().width();
-}
-
-int LayeredImageProject::heightInPixels() const
-{
-    return size().height();
-}
-
 QRect LayeredImageProject::bounds() const
 {
     const QSize ourSize(size());
@@ -680,7 +670,7 @@ void LayeredImageProject::moveContents(int x, int y, bool onlyVisibleContents)
 
 void LayeredImageProject::addNewLayer()
 {
-    addNewLayer(widthInPixels(), heightInPixels(), true);
+    addNewLayer(bounds().width(), bounds().height(), true);
 }
 
 void LayeredImageProject::deleteCurrentLayer()

@@ -24,6 +24,7 @@
 #include <QSize>
 #include <QVector>
 #include <QUndoCommand>
+#include <QImage>
 
 #include "slate-global.h"
 
@@ -45,6 +46,7 @@ private:
 
     TilesetProject *mProject;
     QVector<int> mPreviousTiles;
+    QImage mPreviousTileMapImage;
     QSize mPreviousSize;
     QSize mSize;
 };

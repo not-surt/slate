@@ -139,19 +139,24 @@ void LayeredImageCanvas::disconnectSignals()
     mLayeredImageProject = nullptr;
 }
 
-QImage *LayeredImageCanvas::currentProjectImage()
-{
-    return mLayeredImageProject->currentLayer()->image();
-}
-
 const QImage *LayeredImageCanvas::currentProjectImage() const
 {
     return mLayeredImageProject->currentLayer()->image();
 }
 
-QImage *LayeredImageCanvas::imageForLayerAt(int layerIndex)
+QImage *LayeredImageCanvas::currentProjectImage()
+{
+    return  const_cast<QImage *>(const_cast<const LayeredImageCanvas *>(this)->currentProjectImage());
+}
+
+const QImage *LayeredImageCanvas::imageForLayerAt(int layerIndex) const
 {
     return mLayeredImageProject->layerAt(layerIndex)->image();
+}
+
+QImage *LayeredImageCanvas::imageForLayerAt(int layerIndex)
+{
+    return  const_cast<QImage *>(const_cast<const LayeredImageCanvas *>(this)->imageForLayerAt(layerIndex));
 }
 
 int LayeredImageCanvas::currentLayerIndex() const

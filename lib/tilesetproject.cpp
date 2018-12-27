@@ -26,6 +26,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLoggingCategory>
+#include <QPainter>
 #include <QUndoStack>
 
 #include "changetilecanvassizecommand.h"
@@ -38,6 +39,7 @@ TilesetProject::TilesetProject() :
     mTilesHigh(0),
     mTileWidth(0),
     mTileHeight(0),
+    mTileMapImage(),
     mTileset(nullptr)
 {
     setObjectName(QLatin1String("tilesetProject"));
@@ -63,7 +65,7 @@ void TilesetProject::createTilesetTiles(int tilesetTilesWide, int tilesetTilesHi
             const int x = column * mTileWidth;
             const int y = row * mTileHeight;
             const int tileId = tileIdFromPosInTileset(x, y);
-            mTileDatabase.insert(tileId, new Tile(tileId, mTileset, QRect(x, y, mTileWidth, mTileHeight), this));
+            mTileDatabase.insert(tileId, new TileObject(tileId, mTileset, QRect(x, y, mTileWidth, mTileHeight), this));
         }
     }
     Q_ASSERT(!mTileDatabase.isEmpty());
@@ -124,6 +126,9 @@ void TilesetProject::createNew(QUrl tilesetUrl, int tileWidth, int tileHeight,
 
     mTiles.clear();
     mTiles.fill(-1, mTilesWide * mTilesHigh);
+
+    mTileMapImage = QImage(QSize(canvasTilesWide, canvasTilesHigh), TileMapImageFormat);
+    mTileMapImage.fill(TileIndexInvalid);
 
     setUrl(QUrl());
     setNewProject(true);
@@ -366,7 +371,7 @@ void TilesetProject::changeSize(const QSize &newSize, const QVector<int> &tiles)
         } else {
             while (tileGrid.size() < newSize.height()) {
                 QVector<int> row;
-                row.fill(Tile::invalidId(), newSize.width());
+                row.fill(TileObject::invalidId(), newSize.width());
                 tileGrid.append(row);
             }
         }
@@ -381,7 +386,7 @@ void TilesetProject::changeSize(const QSize &newSize, const QVector<int> &tiles)
         } else {
             for (int row = 0; row < newSize.height(); ++row) {
                 while (tileGrid[row].size() < newSize.width()) {
-                    tileGrid[row].append(Tile::invalidId());
+                    tileGrid[row].append(TileObject::invalidId());
                 }
             }
         }
@@ -397,6 +402,12 @@ void TilesetProject::changeSize(const QSize &newSize, const QVector<int> &tiles)
     } else {
         mTiles = tiles;
     }
+
+    QImage newTileMapImage(newSize, TileMapImageFormat);
+    newTileMapImage.fill(TileIndexInvalid);
+    QPainter painter(&newTileMapImage);
+    painter.setCompositionMode(QPainter::CompositionMode_Source);
+    painter.drawImage(QPoint(0, 0), mTileMapImage, mTileMapImage.rect(), Qt::ImageConversionFlag::NoFormatConversion);
 
     setTilesWide(newSize.width());
     setTilesHigh(newSize.height());
@@ -465,9 +476,9 @@ QSize TilesetProject::tileSize() const
     return QSize(mTileWidth, mTileHeight);
 }
 
-QSize TilesetProject::size() const
+QSize TilesetProject::pixelSize() const
 {
-    return QSize(mTilesWide, mTilesHigh);
+    return QSize(mTilesWide * mTileWidth, mTilesHigh * mTileHeight);
 }
 
 void TilesetProject::setSize(const QSize &newSize)
@@ -480,19 +491,19 @@ void TilesetProject::setSize(const QSize &newSize)
     endMacro();
 }
 
-int TilesetProject::widthInPixels() const
+QSize TilesetProject::size() const
 {
-    return mTilesWide * mTileWidth;
-}
-
-int TilesetProject::heightInPixels() const
-{
-    return mTilesHigh * mTileHeight;
+    return QSize(mTilesWide, mTilesHigh);
 }
 
 QRect TilesetProject::bounds() const
 {
-    return QRect(0, 0, mTilesWide * mTileWidth, mTilesHigh * mTileHeight);
+    return QRect(QPoint(0, 0), pixelSize());
+}
+
+QRect TilesetProject::tileBounds() const
+{
+    return QRect(QPoint(0, 0), size());
 }
 
 QImage TilesetProject::exportedImage() const
@@ -533,54 +544,57 @@ void TilesetProject::setTileset(Tileset *tileset)
     emit tilesetChanged(old, mTileset);
 }
 
-Tile *TilesetProject::tileAt(const QPoint &scenePos)
+const TileObject *TilesetProject::tileObjectAtPixel(const QPoint &pixel) const
 {
-    return const_cast<Tile*>(static_cast<const TilesetProject*>(this)->tileAt(scenePos));
-}
-
-const Tile *TilesetProject::tileAt(const QPoint &scenePos) const
-{
-    if (scenePos.x() < 0 || scenePos.x() >= widthInPixels()
-        || scenePos.y() < 0 || scenePos.y() >= heightInPixels()) {
+    if (!bounds().contains(pixel)) {
         return nullptr;
     }
 
-    const int xTile = Utils::divFloor(scenePos.x(), mTileWidth);
-    const int yTile = Utils::divFloor(scenePos.y(), mTileHeight);
-    const int tileIndex = yTile * mTilesWide + xTile;
-    if (tileIndex >= mTiles.size())
-        return nullptr;
+    const QPoint tilePos(Utils::divFloor(pixel.x(), mTileWidth), Utils::divFloor(pixel.y(), mTileHeight));
+    return tileObjectAt(tilePos);
+}
 
-    const int tileId = mTiles[tileIndex];
-    return tileId != -1 ? mTileDatabase.value(tileId) : nullptr;
+TileObject *TilesetProject::tileObjectAtPixel(const QPoint &pixel)
+{
+    return const_cast<TileObject*>(static_cast<const TilesetProject*>(this)->tileObjectAtPixel(pixel));
 }
 
 bool TilesetProject::isTilePosWithinBounds(const QPoint &tilePos) const
 {
     return tilePos.x() >= 0 && tilePos.x() < mTilesWide
-        && tilePos.y() >= 0 && tilePos.y() < mTilesHigh;
+            && tilePos.y() >= 0 && tilePos.y() < mTilesHigh;
 }
 
-bool TilesetProject::warnIfTilePosInvalid(const QPoint &tilePos) const
+int TilesetProject::tileIndexAt(const QPoint &tilePos) const
 {
-    if (!isTilePosWithinBounds(tilePos)) {
-        qCDebug(lcProject) << "tilePos" << tilePos << "is out of bounds";
-        return true;
-    }
+    if (!isTilePosWithinBounds(tilePos))
+        return -1;
 
-    return false;
+    const int flatIndex = tilePos.y() * mTilesWide + tilePos.x();
+    Q_ASSERT(flatIndex < mTiles.size());
+    return mTiles[flatIndex];
+//    return mTileMapImage.pixel(tilePos);
 }
 
-void TilesetProject::setTileAtPixelPos(const QPoint &tilePos, int id)
+void TilesetProject::setTileIndexAt(const QPoint &tilePos, const int index)
 {
-    if (warnIfTilePosInvalid(tilePos)) {
+    if(!isTilePosWithinBounds(tilePos))
         return;
-    }
 
-    const int tileIndex = tilePos.y() * mTilesWide + tilePos.x();
-    Q_ASSERT(tileIndex < mTiles.size());
-    mTiles[tileIndex] = id;
-    qCDebug(lcProject) << "set tile at tile pos" << tilePos << "and index" << tileIndex << "to id" << id;
+    const int flatIndex = tilePos.y() * mTilesWide + tilePos.x();
+    Q_ASSERT(flatIndex < mTiles.size());
+    mTiles[flatIndex] = index;
+    //    mTileMapImage.setPixel(tilePos, index);
+}
+
+const TileObject *TilesetProject::tileObjectAtIndex(const int index) const
+{
+    return mTileDatabase.value(index);
+}
+
+TileObject *TilesetProject::tileObjectAtIndex(const int index)
+{
+    return const_cast<TileObject *>(const_cast<const TilesetProject*>(this)->tileObjectAtIndex(index));
 }
 
 QVector<int> TilesetProject::tiles() const
@@ -588,25 +602,28 @@ QVector<int> TilesetProject::tiles() const
     return mTiles;
 }
 
-const Tile *TilesetProject::tileAtTilePos(const QPoint &tilePos) const
+QPointF TilesetProject::pixelToTile(const QPointF pixel) const
 {
-    if (warnIfTilePosInvalid(tilePos)) {
-        return nullptr;
-    }
-
-    const int tileIndex = tilePos.y() * mTilesWide + tilePos.x();
-    Q_ASSERT(tileIndex < mTiles.size());
-    const int tileId = mTiles[tileIndex];
-    return tileId != -1 ? mTileDatabase.value(tileId) : nullptr;
+    return QPointF(pixel.x() / qreal(mTileWidth), pixel.y() / qreal(mTileHeight));
 }
 
-int TilesetProject::tileIdAtTilePos(const QPoint &tilePos) const
+QPoint TilesetProject::pixelToTile(const QPoint pixel) const
 {
-    const Tile *tile = tileAtTilePos(tilePos);
-    return tile ? tile->id() : Tile::invalidId();
+    return QPoint(Utils::divFloor(pixel.x(), mTileWidth), Utils::divFloor(pixel.y(), mTileHeight));
 }
 
-Tile *TilesetProject::tilesetTileAt(int xInPixels, int yInPixels)
+const TileObject *TilesetProject::tileObjectAt(const QPoint &tilePos) const
+{
+    const int index = tileIndexAt(tilePos);
+    return tileObjectAtIndex(index);
+}
+
+TileObject *TilesetProject::tileObjectAt(const QPoint &tilePos)
+{
+    return const_cast<TileObject *>(const_cast<const TilesetProject*>(this)->tileObjectAt(tilePos));
+}
+
+TileObject *TilesetProject::tilesetTileAt(int xInPixels, int yInPixels)
 {
     Tileset *set = tileset();
     if (!set) {
@@ -622,7 +639,7 @@ Tile *TilesetProject::tilesetTileAt(int xInPixels, int yInPixels)
     return mTileDatabase.value(tileIdFromPosInTileset(xInPixels, yInPixels));
 }
 
-Tile *TilesetProject::tilesetTileAtTilePos(const QPoint &tilePos) const
+TileObject *TilesetProject::tilesetTileAtTilePos(const QPoint &tilePos) const
 {
     Tileset *set = tileset();
     if (!set) {
@@ -638,21 +655,21 @@ Tile *TilesetProject::tilesetTileAtTilePos(const QPoint &tilePos) const
     return mTileDatabase.value(tileIdFromTilePosInTileset(tilePos.x(), tilePos.y()));
 }
 
-Tile *TilesetProject::tilesetTileAtId(int id)
+TileObject *TilesetProject::tilesetTileAtId(int id)
 {
     Tileset *set = tileset();
     if (!set) {
         return nullptr;
     }
 
-    QHash<int, Tile*>::iterator it = mTileDatabase.find(id);
+    QHash<int, TileObject*>::iterator it = mTileDatabase.find(id);
     if (it == mTileDatabase.end())
         return nullptr;
 
     return it.value();
 }
 
-void TilesetProject::duplicateTile(Tile *sourceTile, int xInPixels, int yInPixels)
+void TilesetProject::duplicateTile(TileObject *sourceTile, int xInPixels, int yInPixels)
 {
     if (!sourceTile) {
         return;
@@ -675,7 +692,7 @@ void TilesetProject::duplicateTile(Tile *sourceTile, int xInPixels, int yInPixel
     set->copy(sourceTopLeft, targetTopLeft);
 }
 
-void TilesetProject::rotateTileCounterClockwise(Tile *tile)
+void TilesetProject::rotateTileCounterClockwise(TileObject *tile)
 {
     Tileset *set = tileset();
     if (!set)
@@ -687,7 +704,7 @@ void TilesetProject::rotateTileCounterClockwise(Tile *tile)
     set->rotateCounterClockwise(topLeft);
 }
 
-void TilesetProject::rotateTileClockwise(Tile *tile)
+void TilesetProject::rotateTileClockwise(TileObject *tile)
 {
     Tileset *set = tileset();
     if (!set)

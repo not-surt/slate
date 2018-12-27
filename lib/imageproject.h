@@ -36,14 +36,12 @@ public:
     ImageProject();
     ~ImageProject();
 
-    QImage *image();
     const QImage *image() const;
+    QImage *image();
 
     Type type() const override;
     QSize size() const override;
-    void setSize(const QSize &newSize) override;
-    int widthInPixels() const override;
-    int heightInPixels() const override;
+    void setSize(const QSize &size) override;
     virtual QRect bounds() const override;
 
     bool isUsingAnimation() const;

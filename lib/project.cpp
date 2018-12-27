@@ -406,16 +406,6 @@ QRect Project::bounds() const
     return QRect();
 }
 
-int Project::widthInPixels() const
-{
-    return 0;
-}
-
-int Project::heightInPixels() const
-{
-    return 0;
-}
-
 QVector<Guide> Project::guides() const
 {
     return mGuides;

@@ -49,7 +49,7 @@ void ApplyTileEraserCommand::redo()
 {
     qCDebug(lcApplyTileEraserCommand) << "redoing" << this;
     for (int i = 0; i < mTilePositions.size(); ++i) {
-        mCanvas->applyTilePenTool(mTilePositions.at(i), Tile::invalidId());
+        mCanvas->applyTilePenTool(mTilePositions.at(i), TileObject::invalidId());
     }
 }
 

@@ -579,7 +579,7 @@ bool TestHelper::selectColourAtCursorPos()
 bool TestHelper::drawPixelAtCursorPos()
 {
     if (tilesetProject) {
-        const Tile *targetTile = tilesetProject->tileAt(cursorPos);
+        const TileObject *targetTile = tilesetProject->tileObjectAtPixel(cursorPos);
         VERIFY(targetTile);
 
         if (!switchTool(TileCanvas::PenTool))
@@ -649,7 +649,7 @@ bool TestHelper::drawTileAtCursorPos()
     QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
     const int penId = tileCanvas->penTile()->id();
-    const Tile *tile = tilesetProject->tileAt(cursorPos);
+    const TileObject *tile = tilesetProject->tileObjectAtPixel(cursorPos);
     VERIFY(tile);
     VERIFY(tile->id() == penId);
     return true;

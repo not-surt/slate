@@ -49,16 +49,6 @@ void ImageProject::setSize(const QSize &newSize)
     endMacro();
 }
 
-int ImageProject::widthInPixels() const
-{
-    return !mImage.isNull() ? mImage.width() : 0;
-}
-
-int ImageProject::heightInPixels() const
-{
-    return !mImage.isNull() ? mImage.height() : 0;
-}
-
 QRect ImageProject::bounds() const
 {
     const QSize ourSize(size());
@@ -91,6 +81,7 @@ void ImageProject::createNew(int imageWidth, int imageHeight, bool transparentBa
 
     setUrl(QUrl());
     setNewProject(true);
+
     emit projectCreated();
 
     qCDebug(lcProject) << "finished creating new project";
@@ -175,9 +166,14 @@ void ImageProject::resize(int width, int height, bool smooth)
     endMacro();
 }
 
-QImage *ImageProject::image()
+const QImage *ImageProject::image() const
 {
     return &mImage;
+}
+
+QImage *ImageProject::image()
+{
+    return  const_cast<QImage *>(const_cast<const ImageProject *>(this)->image());
 }
 
 Project::Type ImageProject::type() const

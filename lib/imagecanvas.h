@@ -49,7 +49,7 @@ class GuidesItem;
 class ImageProject;
 class Project;
 class SelectionCursorGuide;
-class Tile;
+class TileObject;
 class Tileset;
 
 class SLATE_EXPORT ImageCanvas : public QQuickItem
@@ -76,7 +76,7 @@ class SLATE_EXPORT ImageCanvas : public QQuickItem
     Q_PROPERTY(QColor rulerBackgroundColour READ rulerBackgroundColour WRITE setRulerBackgroundColour)
     Q_PROPERTY(QPoint cursorPos READ cursorPos NOTIFY cursorPosChanged)
     Q_PROPERTY(QPointF cursorScenePos READ cursorScenePos NOTIFY cursorScenePosChanged)
-    Q_PROPERTY(QPoint cursorScenePixel READ cursorScenePixel NOTIFY cursorScenePosChanged)
+    Q_PROPERTY(QPoint cursorScenePixelCoord READ cursorScenePixelCoord NOTIFY cursorScenePosChanged)
     Q_PROPERTY(QPoint cursorScenePixelCorner READ cursorScenePixelCorner NOTIFY cursorScenePosChanged)
     Q_PROPERTY(QColor cursorPixelColour READ cursorPixelColour NOTIFY cursorPixelColourChanged)
     Q_PROPERTY(QColor invertedCursorPixelColour READ invertedCursorPixelColour NOTIFY cursorPixelColourChanged)
@@ -137,12 +137,12 @@ public:
     void setCursorPos(const QPoint point);
 
     QPointF pressScenePos() const;
-    QPoint pressScenePixel() const;
+    QPoint pressScenePixelCoord() const;
     QPoint pressScenePixelCorner() const;
 
     QPointF cursorScenePos() const;
     void setCursorScenePos(const QPointF point);
-    QPoint cursorScenePixel() const;
+    QPoint cursorScenePixelCoord() const;
     QPoint cursorScenePixelCorner() const;
 
     QColor cursorPixelColour() const;
@@ -198,8 +198,8 @@ public:
     CanvasPane *secondPane();
     const CanvasPane *secondPane() const;
     CanvasPane *currentPane();
-    Q_INVOKABLE CanvasPane *paneAt(int index);
     const CanvasPane *paneAt(int index) const;
+    Q_INVOKABLE CanvasPane *paneAt(int index);
     const QVector<CanvasPane *> &panes() const;
     int paneWidth(int index) const;
 
@@ -309,11 +309,11 @@ public:
     // The image that is currently being drawn on. For regular image canvases, this is
     // the project's image. For layered image canvases, this is the image belonging to
     // the current layer.
-    virtual QImage *currentProjectImage();
     virtual const QImage *currentProjectImage() const;
+    virtual QImage *currentProjectImage();
 
-    virtual QImage *imageForLayerAt(int layerIndex);
-    virtual const QImage *imageForLayerAt(int layerIndex) const;
+    virtual const QImage *imageForLayerAt(const int layerIndex) const;
+    virtual QImage *imageForLayerAt(const int layerIndex);
     virtual int currentLayerIndex() const;
 
     virtual void paintBackground(QPainter *const painter) const;
@@ -621,7 +621,7 @@ protected:
     Qt::MouseButton mLastMouseButtonPressed;
     // The position at which the mouse is currently pressed.
     QPoint mPressPosition;
-    QPointF mPressScenePosition;
+    QPointF mPressScenePos;
     bool mToolContinue;
     Stroke mOldStroke, mNewStroke;
     // The scene position at which the mouse was pressed before the most-recent press.

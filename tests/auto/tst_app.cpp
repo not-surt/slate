@@ -197,7 +197,7 @@ void tst_App::newProjectWithNewTileset()
     QVERIFY2(switchMode(TileCanvas::TileMode), failureMessage);
     setCursorPosInTiles(0, 0);
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QVERIFY(tilesetProject->tileAt(QPoint(0, 0)));
+    QVERIFY(tilesetProject->tileObjectAtPixel(QPoint(0, 0)));
     QVERIFY(tilesetProject->hasUnsavedChanges());
 
     // Draw a pixel on that tile.
@@ -293,7 +293,7 @@ void tst_App::saveTilesetProject()
     // QTBUG-53466
     setCursorPosInScenePixels(10, 10);
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QVERIFY(tilesetProject->tileAt(QPoint(0, 0)));
+    QVERIFY(tilesetProject->tileObjectAtPixel(QPoint(0, 0)));
     QVERIFY(tilesetProject->hasUnsavedChanges());
     QVERIFY(window->title().contains("*"));
 
@@ -309,7 +309,7 @@ void tst_App::saveTilesetProject()
     // Check that what's on disk matches the image that we currently have.
     QImage savedImage(tempTilesetUrl.toLocalFile());
     QVERIFY(!savedImage.isNull());
-    QCOMPARE(savedImage, *tilesetProject->tileAt(QPoint(0, 0))->tileset()->image());
+    QCOMPARE(savedImage, *tilesetProject->tileObjectAtPixel(QPoint(0, 0))->tileset()->image());
     QTRY_VERIFY_WITH_TIMEOUT(!window->title().contains("*"), 10);
 }
 
@@ -369,7 +369,7 @@ void tst_App::saveAsAndLoadTilesetProject()
     QTRY_VERIFY_WITH_TIMEOUT(!window->title().contains("*"), 10);
 
     // Check that what's on disk matches the tileset image that we currently have.
-    const Tile *modifiedTile = tilesetProject->tileAt(QPoint(0, 0));
+    const TileObject *modifiedTile = tilesetProject->tileObjectAtPixel(QPoint(0, 0));
     QImage savedImage(modifiedTile->tileset()->fileName());
     QCOMPARE(savedImage, *modifiedTile->tileset()->image());
 
@@ -970,7 +970,7 @@ void tst_App::undoPixels()
     QVERIFY(!tilesetProject->canSave());
 
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QVERIFY2(tilesetProject->tileAt(cursorPos), qPrintable(QString::fromLatin1("No tile at x %1 y %2")
+    QVERIFY2(tilesetProject->tileObjectAtPixel(cursorPos), qPrintable(QString::fromLatin1("No tile at x %1 y %2")
         .arg(cursorPos.x()).arg(cursorPos.y())));
     QVERIFY(tilesetProject->hasUnsavedChanges());
     QVERIFY(tilesetProject->undoStack()->canUndo());
@@ -980,35 +980,35 @@ void tst_App::undoPixels()
     QVERIFY2(switchMode(TileCanvas::PixelMode), failureMessage);
 
     // Draw on some pixels of that tile.
-    const QImage originalImage = *tilesetProject->tileAt(cursorPos)->tileset()->image();
+    const QImage originalImage = *tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image();
     QImage lastImage;
     QTest::mouseMove(window, cursorPos);
     QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QVERIFY(tilesetProject->tileAt(cursorPos));
-    QVERIFY(*tilesetProject->tileAt(cursorPos)->tileset()->image() != lastImage);
+    QVERIFY(tilesetProject->tileObjectAtPixel(cursorPos));
+    QVERIFY(*tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image() != lastImage);
     QVERIFY(tilesetProject->hasUnsavedChanges());
     QVERIFY(window->title().contains("*"));
 
-    lastImage = *tilesetProject->tileAt(cursorPos)->tileset()->image();
+    lastImage = *tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image();
     setCursorPosInScenePixels(cursorPos + QPoint(0, 1));
     QTest::mouseMove(window, cursorWindowPos);
-    QVERIFY(*tilesetProject->tileAt(cursorPos)->tileset()->image() != lastImage);
+    QVERIFY(*tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image() != lastImage);
 
-    lastImage = *tilesetProject->tileAt(cursorPos)->tileset()->image();
+    lastImage = *tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image();
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QCOMPARE(*tilesetProject->tileAt(cursorPos)->tileset()->image(), lastImage);
+    QCOMPARE(*tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image(), lastImage);
     QVERIFY(tilesetProject->hasUnsavedChanges());
     QVERIFY(window->title().contains("*"));
 
     mouseEventOnCentre(undoButton, MouseClick);
-    QCOMPARE(*tilesetProject->tileAt(cursorPos)->tileset()->image(), originalImage);
+    QCOMPARE(*tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image(), originalImage);
     // Still have the tile pen changes.
     QVERIFY(tilesetProject->hasUnsavedChanges());
     QVERIFY(window->title().contains("*"));
 
     // Test reverting.
     QVERIFY2(triggerRevert(), failureMessage);
-    QVERIFY(!tilesetProject->tileAt(cursorPos));
+    QVERIFY(!tilesetProject->tileObjectAtPixel(cursorPos));
     QVERIFY(!tilesetProject->hasUnsavedChanges());
     QVERIFY(!window->title().contains("*"));
 }
@@ -1025,13 +1025,13 @@ void tst_App::undoLargePixelPen()
     QTest::mouseMove(window, cursorWindowPos);
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
     QVERIFY(tilesetProject->hasUnsavedChanges());
-    QVERIFY(tilesetProject->tileAt(cursorPos));
+    QVERIFY(tilesetProject->tileObjectAtPixel(cursorPos));
 
     // Select the second tile from the top-left in the swatch.
     QTest::mouseMove(window, tilesetTileSceneCentre(1, 0));
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, tilesetTileSceneCentre(1, 0));
     const QPoint tilesetCentre = tilesetTileCentre(1, 0);
-    const Tile *expectedTile = tilesetProject->tilesetTileAt(tilesetCentre.x(), tilesetCentre.y());
+    const TileObject *expectedTile = tilesetProject->tilesetTileAt(tilesetCentre.x(), tilesetCentre.y());
     QCOMPARE(tileCanvas->penTile(), expectedTile);
 
     // Draw that on next to the first one.
@@ -1039,8 +1039,8 @@ void tst_App::undoLargePixelPen()
     QTest::mouseMove(window, cursorWindowPos);
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
     QVERIFY(tilesetProject->hasUnsavedChanges());
-    QVERIFY(tilesetProject->tileAt(cursorPos));
-    QVERIFY(tilesetProject->tileAt(tileCanvasCentre(0, 0)) != tilesetProject->tileAt(tileCanvasCentre(1, 0)));
+    QVERIFY(tilesetProject->tileObjectAtPixel(cursorPos));
+    QVERIFY(tilesetProject->tileObjectAtPixel(tileCanvasCentre(0, 0)) != tilesetProject->tileObjectAtPixel(tileCanvasCentre(1, 0)));
 
     QVERIFY2(switchMode(TileCanvas::PixelMode), failureMessage);
 
@@ -1057,20 +1057,20 @@ void tst_App::undoLargePixelPen()
     const qreal halfToolSize = qRound(toolSize / 2.0);
     // Test that both tiles were drawn on by checking each corner of the drawn square.
     const QPoint sceneTopLeft(cursorPos - QPoint(halfToolSize, 0));
-    QCOMPARE(tilesetProject->tileAt(sceneTopLeft)->pixelColor(halfToolSize, 0).isValid(), true);
-    QCOMPARE(tilesetProject->tileAt(sceneTopLeft)->pixelColor(halfToolSize, 0), QColor(Qt::black));
+    QCOMPARE(tilesetProject->tileObjectAtPixel(sceneTopLeft)->pixelColor(halfToolSize, 0).isValid(), true);
+    QCOMPARE(tilesetProject->tileObjectAtPixel(sceneTopLeft)->pixelColor(halfToolSize, 0), QColor(Qt::black));
 
     const QPoint sceneBottomLeft(cursorPos - QPoint(halfToolSize, halfToolSize - 1));
-    QCOMPARE(tilesetProject->tileAt(sceneBottomLeft)->pixelColor(halfToolSize, halfToolSize - 1).isValid(), true);
-    QCOMPARE(tilesetProject->tileAt(sceneBottomLeft)->pixelColor(halfToolSize, halfToolSize - 1), QColor(Qt::black));
+    QCOMPARE(tilesetProject->tileObjectAtPixel(sceneBottomLeft)->pixelColor(halfToolSize, halfToolSize - 1).isValid(), true);
+    QCOMPARE(tilesetProject->tileObjectAtPixel(sceneBottomLeft)->pixelColor(halfToolSize, halfToolSize - 1), QColor(Qt::black));
 
     const QPoint sceneTopRight(cursorPos + QPoint(halfToolSize, 0));
-    QCOMPARE(tilesetProject->tileAt(sceneTopRight)->pixelColor(halfToolSize - 1, 0).isValid(), true);
-    QCOMPARE(tilesetProject->tileAt(sceneTopRight)->pixelColor(halfToolSize - 1, 0), QColor(Qt::black));
+    QCOMPARE(tilesetProject->tileObjectAtPixel(sceneTopRight)->pixelColor(halfToolSize - 1, 0).isValid(), true);
+    QCOMPARE(tilesetProject->tileObjectAtPixel(sceneTopRight)->pixelColor(halfToolSize - 1, 0), QColor(Qt::black));
 
     const QPoint sceneBottomRight(cursorPos + QPoint(halfToolSize, halfToolSize - 1));
-    QCOMPARE(tilesetProject->tileAt(sceneBottomRight)->pixelColor(halfToolSize - 1, halfToolSize - 1).isValid(), true);
-    QCOMPARE(tilesetProject->tileAt(sceneBottomRight)->pixelColor(halfToolSize - 1, halfToolSize - 1), QColor(Qt::black));
+    QCOMPARE(tilesetProject->tileObjectAtPixel(sceneBottomRight)->pixelColor(halfToolSize - 1, halfToolSize - 1).isValid(), true);
+    QCOMPARE(tilesetProject->tileObjectAtPixel(sceneBottomRight)->pixelColor(halfToolSize - 1, halfToolSize - 1), QColor(Qt::black));
 
     // Undo the change and check that it worked.
     mouseEventOnCentre(undoButton, MouseClick);
@@ -1105,7 +1105,7 @@ void tst_App::undoTiles()
     QTest::mouseMove(window, cursorWindowPos);
     QCOMPARE(tileCanvas->tool(), TileCanvas::PenTool);
     QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QVERIFY(tilesetProject->tileAt(cursorPos));
+    QVERIFY(tilesetProject->tileObjectAtPixel(cursorPos));
     // The macro isn't finished until a release event occurs, and hence
     // we can't undo yet.
     QVERIFY(!undoButton->isEnabled());
@@ -1114,28 +1114,28 @@ void tst_App::undoTiles()
 
     // Check that undoing merged commands (drawing the same tile at the same position) works.
     setCursorPosInScenePixels(cursorPos.x(), cursorPos.y() + 1);
-    Tile *lastTile = tilesetProject->tileAt(cursorPos);
+    TileObject *lastTile = tilesetProject->tileObjectAtPixel(cursorPos);
     QTest::mouseMove(window, cursorWindowPos);
-    QCOMPARE(tilesetProject->tileAt(cursorPos), lastTile);
+    QCOMPARE(tilesetProject->tileObjectAtPixel(cursorPos), lastTile);
 
     // Go to another tile.
     setCursorPosInTiles(0, 2);
-    lastTile = tilesetProject->tileAt(cursorPos);
+    lastTile = tilesetProject->tileObjectAtPixel(cursorPos);
     QTest::mouseMove(window, cursorWindowPos);
-    QVERIFY(tilesetProject->tileAt(cursorPos) != lastTile);
+    QVERIFY(tilesetProject->tileObjectAtPixel(cursorPos) != lastTile);
 
     // Release, ending the macro composition.
-    lastTile = tilesetProject->tileAt(cursorPos);
+    lastTile = tilesetProject->tileObjectAtPixel(cursorPos);
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QCOMPARE(tilesetProject->tileAt(cursorPos), lastTile);
+    QCOMPARE(tilesetProject->tileObjectAtPixel(cursorPos), lastTile);
     QVERIFY(undoButton->isEnabled());
     QVERIFY(tilesetProject->hasUnsavedChanges());
     QVERIFY(window->title().contains("*"));
 
     // Test the undo button.
     mouseEventOnCentre(undoButton, MouseClick);
-    QVERIFY(!tilesetProject->tileAt(cursorPos));
-    QVERIFY(!tilesetProject->tileAt(cursorPos - QPoint(0, tilesetProject->tileHeight())));
+    QVERIFY(!tilesetProject->tileObjectAtPixel(cursorPos));
+    QVERIFY(!tilesetProject->tileObjectAtPixel(cursorPos - QPoint(0, tilesetProject->tileHeight())));
     QVERIFY(!tilesetProject->hasUnsavedChanges());
     QVERIFY(!window->title().contains("*"));
     // Move the mouse away so the tile pen preview doesn't affect
@@ -1155,7 +1155,7 @@ void tst_App::undoTiles()
 
     // Test reverting.
     QVERIFY2(triggerRevert(), failureMessage);
-    QVERIFY(!tilesetProject->tileAt(cursorPos));
+    QVERIFY(!tilesetProject->tileObjectAtPixel(cursorPos));
     QVERIFY(!undoButton->isEnabled());
     QVERIFY(!tilesetProject->hasUnsavedChanges());
     QVERIFY(!window->title().contains("*"));
@@ -1173,47 +1173,47 @@ void tst_App::undoWithDuplicates()
     QTest::mouseMove(window, cursorWindowPos);
     QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QVERIFY(tilesetProject->tileAt(cursorPos));
+    QVERIFY(tilesetProject->tileObjectAtPixel(cursorPos));
     QVERIFY(tilesetProject->hasUnsavedChanges());
     QVERIFY(window->title().contains("*"));
 
     QVERIFY2(switchMode(TileCanvas::PixelMode), failureMessage);
 
     setCursorPosInScenePixels(0, 1);
-    const QImage originalImage = *tilesetProject->tileAt(cursorPos)->tileset()->image();
+    const QImage originalImage = *tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image();
     QImage lastImage = originalImage;
     QTest::mouseMove(window, cursorWindowPos);
 
     QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QCOMPARE(tilesetProject->tileAt(cursorPos)->pixelColor(cursorPos), tileCanvas->penForegroundColour());
-    QVERIFY(*tilesetProject->tileAt(cursorPos)->tileset()->image() != lastImage);
+    QCOMPARE(tilesetProject->tileObjectAtPixel(cursorPos)->pixelColor(cursorPos), tileCanvas->penForegroundColour());
+    QVERIFY(*tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image() != lastImage);
 
-    lastImage = *tilesetProject->tileAt(cursorPos)->tileset()->image();
+    lastImage = *tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image();
     setCursorPosInScenePixels(0, 2);
     QTest::mouseMove(window, cursorWindowPos);
-    QCOMPARE(tilesetProject->tileAt(cursorPos)->pixelColor(cursorPos), tileCanvas->penForegroundColour());
-    QVERIFY(*tilesetProject->tileAt(cursorPos)->tileset()->image() != lastImage);
+    QCOMPARE(tilesetProject->tileObjectAtPixel(cursorPos)->pixelColor(cursorPos), tileCanvas->penForegroundColour());
+    QVERIFY(*tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image() != lastImage);
 
     // Go back over the same pixels.
-    lastImage = *tilesetProject->tileAt(cursorPos)->tileset()->image();
+    lastImage = *tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image();
     setCursorPosInScenePixels(0, 1);
     QTest::mouseMove(window, cursorWindowPos);
-    tilesetProject->tileAt(cursorPos)->tileset()->image()->save("C:/dev/cur.png");
+    tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image()->save("C:/dev/cur.png");
     lastImage.save("C:/dev/last.png");
-    QCOMPARE(*tilesetProject->tileAt(cursorPos)->tileset()->image(), lastImage);
+    QCOMPARE(*tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image(), lastImage);
 
     setCursorPosInScenePixels(0, 2);
     QTest::mouseMove(window, cursorWindowPos);
-    QCOMPARE(*tilesetProject->tileAt(cursorPos)->tileset()->image(), lastImage);
+    QCOMPARE(*tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image(), lastImage);
 
-    lastImage = *tilesetProject->tileAt(cursorPos)->tileset()->image();
+    lastImage = *tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image();
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QCOMPARE(*tilesetProject->tileAt(cursorPos)->tileset()->image(), lastImage);
+    QCOMPARE(*tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image(), lastImage);
     QVERIFY(tilesetProject->hasUnsavedChanges());
     QVERIFY(window->title().contains("*"));
 
     mouseEventOnCentre(undoButton, MouseClick);
-    QCOMPARE(*tilesetProject->tileAt(cursorPos)->tileset()->image(), originalImage);
+    QCOMPARE(*tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image(), originalImage);
     // Still have the tile change.
     QVERIFY(tilesetProject->hasUnsavedChanges());
     QVERIFY(window->title().contains("*"));
@@ -1227,7 +1227,7 @@ void tst_App::undoWithDuplicates()
     QTest::mouseMove(window, cursorWindowPos);
     QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QVERIFY(tilesetProject->tileAt(cursorPos));
+    QVERIFY(tilesetProject->tileObjectAtPixel(cursorPos));
 
     QVERIFY2(switchMode(TileCanvas::PixelMode), failureMessage);
 
@@ -1238,16 +1238,16 @@ void tst_App::undoWithDuplicates()
     for (; x < tilesetProject->tileWidth(); ++x) {
         setCursorPosInScenePixels(x, y);
         QTest::mouseMove(window, cursorWindowPos);
-        QCOMPARE(tilesetProject->tileAt(cursorPos)->pixelColor(cursorPos), tileCanvas->penForegroundColour());
+        QCOMPARE(tilesetProject->tileObjectAtPixel(cursorPos)->pixelColor(cursorPos), tileCanvas->penForegroundColour());
     }
     // The last pixel is on the next tile.
     setCursorPosInScenePixels(++x, y);
     QTest::mouseMove(window, cursorWindowPos);
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QCOMPARE(tilesetProject->tileAt(cursorPos)->pixelColor(cursorPos - QPoint(tilesetProject->tileWidth(), 0)), tileCanvas->penForegroundColour());
+    QCOMPARE(tilesetProject->tileObjectAtPixel(cursorPos)->pixelColor(cursorPos - QPoint(tilesetProject->tileWidth(), 0)), tileCanvas->penForegroundColour());
 
     mouseEventOnCentre(undoButton, MouseClick);
-    QCOMPARE(*tilesetProject->tileAt(cursorPos)->tileset()->image(), originalImage);
+    QCOMPARE(*tilesetProject->tileObjectAtPixel(cursorPos)->tileset()->image(), originalImage);
     // Still have the tile change.
     QVERIFY(tilesetProject->hasUnsavedChanges());
     QVERIFY(window->title().contains("*"));
@@ -1262,12 +1262,12 @@ void tst_App::undoTilesetCanvasSizeChange()
     setCursorPosInTiles(8, 9);
     QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QCOMPARE(tilesetProject->tileAt(cursorPos), tileCanvas->penTile());
+    QCOMPARE(tilesetProject->tileObjectAtPixel(cursorPos), tileCanvas->penTile());
 
     setCursorPosInTiles(9, 9);
     QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QCOMPARE(tilesetProject->tileAt(cursorPos), tileCanvas->penTile());
+    QCOMPARE(tilesetProject->tileObjectAtPixel(cursorPos), tileCanvas->penTile());
 
     const QVector<int> originalTiles = tilesetProject->tiles();
 
@@ -1308,8 +1308,8 @@ void tst_App::undoImageCanvasSizeChange()
 {
     QVERIFY2(createNewImageProject(), failureMessage);
 
-    QCOMPARE(imageProject->widthInPixels(), 256);
-    QCOMPARE(imageProject->heightInPixels(), 256);
+    QCOMPARE(imageProject->bounds().width(), 256);
+    QCOMPARE(imageProject->bounds().height(), 256);
 
     // Draw something near the bottom right.
     setCursorPosInScenePixels(250, 250);
@@ -1462,7 +1462,7 @@ void tst_App::undoPixelFill()
     QTest::mouseMove(window, tilesetTileSceneCentre(1, 0));
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, tilesetTileSceneCentre(1, 0));
     const QPoint tilesetCentre = tilesetTileCentre(1, 0);
-    const Tile *expectedTile = tilesetProject->tilesetTileAt(tilesetCentre.x(), tilesetCentre.y());
+    const TileObject *expectedTile = tilesetProject->tilesetTileAt(tilesetCentre.x(), tilesetCentre.y());
     QCOMPARE(tileCanvas->penTile(), expectedTile);
 
     // Draw the tile on so that we can operate on its pixels.
@@ -1470,7 +1470,7 @@ void tst_App::undoPixelFill()
     QTest::mouseMove(window, cursorWindowPos);
     QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QVERIFY(tilesetProject->tileAt(cursorPos));
+    QVERIFY(tilesetProject->tileObjectAtPixel(cursorPos));
     QVERIFY(tilesetProject->hasUnsavedChanges());
     QVERIFY(window->title().contains("*"));
 
@@ -1487,7 +1487,7 @@ void tst_App::undoPixelFill()
     setCursorPosInScenePixels(0, 1);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
-    const Tile *targetTile = tilesetProject->tileAt(cursorPos);
+    const TileObject *targetTile = tilesetProject->tileObjectAtPixel(cursorPos);
     QVERIFY(targetTile);
     const QColor black = QColor(Qt::black);
     QCOMPARE(targetTile->pixelColor(0, 0), black);
@@ -1528,10 +1528,10 @@ void tst_App::undoTileFill()
     setCursorPosInTiles(1, 0);
     QVERIFY2(drawTileAtCursorPos(), failureMessage);
 
-    const Tile *targetTile = tilesetProject->tileAt(cursorPos);
+    const TileObject *targetTile = tilesetProject->tileObjectAtPixel(cursorPos);
     QVERIFY(targetTile);
-    QCOMPARE(tilesetProject->tileAtTilePos(QPoint(0, 0)), tileCanvas->penTile());
-    QCOMPARE(tilesetProject->tileAtTilePos(QPoint(1, 0)), tileCanvas->penTile());
+    QCOMPARE(tilesetProject->tileObjectAt(QPoint(0, 0)), tileCanvas->penTile());
+    QCOMPARE(tilesetProject->tileObjectAt(QPoint(1, 0)), tileCanvas->penTile());
 
     // Try to fill it. The whole block should be filled.
     QVERIFY2(switchTool(TileCanvas::FillTool), failureMessage);
@@ -1540,17 +1540,17 @@ void tst_App::undoTileFill()
     QTest::mouseMove(window, tilesetTileSceneCentre(1, 0));
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, tilesetTileSceneCentre(1, 0));
     const QPoint tilesetCentre = tilesetTileCentre(1, 0);
-    const Tile *replacementTile = tilesetProject->tilesetTileAt(tilesetCentre.x(), tilesetCentre.y());
+    const TileObject *replacementTile = tilesetProject->tilesetTileAt(tilesetCentre.x(), tilesetCentre.y());
     QCOMPARE(tileCanvas->penTile(), replacementTile);
 
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QCOMPARE(tilesetProject->tileAtTilePos(QPoint(0, 0)), replacementTile);
-    QCOMPARE(tilesetProject->tileAtTilePos(QPoint(1, 0)), replacementTile);
+    QCOMPARE(tilesetProject->tileObjectAt(QPoint(0, 0)), replacementTile);
+    QCOMPARE(tilesetProject->tileObjectAt(QPoint(1, 0)), replacementTile);
 
     // Undo it.
     mouseEventOnCentre(undoButton, MouseClick);
-    QCOMPARE(tilesetProject->tileAtTilePos(QPoint(0, 0)), targetTile);
-    QCOMPARE(tilesetProject->tileAtTilePos(QPoint(1, 0)), targetTile);
+    QCOMPARE(tilesetProject->tileObjectAt(QPoint(0, 0)), targetTile);
+    QCOMPARE(tilesetProject->tileObjectAt(QPoint(1, 0)), targetTile);
 }
 
 void tst_App::undoThickSquarePen()
@@ -1928,20 +1928,20 @@ void tst_App::panes()
     QVERIFY2(switchMode(TileCanvas::TileMode), failureMessage);
 
     setCursorPosInTiles(0, 0);
-    Tile *lastTile = tilesetProject->tileAt(cursorPos);
+    TileObject *lastTile = tilesetProject->tileObjectAtPixel(cursorPos);
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QVERIFY(tilesetProject->tileAt(cursorPos));
+    QVERIFY(tilesetProject->tileObjectAtPixel(cursorPos));
     QVERIFY(tilesetProject->hasUnsavedChanges());
     QVERIFY(window->title().contains("*"));
-    QVERIFY(tilesetProject->tileAt(cursorPos) != lastTile);
+    QVERIFY(tilesetProject->tileObjectAtPixel(cursorPos) != lastTile);
 
     setCursorPosInScenePixels(tileCanvas->width() / 2 + tilesetProject->tileWidth() * 1.5, 1);
     cursorPos.setX(cursorPos.x() - tileCanvas->width() / 2);
-    lastTile = tilesetProject->tileAt(cursorPos);
+    lastTile = tilesetProject->tileObjectAtPixel(cursorPos);
     QVERIFY(!lastTile);
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QVERIFY(tilesetProject->tileAt(cursorPos));
-    QVERIFY(tilesetProject->tileAt(cursorPos) != lastTile);
+    QVERIFY(tilesetProject->tileObjectAtPixel(cursorPos));
+    QVERIFY(tilesetProject->tileObjectAtPixel(cursorPos) != lastTile);
 
     // Remove split.
     QVERIFY2(triggerSplitScreen(), failureMessage);
@@ -1984,7 +1984,7 @@ void tst_App::eyedropper()
     setCursorPosInTiles(1, 1);
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
 
-    Tile *originalTile = tilesetProject->tileAt(cursorPos);
+    TileObject *originalTile = tilesetProject->tileObjectAtPixel(cursorPos);
     QVERIFY(originalTile);
     const QPoint pixelPos = QPoint(tilesetProject->tileWidth() / 2, tilesetProject->tileHeight() / 2);
     QVERIFY(tileCanvas->penForegroundColour() != originalTile->pixelColor(pixelPos));
@@ -2006,7 +2006,7 @@ void tst_App::eyedropper()
 
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, tilesetTileSceneCentre(1, 0));
     const QPoint tilesetCentre = tilesetTileCentre(1, 0);
-    const Tile *expectedTile = tilesetProject->tilesetTileAt(tilesetCentre.x(), tilesetCentre.y());
+    const TileObject *expectedTile = tilesetProject->tilesetTileAt(tilesetCentre.x(), tilesetCentre.y());
     QCOMPARE(tileCanvas->penTile(), expectedTile);
 
     setCursorPosInTiles(1, 1);
@@ -2062,8 +2062,8 @@ void tst_App::zoomAndCentre()
 
     QVERIFY2(triggerCentre(), failureMessage);
     const QPoint expectedOffset(
-        canvas->splitter()->position() * tileCanvas->width() / 2 - (tilesetProject->widthInPixels() * currentPane->integerZoomLevel()) / 2,
-        tileCanvas->height() / 2 - (tilesetProject->heightInPixels() * currentPane->integerZoomLevel()) / 2);
+        canvas->splitter()->position() * tileCanvas->width() / 2 - (tilesetProject->bounds().width() * currentPane->integerZoomLevel()) / 2,
+        tileCanvas->height() / 2 - (tilesetProject->bounds().height() * currentPane->integerZoomLevel()) / 2);
     // A one pixel difference was introduced here at some point.. not sure why, but it's not important.
     const int xDiff = qAbs(currentPane->integerOffset().x() - expectedOffset.x());
     const int yDiff = qAbs(currentPane->integerOffset().y() - expectedOffset.y());
@@ -2124,7 +2124,7 @@ void tst_App::penWhilePannedAndZoomed()
         QVERIFY(tilesetProject->hasUnsavedChanges());
 
         QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-        QVERIFY2(tilesetProject->tileAt(cursorPos), qPrintable(QString::fromLatin1("No tile at x %1 y %2")
+        QVERIFY2(tilesetProject->tileObjectAtPixel(cursorPos), qPrintable(QString::fromLatin1("No tile at x %1 y %2")
                                                                .arg(cursorPos.x()).arg(cursorPos.y())));
     } else {
         // Draw a pixel on.
@@ -2161,7 +2161,7 @@ void tst_App::useTilesetSwatch()
     QTest::mouseMove(window, tilesetTileSceneCentre(1, 0));
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, tilesetTileSceneCentre(1, 0));
     const QPoint tilesetCentre = tilesetTileCentre(1, 0);
-    const Tile *expectedTile = tilesetProject->tilesetTileAt(tilesetCentre.x(), tilesetCentre.y());
+    const TileObject *expectedTile = tilesetProject->tilesetTileAt(tilesetCentre.x(), tilesetCentre.y());
     QCOMPARE(tileCanvas->penTile(), expectedTile);
 
     // Draw it on the canvas.
@@ -2169,8 +2169,8 @@ void tst_App::useTilesetSwatch()
     QTest::mouseMove(window, cursorWindowPos);
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
     QVERIFY(tilesetProject->hasUnsavedChanges());
-    QVERIFY(tilesetProject->tileAt(cursorPos));
-    QCOMPARE(tilesetProject->tileAt(cursorPos), expectedTile);
+    QVERIFY(tilesetProject->tileObjectAtPixel(cursorPos));
+    QCOMPARE(tilesetProject->tileObjectAtPixel(cursorPos), expectedTile);
 
     // Draw some pixels on the tile we just painted onto the canvas.
     QVERIFY2(switchMode(TileCanvas::PixelMode), failureMessage);
@@ -2431,7 +2431,7 @@ void tst_App::eraseImageCanvas()
     QVERIFY2(changeToolSize(1), failureMessage);
 
     // Make sure that the edges of the canvas can be erased.
-    setCursorPosInScenePixels(project->widthInPixels() - 1, 0);
+    setCursorPosInScenePixels(project->bounds().width() - 1, 0);
     QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
 
@@ -2801,8 +2801,8 @@ void tst_App::selectionToolImageCanvas()
         // Pressing outside the canvas should make the selection start at {0, 0}.
         setCursorPosInScenePixels(data.pressScenePos);
         QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-        const QPoint boundExpectedPressPos = QPoint(qBound(0, data.pressScenePos.x(), project->widthInPixels()),
-            qBound(0, data.pressScenePos.y(), project->heightInPixels()));
+        const QPoint boundExpectedPressPos = QPoint(qBound(0, data.pressScenePos.x(), project->bounds().width()),
+            qBound(0, data.pressScenePos.y(), project->bounds().height()));
         const QRect expectedPressArea = QRect(boundExpectedPressPos, QSize(0, 0));
         QVERIFY2(canvas->selectionArea() == expectedPressArea, selectionAreaFailureMessage(canvas, data, expectedPressArea));
 
@@ -3264,9 +3264,9 @@ void tst_App::flipOnTransparentBackground()
     QVERIFY2(panTopLeftTo(10, 10), failureMessage);
 
     // Create the flipped image that we expect to see.
-    QImage image(project->widthInPixels(), project->heightInPixels(), QImage::Format_ARGB32_Premultiplied);
+    QImage image(project->bounds().width(), project->bounds().height(), QImage::Format_ARGB32_Premultiplied);
     image.fill(Qt::transparent);
-    image.setPixelColor(0, project->heightInPixels() - 1, Qt::red);
+    image.setPixelColor(0, project->bounds().height() - 1, Qt::red);
 
     // Draw a red dot.
     setCursorPosInScenePixels(0, 0);
@@ -3276,11 +3276,11 @@ void tst_App::flipOnTransparentBackground()
     // Select the image.
 //    QVERIFY2(selectArea(QRect(0, 0, canvas->width(), canvas->height())), failureMessage);
     QVERIFY2(triggerSelectAll(), failureMessage);
-    QCOMPARE(canvas->selectionArea(), QRect(0, 0, project->widthInPixels(), project->heightInPixels()));
+    QCOMPARE(canvas->selectionArea(), QRect(0, 0, project->bounds().width(), project->bounds().height()));
 
     // Flip the image.
     QVERIFY2(triggerFlipVertically(), failureMessage);
-    QCOMPARE(canvas->currentProjectImage()->pixelColor(0, project->heightInPixels() - 1), QColor(Qt::red));
+    QCOMPARE(canvas->currentProjectImage()->pixelColor(0, project->bounds().height() - 1), QColor(Qt::red));
 }
 
 void tst_App::selectionEdgePan_data()
@@ -3775,8 +3775,8 @@ void tst_App::fillImageCanvas()
     setCursorPosInScenePixels(0, 0);
     mouseEvent(canvas, cursorWindowPos, MouseClick);
     QCOMPARE(canvas->currentProjectImage()->pixelColor(0, 0), QColor(Qt::black));
-    QCOMPARE(canvas->currentProjectImage()->pixelColor(project->widthInPixels() - 1,
-                                                       project->heightInPixels() - 1), QColor(Qt::black));
+    QCOMPARE(canvas->currentProjectImage()->pixelColor(project->bounds().width() - 1,
+                                                       project->bounds().height() - 1), QColor(Qt::black));
 }
 
 void tst_App::fillLayeredImageCanvas()
