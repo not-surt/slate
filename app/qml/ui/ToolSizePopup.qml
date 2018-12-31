@@ -58,6 +58,7 @@ Popup {
                 from: 0
                 to: canvas ? canvas.maxToolSize : 1
                 stepSize: 1
+                snapMode: RangeSlider.SnapAlways
                 visible: canvas && canvas.toolSizeUsePressure
                 Layout.fillWidth: true
                 first.value: canvas ? canvas.lowerToolSize : 1

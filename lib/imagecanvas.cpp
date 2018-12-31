@@ -2230,10 +2230,12 @@ void ImageCanvas::applyCurrentTool(QUndoStack *const alternateStack)
         break;
     }
 
-    if (alternateStack)
-        alternateStack->push(command);
-    else
-        mProject->addChange(command);
+    if (command) {
+        if (alternateStack)
+            alternateStack->push(command);
+        else
+            mProject->addChange(command);
+    }
 }
 
 // This function actually operates on the image.
