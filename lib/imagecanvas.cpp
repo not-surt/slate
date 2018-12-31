@@ -530,6 +530,34 @@ void ImageCanvas::setToolBlendMode(const ImageCanvas::ToolBlendMode &toolBlendMo
     emit toolBlendModeChanged();
 }
 
+int ImageCanvas::currentColourIndex() const
+{
+    return mCurrentColourIndex;
+}
+
+int ImageCanvas::currentTileIndex() const
+{
+    return mCurrentTileIndex;
+}
+
+void ImageCanvas::setCurrentColourIndex(const int currentColourIndex)
+{
+    if (mCurrentColourIndex == currentColourIndex)
+        return;
+
+    mCurrentColourIndex = currentColourIndex;
+    emit currentColourIndexChanged(mCurrentColourIndex);
+}
+
+void ImageCanvas::setCurrentTileIndex(const int currentTileIndex)
+{
+    if (mCurrentTileIndex == currentTileIndex)
+        return;
+
+    mCurrentTileIndex = currentTileIndex;
+    emit currentTileIndexChanged(mCurrentTileIndex);
+}
+
 ImageCanvas::Tool ImageCanvas::lastFillToolUsed() const
 {
     return mLastFillToolUsed;
@@ -1126,7 +1154,7 @@ int ImageCanvas::currentLayerIndex() const
     return -1;
 }
 
-void ImageCanvas::paintBackground(QPainter *const painter, const QRect rect) const
+void ImageCanvas::paintBackground(QPainter *const painter, const QRect &rect) const
 {
     QBrush brush(mCheckerPixmap);
     // Invert painter transform for background pattern so unaffected by painter zoom and pan
@@ -1136,12 +1164,12 @@ void ImageCanvas::paintBackground(QPainter *const painter, const QRect rect) con
     painter->fillRect(mProject->bounds(), brush);
 }
 
-void ImageCanvas::paintContent(QPainter *const painter, const QRect rect)
+void ImageCanvas::paintContent(QPainter *const painter, const QRect &rect)
 {
     painter->drawImage(QPointF(0, 0), getComposedImage());
 }
 
-void ImageCanvas::paintContentWithPreview(QPainter *const painter, const QRect rect)
+void ImageCanvas::paintContentWithPreview(QPainter *const painter, const QRect &rect)
 {
     static const QSet<Tool> previewTools{PenTool, EraserTool};
     QUndoStack tempUndoStack;
@@ -2213,10 +2241,12 @@ void ImageCanvas::applyCurrentTool(QUndoStack *const alternateStack)
         break;
     }
 
-    if (alternateStack)
-        alternateStack->push(command);
-    else
-        mProject->addChange(command);
+    if (command) {
+        if (alternateStack)
+            alternateStack->push(command);
+        else
+            mProject->addChange(command);
+    }
 }
 
 // This function actually operates on the image.

@@ -37,7 +37,7 @@ Item {
         source: project && project.typeString.length > 0 ? project.typeString + "Canvas.qml" : ""
         focus: true
         width: parent.width
-        height: parent.height - statusBar.height
+        height: parent.height// - statusBar.height
 
         property QtObject args: QtObject {
             // We want this property to be updated before "source" above, as we need
@@ -77,13 +77,13 @@ Item {
         color: "#ccc"
     }
 
-    StatusBar {
-        id: statusBar
-//        z: 1
-        parent: ApplicationWindow.window.contentItem
-        width: canvasContainer.width
-        anchors.bottom: parent.bottom
-        project: canvasContainer.project
-        canvas: canvasContainer.canvas
-    }
+//    StatusBar {
+//        id: statusBar
+////        z: 1
+//        parent: ApplicationWindow.window.contentItem
+//        width: canvasContainer.width
+//        anchors.bottom: parent.bottom
+//        project: canvasContainer.project
+//        canvas: canvasContainer.canvas
+//    }
 }

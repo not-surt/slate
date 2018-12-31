@@ -588,20 +588,20 @@ bool TestHelper::drawPixelAtCursorPos()
             return false;
 
         // Draw on some pixels of the current tile.
-        const QImage originalTileImage = targetTile->tileset()->image()->copy(targetTile->sourceRect());
+        const QImage originalTileImage = targetTile->tileset()->image().copy(targetTile->sourceRect());
         QImage expectedImage = originalTileImage;
         expectedImage.setPixelColor(tileCanvas->scenePosToTilePixelPos(cursorPos), tileCanvas->penForegroundColour());
 
         QTest::mouseMove(window, cursorPos);
         QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-        VERIFY(targetTile->tileset()->image()->copy(targetTile->sourceRect()) != originalTileImage);
-        VERIFY(targetTile->tileset()->image()->copy(targetTile->sourceRect()) == expectedImage);
+        VERIFY(targetTile->tileset()->image().copy(targetTile->sourceRect()) != originalTileImage);
+        VERIFY(targetTile->tileset()->image().copy(targetTile->sourceRect()) == expectedImage);
         VERIFY(tilesetProject->hasUnsavedChanges());
         // Don't check that the title contains the change marker, as that won't happen
         // until release if this is the first change in the stack.
 
         QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-        VERIFY(targetTile->tileset()->image()->copy(targetTile->sourceRect()) == expectedImage);
+        VERIFY(targetTile->tileset()->image().copy(targetTile->sourceRect()) == expectedImage);
         VERIFY(tilesetProject->hasUnsavedChanges());
         VERIFY(window->title().contains("*"));
     } else {
@@ -648,7 +648,7 @@ bool TestHelper::drawTileAtCursorPos()
     QTest::mouseMove(window, cursorWindowPos);
     QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    const int penId = tileCanvas->penTile()->id();
+    const int penId = canvas->currentTileIndex();
     const TileObject *tile = tilesetProject->tileObjectAtPixel(cursorPos);
     VERIFY(tile);
     VERIFY(tile->id() == penId);
@@ -754,21 +754,6 @@ bool TestHelper::everyPixelIs(const QImage &image, const QColor &colour)
     }
 
     return true;
-}
-
-bool TestHelper::compareSwatches(const Swatch &actualSwatch, const Swatch &expectedSwatch)
-{
-    if (actualSwatch.colours() == expectedSwatch.colours())
-        return true;
-
-    QString message;
-    message = "Swatches are not equal:";
-    message += "\n  actual ";
-    QDebug(&message) << actualSwatch.colours();
-    message += "\nexpected ";
-    QDebug(&message) << expectedSwatch.colours();
-    failureMessage = qPrintable(message);
-    return false;
 }
 
 bool TestHelper::enableAutoSwatch()
@@ -1062,16 +1047,16 @@ QPoint TestHelper::mapToTile(const QPoint &cursorPos) const
 QPoint TestHelper::tileSceneCentre(int xPosInTiles, int yPosInTiles) const
 {
     return tileCanvas->mapToScene(QPointF(
-        xPosInTiles * tilesetProject->tileWidth() + tilesetProject->tileWidth() / 2,
-        yPosInTiles * tilesetProject->tileHeight() + tilesetProject->tileHeight() / 2)).toPoint()
+        xPosInTiles * tilesetProject->tileSize().width() + tilesetProject->tileSize().width() / 2,
+        yPosInTiles * tilesetProject->tileSize().height() + tilesetProject->tileSize().height() / 2)).toPoint()
             + tileCanvas->firstPane()->integerOffset();
 }
 
 QPoint TestHelper::tileCanvasCentre(int xPosInTiles, int yPosInTiles) const
 {
     return QPoint(
-        xPosInTiles * tilesetProject->tileWidth() + tilesetProject->tileWidth() / 2,
-                yPosInTiles * tilesetProject->tileHeight() + tilesetProject->tileHeight() / 2);
+        xPosInTiles * tilesetProject->tileSize().width() + tilesetProject->tileSize().width() / 2,
+                yPosInTiles * tilesetProject->tileSize().height() + tilesetProject->tileSize().height() / 2);
 }
 
 QPointF TestHelper::canvasCentre() const
@@ -1126,15 +1111,15 @@ void TestHelper::setCursorPosInScenePixels(const QPoint &posInScenePixels)
 QPoint TestHelper::tilesetTileCentre(int xPosInTiles, int yPosInTiles) const
 {
     return QPoint(
-        xPosInTiles * tilesetProject->tileWidth() + tilesetProject->tileWidth() / 2,
-        yPosInTiles * tilesetProject->tileHeight() + tilesetProject->tileHeight() / 2);
+        xPosInTiles * tilesetProject->tileSize().width() + tilesetProject->tileSize().width() / 2,
+        yPosInTiles * tilesetProject->tileSize().height() + tilesetProject->tileSize().height() / 2);
 }
 
 QPoint TestHelper::tilesetTileSceneCentre(int xPosInTiles, int yPosInTiles) const
 {
     return tilesetSwatchFlickable->mapToScene(QPointF(
-         xPosInTiles * tilesetProject->tileWidth() + tilesetProject->tileWidth() / 2,
-         yPosInTiles * tilesetProject->tileHeight() + tilesetProject->tileHeight() / 2)).toPoint();
+         xPosInTiles * tilesetProject->tileSize().width() + tilesetProject->tileSize().width() / 2,
+         yPosInTiles * tilesetProject->tileSize().height() + tilesetProject->tileSize().height() / 2)).toPoint();
 }
 
 int TestHelper::digits(int number)

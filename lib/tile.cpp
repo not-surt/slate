@@ -23,20 +23,11 @@
 
 #include <QQmlEngine>
 
-TileObject::TileObject() :
-    mId(-1),
-    mTileset(nullptr)
-{
-    QQmlEngine::setObjectOwnership(this, QQmlEngine::CppOwnership);
-}
-
-TileObject::TileObject(int id, const Tileset *tileset, const QRect &sourceRect, QObject *parent) :
-    QObject(parent),
+TileObject::TileObject(const int id, const Tileset *const tileset, const QRect &sourceRect) :
     mId(id),
     mSourceRect(sourceRect),
     mTileset(tileset)
 {
-    QQmlEngine::setObjectOwnership(this, QQmlEngine::CppOwnership);
 }
 
 bool TileObject::isValid() const
@@ -60,7 +51,7 @@ QColor TileObject::pixelColor(int x, int y) const
         || y < 0 || y >= mSourceRect.height())
         return QColor();
 
-    return mTileset->image()->pixelColor(mSourceRect.x() + x, mSourceRect.y() + y);
+    return mTileset->image().pixelColor(mSourceRect.x() + x, mSourceRect.y() + y);
 }
 
 QColor TileObject::pixelColor(const QPoint &position) const
@@ -71,12 +62,12 @@ QColor TileObject::pixelColor(const QPoint &position) const
 const Tileset *TileObject::tileset() const
 {
     // We use QPointer as an extra sanity check, hence the extra null check here.
-    return isValid() && mTileset ? mTileset.data() : nullptr;
+    return isValid() && mTileset ? mTileset : nullptr;
 }
 
 QImage TileObject::image() const
 {
-    return isValid() ? mTileset->image()->copy(mSourceRect) : QImage();
+    return isValid() ? mTileset->image().copy(mSourceRect) : QImage();
 }
 
 int TileObject::invalidId()
@@ -84,10 +75,10 @@ int TileObject::invalidId()
     return -1;
 }
 
-QDebug operator<<(QDebug debug, const TileObject *tile)
+QDebug operator<<(QDebug debug, const TileObject &tile)
 {
-    debug.nospace() << "(Tile id=" << tile->id()
-        << ", sourceRect=" << tile->sourceRect()
-        << "tileset=" << tile->tileset()->fileName() << ")";
+    debug.nospace() << "(Tile id=" << tile.id()
+        << ", sourceRect=" << tile.sourceRect()
+        << "tileset=" << tile.tileset()->fileName() << ")";
     return debug.space();
 }

@@ -25,7 +25,6 @@
 #include <QQmlFileSelector>
 #include <QUndoStack>
 
-#include "autoswatchmodel.h"
 #include "brush.h"
 #include "buildinfo.h"
 #include "canvaspane.h"
@@ -33,6 +32,7 @@
 #include "filevalidator.h"
 #include "imagecanvas.h"
 #include "imagelayer.h"
+#include "imagepainter.h"
 #include "imageproject.h"
 #include "keysequenceeditor.h"
 #include "layeredimagecanvas.h"
@@ -47,7 +47,6 @@
 #include "splitter.h"
 #include "spriteimage.h"
 #include "spriteimageprovider.h"
-#include "swatchmodel.h"
 #include "texturedfillparameters.h"
 #include "texturedfillpreviewitem.h"
 #include "tile.h"
@@ -55,7 +54,6 @@
 #include "tilegrid.h"
 #include "tileset.h"
 #include "tilesetproject.h"
-#include "tilesetswatchimage.h"
 
 Q_LOGGING_CATEGORY(lcApplication, "app.application")
 
@@ -83,10 +81,10 @@ Application::Application(int &argc, char **argv, const QString &applicationName)
     mSettings(new ApplicationSettings),
     mEngine(new QQmlApplicationEngine)
 {
-    qmlRegisterType<AutoSwatchModel>("App", 1, 0, "AutoSwatchModel");
     qmlRegisterType<FileValidator>("App", 1, 0, "FileValidator");
     qmlRegisterType<ImageCanvas>();
     qmlRegisterType<ImageCanvas>("App", 1, 0, "ImageCanvas");
+    qmlRegisterType<ImagePainter>("App", 1, 0, "ImagePainter");
     qmlRegisterType<CanvasPaneItem>("App", 1, 0, "CanvasPaneItem");
     qmlRegisterType<KeySequenceEditor>("App", 1, 0, "KeySequenceEditor");
     qmlRegisterType<LayeredImageCanvas>("App", 1, 0, "LayeredImageCanvas");
@@ -97,13 +95,10 @@ Application::Application(int &argc, char **argv, const QString &applicationName)
     qmlRegisterType<SaturationLightnessPicker>("App", 1, 0, "SaturationLightnessPickerTemplate");
     qmlRegisterType<SpriteImage>("App", 1, 0, "SpriteImage");
     qmlRegisterType<Splitter>();
-    qmlRegisterType<Swatch>();
-    qmlRegisterType<SwatchModel>("App", 1, 0, "SwatchModel");
     qmlRegisterType<TexturedFillPreviewItem>("App", 1, 0, "TexturedFillPreviewItem");
     qmlRegisterType<TileCanvas>();
     qmlRegisterType<TileCanvas>("App", 1, 0, "TileCanvas");
     qmlRegisterType<TileGrid>("App", 1, 0, "TileGrid");
-    qmlRegisterType<TilesetSwatchImage>("App", 1, 0, "TilesetSwatchImage");
     qmlRegisterUncreatableType<AnimationPlayback>("App", 1, 0, "AnimationPlayback", QLatin1String("Cannot create objects of type AnimationPlayback"));
     qmlRegisterUncreatableType<Brush>("App", 1, 0, "Brush", "Can't create instances of Brush");
     qmlRegisterUncreatableType<CanvasPane>("App", 1, 0, "CanvasPane", "Can't create instances of CanvasPane");
@@ -116,6 +111,8 @@ Application::Application(int &argc, char **argv, const QString &applicationName)
         QLatin1String("Cannot create objects of type TexturedFillParameters"));
     qmlRegisterSingletonType<BuildInfo>("App", 1, 0, "BuildInfo", buildInfoSingletonProvider);
 
+    qmlRegisterUncreatableType<QAbstractItemModel>("App", 1, 0, "AbstractItemModel", QLatin1String("Cannot create objects of type AbstractItemModel"));
+
     qRegisterMetaType<ApplicationSettings*>();
     qRegisterMetaType<ImageLayer*>();
     qRegisterMetaType<Project::Type>();
@@ -124,8 +121,6 @@ Application::Application(int &argc, char **argv, const QString &applicationName)
     // QMetaProperty::read: Unable to handle unregistered datatype 'QUndoStack*' for property 'Project_QML_108::undoStack'
     // if I don't do this.
     qRegisterMetaType<QUndoStack*>();
-    qRegisterMetaType<TileObject*>();
-    qRegisterMetaType<Tileset*>();
     qRegisterMetaType<QVector<QColor>>();
 
     if (QFontDatabase::addApplicationFont(":/fonts/FontAwesome.otf") == -1) {

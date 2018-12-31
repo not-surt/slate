@@ -37,22 +37,22 @@ class SLATE_EXPORT TilesetProject : public Project
     Q_OBJECT
     Q_PROPERTY(int tilesWide READ tilesWide NOTIFY tilesWideChanged)
     Q_PROPERTY(int tilesHigh READ tilesHigh NOTIFY tilesHighChanged)
-    Q_PROPERTY(int tileWidth READ tileWidth NOTIFY tileWidthChanged)
-    Q_PROPERTY(int tileHeight READ tileHeight NOTIFY tileHeightChanged)
+    Q_PROPERTY(QSize tileSize READ tileSize NOTIFY tileSizeChanged)
     Q_PROPERTY(QUrl tilesetUrl READ tilesetUrl NOTIFY tilesetUrlChanged)
-    Q_PROPERTY(Tileset *tileset READ tileset NOTIFY tilesetChanged)
+//    Q_PROPERTY(Tileset *tileset READ tileset NOTIFY tilesetChanged)
 
 public:
     TilesetProject();
     ~TilesetProject() override;
+
+    virtual QAbstractItemModel *tileSetModel() const override;
 
     Type type() const override;
     int tilesWide() const;
     void setTilesWide(int tilesWide);
     int tilesHigh() const;
     void setTilesHigh(int tilesHigh);
-    int tileWidth() const;
-    int tileHeight() const;
+    QSize tileSize() const;
 
     QSize size() const override;
     QSize pixelSize() const;
@@ -70,25 +70,17 @@ public:
     TileObject *tileObjectAtPixel(const QPoint &pixel);
     QVector<int> tiles() const;
 
-    QPointF pixelToTile(const QPointF pixel) const;
-    QPoint pixelToTile(const QPoint pixel) const;
-
-    bool isTilePosWithinBounds(const QPoint &tilePos) const;
-    int tileIndexAt(const QPoint &tilePos) const;
-    void setTileIndexAt(const QPoint &tilePos, const int index);
-    const TileObject *tileObjectAtIndex(const int index) const;
-    TileObject *tileObjectAtIndex(const int index);
+    int tile(const QPoint &tileCoord) const;
+    void setTile(const QPoint &tileCoord, const int index);
     const TileObject *tileObjectAt(const QPoint &tilePos) const;
-    TileObject *tileObjectAt(const QPoint &tilePos);
 
-    Q_INVOKABLE TileObject *tilesetTileAt(int xInPixels, int yInPixels);
-    Q_INVOKABLE void duplicateTile(TileObject *sourceTile, int xInPixels, int yInPixels);
-    Q_INVOKABLE void rotateTileCounterClockwise(TileObject *tile);
-    Q_INVOKABLE void rotateTileClockwise(TileObject *tile);
+    TileObject *tilesetTileAt(int xInPixels, int yInPixels);
 
     QPoint tileIdToTilePos(int tileId) const;
     TileObject *tilesetTileAtTilePos(const QPoint &tilePos) const;
     TileObject *tilesetTileAtId(int id);
+
+    TileObject tileObjectForIndex(const int index);
 
     // Sets all tiles to -1.
     void clearTiles();
@@ -96,8 +88,7 @@ public:
 signals:
     void tilesWideChanged();
     void tilesHighChanged();
-    void tileWidthChanged();
-    void tileHeightChanged();
+    void tileSizeChanged();
     void tilesetUrlChanged();
     void tilesetChanged(Tileset *oldTileset, Tileset *newTileset);
     void tilesCleared();
@@ -120,16 +111,12 @@ private:
     int tileIdFromTilePosInTileset(int column, int row) const;
 
     void createTilesetTiles(int tilesetTilesWide, int tilesetTilesHigh);
-    void setTileWidth(int tileWidth);
-    void setTileHeight(int tileHeight);
     void setTilesetUrl(const QUrl &tilesetUrl);
     void setTileset(Tileset *tileset);
     void changeSize(const QSize &size, const QVector<int> &tiles = QVector<int>());
 
     int mTilesWide;
     int mTilesHigh;
-    int mTileWidth;
-    int mTileHeight;
     QUrl mTilesetUrl;
     QVector<int> mTiles;
     QHash<int, TileObject*> mTileDatabase;

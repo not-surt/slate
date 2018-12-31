@@ -100,7 +100,8 @@ Panel {
 
         Button {
             objectName: "newLayerButton"
-            text: "+"
+            text: "\uf067"
+            font.family: "FontAwesome"
             flat: true
             focusPolicy: Qt.NoFocus
             hoverEnabled: true

@@ -174,6 +174,17 @@ ApplicationWindow {
         imageSizePopup: imageSizePopup
     }
 
+    footer: Ui.StatusBar {
+        id: statusBar
+//        z: 1
+//        parent: ApplicationWindow.window.contentItem
+//        width: canvasContainer.width
+//        anchors.bottom: parent.bottom
+        project: canvasContainer.project
+//        canvas: canvasContainer.canvas
+
+    }
+
     RowLayout {
         anchors.fill: parent
         spacing: 0
@@ -192,54 +203,76 @@ ApplicationWindow {
         ColumnLayout {
             id: panelColumnLayout
             objectName: "panelColumnLayout"
-            // Work around https://bugreports.qt.io/browse/QTBUG-70445
-            // by doing the spacing ourselves
-            spacing: 0
-
             Layout.minimumWidth: 240
-            Layout.maximumWidth: 240
-            Layout.alignment: Qt.AlignTop
+            Layout.fillHeight: true
 
             Ui.ColourPanel {
                 id: colourPanel
                 canvas: window.canvas
                 project: window.project
 
-                Layout.fillWidth: true
-                Layout.minimumHeight: expanded ? header.implicitHeight + 200 : -1
                 Layout.maximumHeight: expanded ? implicitHeight : header.implicitHeight
-                Layout.fillHeight: expanded
             }
 
-            Ui.SwatchPanel {
-                id: swatchesPanel
-                canvas: window.canvas
-                project: window.project
+            Ui.Panel {
+                title: qsTr("Palette")
+                topPadding: 0
+                leftPadding: 0
+                rightPadding: 0
+                bottomPadding: 6
 
-                Layout.fillWidth: true
-                Layout.minimumHeight: expanded ? header.implicitHeight + 200 : -1
-                Layout.maximumHeight: expanded ? implicitHeight : header.implicitHeight
-                Layout.fillHeight: expanded
-                Layout.topMargin: 5
-            }
-
-            Loader {
-                objectName: "tilesetSwatchLoader"
-                active: window.projectType === Project.TilesetType && window.canvas
-                sourceComponent: Ui.TilesetSwatch {
-                    id: tilesetSwatch
-                    tileCanvas: window.canvas
-                    project: window.project
-                    // Don't let e.g. the pencil icon go under us.
-                    z: canvasContainer.z - 1
+                contentItem: Ui.Palette {
+                    z: 100
+                    id: colourPalette
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    model: project ? project.paletteModel : null
+                    delegate: Ui.ColourPaletteDelegate {}
+//                    columns: project ? project.paletteModel.columnCount() : 4
+//                    swatchSize: project ? project.paletteModel.swatchSize : 8
+//                    currentIndex: canvas.currentColourIndex
                 }
 
-                Layout.preferredWidth: active ? colourPanel.implicitWidth : 0
-                Layout.fillWidth: true
-                Layout.minimumHeight: active && item.expanded ? item.header.implicitHeight + 300 : -1
-                Layout.maximumHeight: active ? (item.expanded ? -1 : item.header.implicitHeight) : 0
-                Layout.fillHeight: active && item.expanded
-                Layout.topMargin: active ? 5 : 0
+                Binding {
+                    target: canvas
+                    property: "currentColourIndex"
+                    value: colourPalette.currentIndex
+                }
+
+                settingsPopup: Popup {
+                    contentItem: Label { text: "Poo!" }
+                }
+            }
+
+            Ui.Panel {
+                visible: window.projectType === Project.TilesetType && window.canvas
+                title: qsTr("Tileset")
+                topPadding: 0
+                leftPadding: 0
+                rightPadding: 0
+                bottomPadding: 6
+
+                contentItem: Ui.Palette {
+                    z: 100
+                    id: tileSetPalette
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    model: project ? project.tileSetModel : null
+                    delegate: Ui.TileSetPaletteDelegate {}
+//                    columns: project ? project.tileSetModel.columnCount() : 4
+//                    swatchSize: project ? project.tileSetModel.swatchSize : 8
+//                    currentIndex: canvas.currentTileIndex
+                }
+
+                Binding {
+                    target: canvas
+                    property: "currentTileIndex"
+                    value: tileSetPalette.currentIndex
+                }
+
+                settingsPopup: Popup {
+
+                }
             }
 
             Loader {

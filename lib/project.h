@@ -32,12 +32,12 @@
 
 #include "guide.h"
 #include "slate-global.h"
-#include "swatch.h"
 
 Q_DECLARE_LOGGING_CATEGORY(lcProject)
 Q_DECLARE_LOGGING_CATEGORY(lcProjectLifecycle)
 
 class ApplicationSettings;
+class QAbstractItemModel;
 
 class SLATE_EXPORT Project : public QObject
 {
@@ -54,7 +54,8 @@ class SLATE_EXPORT Project : public QObject
     Q_PROPERTY(QSize size READ size WRITE resize NOTIFY sizeChanged)
     Q_PROPERTY(QUndoStack *undoStack READ undoStack CONSTANT)
     Q_PROPERTY(ApplicationSettings *settings READ settings WRITE setSettings NOTIFY settingsChanged)
-    Q_PROPERTY(Swatch *swatch READ swatch CONSTANT)
+    Q_PROPERTY(QAbstractItemModel *paletteModel READ paletteModel NOTIFY paletteModelChanged)
+    Q_PROPERTY(QAbstractItemModel *tileSetModel READ tileSetModel NOTIFY tileSetModelChanged)
 
 public:
     enum Type {
@@ -67,6 +68,9 @@ public:
     Q_ENUM(Type)
 
     Project();
+
+    virtual QAbstractItemModel *paletteModel() const;
+    virtual QAbstractItemModel *tileSetModel() const;
 
     virtual Type type() const;
     QString typeString() const;
@@ -92,9 +96,6 @@ public:
     virtual void moveGuide(const Guide &guide, int to);
     virtual void removeGuide(const Guide &guide);
 
-    Swatch *swatch();
-    const Swatch *swatch() const;
-
     virtual int currentLayerIndex() const;
 
     // Used by animation system (only image projects need to implement this)
@@ -114,13 +115,6 @@ public:
 
     QJsonObject *cachedProjectJson();
 
-    enum SwatchImportFormat {
-        SlateSwatch,
-        PaintNetSwatch
-    };
-
-    Q_ENUM(SwatchImportFormat)
-
 signals:
     void projectCreated();
     void projectLoaded();
@@ -137,6 +131,8 @@ signals:
     void guidesChanged();
     void readyForWritingToJson(QJsonObject *projectJson);
     void aboutToBeginMacro(const QString &text);
+    void paletteModelChanged(QAbstractItemModel *paletteModel);
+    void tileSetModelChanged(QAbstractItemModel *tileSetModel);
 
 public slots:
     void load(const QUrl &url);
@@ -144,9 +140,6 @@ public slots:
     virtual void save();
     void saveAs(const QUrl &url);
     virtual void revert();
-
-    void importSwatch(SwatchImportFormat format, const QUrl &swatchUrl);
-    void exportSwatch(const QUrl &swatchUrl);
 
 protected:
     void error(const QString &message);
@@ -167,11 +160,6 @@ protected:
         ErrorOutOnSerialisationFailures
     };
 
-    bool readJsonSwatch(const QJsonObject &projectJson, SerialisationFailurePolicy serialisationFailurePolicy);
-    void writeJsonSwatch(QJsonObject &projectJson) const;
-
-    bool readPaintNetSwatch(QFile &file);
-
     ApplicationSettings *mSettings;
 
     bool mFromNew;
@@ -191,8 +179,6 @@ protected:
     bool mHadUnsavedChangesBeforeMacroBegan;
 
     QVector<Guide> mGuides;
-
-    Swatch mSwatch;
 };
 
 #endif // PROJECT_H

@@ -37,8 +37,6 @@ TilesetProject::TilesetProject() :
     Project(),
     mTilesWide(0),
     mTilesHigh(0),
-    mTileWidth(0),
-    mTileHeight(0),
     mTileMapImage(),
     mTileset(nullptr)
 {
@@ -52,6 +50,11 @@ TilesetProject::~TilesetProject()
     qCDebug(lcProjectLifecycle) << "destructing" << this;
 }
 
+QAbstractItemModel *TilesetProject::tileSetModel() const
+{
+    return mTileset;
+}
+
 Project::Type TilesetProject::type() const
 {
     return TilesetType;
@@ -62,10 +65,9 @@ void TilesetProject::createTilesetTiles(int tilesetTilesWide, int tilesetTilesHi
     Q_ASSERT(mTileDatabase.isEmpty());
     for (int row = 0; row < tilesetTilesHigh; ++row) {
         for (int column = 0; column < tilesetTilesWide; ++column) {
-            const int x = column * mTileWidth;
-            const int y = row * mTileHeight;
-            const int tileId = tileIdFromPosInTileset(x, y);
-            mTileDatabase.insert(tileId, new TileObject(tileId, mTileset, QRect(x, y, mTileWidth, mTileHeight), this));
+            const QPoint tileCoord = QPoint(column, row);
+            const int index = mTileset->indexFromTileCoord(tileCoord);
+            mTileDatabase.insert(index, new TileObject(index, mTileset, mTileset->tileCoordRect(tileCoord)));
         }
     }
     Q_ASSERT(!mTileDatabase.isEmpty());
@@ -115,12 +117,12 @@ void TilesetProject::createNew(QUrl tilesetUrl, int tileWidth, int tileHeight,
     Q_ASSERT(mUndoStack.count() == 0);
     Q_ASSERT(!mTileset);
 
-    setTileWidth(tileWidth);
-    setTileHeight(tileHeight);
     setTilesWide(canvasTilesWide);
     setTilesHigh(canvasTilesHigh);
     setTilesetUrl(tilesetUrl);
-    setTileset(new Tileset(tilesetUrl.toLocalFile(), tilesetTilesWide, tilesetTilesHigh, this));
+    const QImage image(tilesetUrl.toLocalFile());
+    const QSize tileSize(image.width() / tilesetTilesWide, image.height() / tilesetTilesHigh);
+    setTileset(new Tileset(tilesetUrl.toLocalFile(), image, tileSize, tilesetTilesWide, tilesetTilesWide * tilesetTilesHigh, this));
 
     createTilesetTiles(tilesetTilesWide, tilesetTilesHigh);
 
@@ -150,14 +152,13 @@ void TilesetProject::doLoad(const QUrl &url)
         return;
     }
 
+    qDebug() << url.toLocalFile();//////////////////////////////
     QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonFile.readAll());
     QJsonObject rootJson = jsonDoc.object();
     QJsonObject projectObject = JsonUtils::strictValue(rootJson, "project").toObject();
 
     setTilesWide(JsonUtils::strictValue(projectObject, "tilesWide").toInt());
     setTilesHigh(JsonUtils::strictValue(projectObject, "tilesHigh").toInt());
-    setTileWidth(JsonUtils::strictValue(projectObject, "tileWidth").toInt());
-    setTileHeight(JsonUtils::strictValue(projectObject, "tileHeight").toInt());
     setTilesetUrl(QUrl::fromLocalFile(JsonUtils::strictValue(projectObject, "tilesetPath").toString()));
     mUsingTempImage = false;
 
@@ -166,7 +167,12 @@ void TilesetProject::doLoad(const QUrl &url)
     QJsonObject tilesetObject = JsonUtils::strictValue(projectObject, "tileset").toObject();
     const int tilesetTilesWide = JsonUtils::strictValue(tilesetObject, "tilesWide").toInt();
     const int tilesetTilesHigh = JsonUtils::strictValue(tilesetObject, "tilesHigh").toInt();
-    Tileset *tempTileset = new Tileset(tilesetPath, tilesetTilesWide, tilesetTilesHigh, this);
+
+    const QImage image(tilesetPath);
+    const QSize tileSize(image.width() / tilesetTilesWide, image.height() / tilesetTilesHigh);
+    Tileset *tempTileset = new Tileset(tilesetPath, image, tileSize, tilesetTilesWide, tilesetTilesWide * tilesetTilesHigh, this);
+
+//    Tileset *tempTileset = new Tileset(tilesetPath, tilesetTilesWide, tilesetTilesHigh, this);
     if (tempTileset->isValid()) {
         setTileset(tempTileset);
     } else {
@@ -184,14 +190,11 @@ void TilesetProject::doLoad(const QUrl &url)
         Q_ASSERT(tileId != -2);
         mTiles[i] = tileId;
         if (tileId > -1) {
-            Q_ASSERT(mTileDatabase.contains(tileId));
+//            Q_ASSERT(mTileDatabase.contains(tileId));
         }
     }
 
     readGuides(projectObject);
-    // Allow older project files without swatch support (saved with version <= 0.2.1) to still be loaded.
-    if (!readJsonSwatch(projectObject, IgnoreSerialisationFailures))
-        return;
     mCachedProjectJson = projectObject;
 
     setUrl(url);
@@ -227,7 +230,7 @@ void TilesetProject::doSaveAs(const QUrl &url)
         }
     }
 
-    if (mTileset->image()->isNull()) {
+    if (mTileset->image().isNull()) {
         error(QString::fromLatin1("Failed to save project: tileset image is null"));
         return;
     }
@@ -257,7 +260,7 @@ void TilesetProject::doSaveAs(const QUrl &url)
         // Save the image in the same directory as the project, using the same base name as the project url.
         const QString path = projectSaveFileInfo.path() + "/" + projectSaveFileInfo.completeBaseName() + ".png";
         qCDebug(lcProject) << "saving temporary tileset image to" << path;
-        if (!mTileset->image()->save(path)) {
+        if (!mTileset->image().save(path)) {
             error(QString::fromLatin1("Failed to save project: failed to save tileset image %1").arg(path));
             return;
         }
@@ -266,7 +269,7 @@ void TilesetProject::doSaveAs(const QUrl &url)
         mTilesetUrl = QUrl::fromLocalFile(path);
         mUsingTempImage = false;
     } else {
-        if (!mTileset->image()->save(mTileset->fileName())) {
+        if (!mTileset->image().save(mTileset->fileName())) {
             error(QString::fromLatin1("Failed to save project: failed to save tileset image %1").arg(mTileset->fileName()));
             return;
         }
@@ -277,13 +280,13 @@ void TilesetProject::doSaveAs(const QUrl &url)
     QJsonObject projectObject;
     projectObject["tilesWide"] = mTilesWide;
     projectObject["tilesHigh"] = mTilesHigh;
-    projectObject["tileWidth"] = mTileWidth;
-    projectObject["tileHeight"] = mTileHeight;
+    projectObject["tileWidth"] = tileSize().width();
+    projectObject["tileHeight"] = tileSize().height();
     projectObject["tilesetPath"] = mTilesetUrl.toLocalFile();
 
     QJsonObject tilesetObject;
-    tilesetObject["tilesWide"] = mTileset->size().width();
-    tilesetObject["tilesHigh"] = mTileset->size().height();
+    tilesetObject["tilesWide"] = mTileset->imageSizeTiles().width();
+    tilesetObject["tilesHigh"] = mTileset->imageSizeTiles().height();
     projectObject.insert("tileset", tilesetObject);
 
     QJsonArray tileArray;
@@ -293,7 +296,6 @@ void TilesetProject::doSaveAs(const QUrl &url)
     projectObject.insert("tiles", tileArray);
 
     writeGuides(projectObject);
-    writeJsonSwatch(projectObject);
     emit readyForWritingToJson(&projectObject);
 
     rootJson.insert("project", projectObject);
@@ -323,15 +325,15 @@ void TilesetProject::doSaveAs(const QUrl &url)
 
 int TilesetProject::tileIdFromPosInTileset(int x, int y) const
 {
-    const int column = Utils::divFloor(x, mTileWidth);
-    const int row = Utils::divFloor(y, mTileHeight);
+    const int column = Utils::divFloor(x, tileSize().width());
+    const int row = Utils::divFloor(y, tileSize().height());
     return tileIdFromTilePosInTileset(column, row);
 }
 
 int TilesetProject::tileIdFromTilePosInTileset(int column, int row) const
 {
     // IDs are one-based.
-    return (row * tileset()->size().width() + column) + 1;
+    return (row * tileset()->tileSize().width() + column);
 }
 
 void TilesetProject::changeSize(const QSize &newSize, const QVector<int> &tiles)
@@ -443,37 +445,14 @@ void TilesetProject::setTilesHigh(int tilesHigh)
     emit sizeChanged();
 }
 
-int TilesetProject::tileWidth() const
+QSize TilesetProject::tileSize() const
 {
-    return mTileWidth;
-}
-
-void TilesetProject::setTileWidth(int width)
-{
-    if (width == mTileWidth)
-        return;
-
-    mTileWidth = width;
-    emit tileWidthChanged();
-}
-
-int TilesetProject::tileHeight() const
-{
-    return mTileHeight;
-}
-
-void TilesetProject::setTileHeight(int height)
-{
-    if (height == mTileHeight)
-        return;
-
-    mTileHeight = height;
-    emit tileHeightChanged();
+    return mTileset ? mTileset->tileSize() : QSize();
 }
 
 QSize TilesetProject::pixelSize() const
 {
-    return QSize(mTilesWide * mTileWidth, mTilesHigh * mTileHeight);
+    return QSize(mTilesWide * tileSize().width(), mTilesHigh * tileSize().height());
 }
 
 void TilesetProject::resize(const QSize &newSize)
@@ -507,7 +486,7 @@ QImage TilesetProject::exportedImage() const
     // tileset projects are a bit different in that the tileset is what's being
     // drawn on, so we're more interested in that than the collection of tiles
     // that the user has drawn onto the canvas, which is more a preview.
-    return *mTileset->image();
+    return mTileset->image();
 }
 
 QUrl TilesetProject::tilesetUrl() const
@@ -537,6 +516,8 @@ void TilesetProject::setTileset(Tileset *tileset)
     Tileset *old = mTileset;
     mTileset = tileset;
     emit tilesetChanged(old, mTileset);
+    emit tileSizeChanged();
+    emit tileSetModelChanged(mTileset);
 }
 
 const TileObject *TilesetProject::tileObjectAtPixel(const QPoint &pixel) const
@@ -545,7 +526,7 @@ const TileObject *TilesetProject::tileObjectAtPixel(const QPoint &pixel) const
         return nullptr;
     }
 
-    const QPoint tilePos(Utils::divFloor(pixel.x(), mTileWidth), Utils::divFloor(pixel.y(), mTileHeight));
+    const QPoint tilePos(Utils::divFloor(pixel.x(), tileSize().width()), Utils::divFloor(pixel.y(), tileSize().height()));
     return tileObjectAt(tilePos);
 }
 
@@ -554,42 +535,26 @@ TileObject *TilesetProject::tileObjectAtPixel(const QPoint &pixel)
     return const_cast<TileObject*>(static_cast<const TilesetProject*>(this)->tileObjectAtPixel(pixel));
 }
 
-bool TilesetProject::isTilePosWithinBounds(const QPoint &tilePos) const
+int TilesetProject::tile(const QPoint &tileCoord) const
 {
-    return tilePos.x() >= 0 && tilePos.x() < mTilesWide
-            && tilePos.y() >= 0 && tilePos.y() < mTilesHigh;
-}
-
-int TilesetProject::tileIndexAt(const QPoint &tilePos) const
-{
-    if (!isTilePosWithinBounds(tilePos))
+    if (!tileBounds().contains(tileCoord))
         return -1;
 
-    const int flatIndex = tilePos.y() * mTilesWide + tilePos.x();
+    const int flatIndex = tileCoord.y() * mTilesWide + tileCoord.x();
     Q_ASSERT(flatIndex < mTiles.size());
     return mTiles[flatIndex];
 //    return mTileMapImage.pixel(tilePos);
 }
 
-void TilesetProject::setTileIndexAt(const QPoint &tilePos, const int index)
+void TilesetProject::setTile(const QPoint &tileCoord, const int index)
 {
-    if(!isTilePosWithinBounds(tilePos))
+    if(!tileBounds().contains(tileCoord))
         return;
 
-    const int flatIndex = tilePos.y() * mTilesWide + tilePos.x();
+    const int flatIndex = tileCoord.y() * mTilesWide + tileCoord.x();
     Q_ASSERT(flatIndex < mTiles.size());
     mTiles[flatIndex] = index;
     //    mTileMapImage.setPixel(tilePos, index);
-}
-
-const TileObject *TilesetProject::tileObjectAtIndex(const int index) const
-{
-    return mTileDatabase.value(index);
-}
-
-TileObject *TilesetProject::tileObjectAtIndex(const int index)
-{
-    return const_cast<TileObject *>(const_cast<const TilesetProject*>(this)->tileObjectAtIndex(index));
 }
 
 QVector<int> TilesetProject::tiles() const
@@ -597,25 +562,10 @@ QVector<int> TilesetProject::tiles() const
     return mTiles;
 }
 
-QPointF TilesetProject::pixelToTile(const QPointF pixel) const
-{
-    return QPointF(pixel.x() / qreal(mTileWidth), pixel.y() / qreal(mTileHeight));
-}
-
-QPoint TilesetProject::pixelToTile(const QPoint pixel) const
-{
-    return QPoint(Utils::divFloor(pixel.x(), mTileWidth), Utils::divFloor(pixel.y(), mTileHeight));
-}
-
 const TileObject *TilesetProject::tileObjectAt(const QPoint &tilePos) const
 {
-    const int index = tileIndexAt(tilePos);
-    return tileObjectAtIndex(index);
-}
-
-TileObject *TilesetProject::tileObjectAt(const QPoint &tilePos)
-{
-    return const_cast<TileObject *>(const_cast<const TilesetProject*>(this)->tileObjectAt(tilePos));
+    const int index = tile(tilePos);
+    return mTileDatabase.value(index);
 }
 
 TileObject *TilesetProject::tilesetTileAt(int xInPixels, int yInPixels)
@@ -625,8 +575,8 @@ TileObject *TilesetProject::tilesetTileAt(int xInPixels, int yInPixels)
         return nullptr;
     }
 
-    if (xInPixels < 0 || xInPixels >= set->image()->width()
-        || yInPixels < 0 || yInPixels >= set->image()->height()) {
+    if (xInPixels < 0 || xInPixels >= set->image().width()
+        || yInPixels < 0 || yInPixels >= set->image().height()) {
         // qWarning() << Q_FUNC_INFO << xInPixels << "," << yInPixels << "is out of tileset swatch bounds";
         return nullptr;
     }
@@ -641,8 +591,8 @@ TileObject *TilesetProject::tilesetTileAtTilePos(const QPoint &tilePos) const
         return nullptr;
     }
 
-    if (tilePos.x() < 0 || tilePos.x() >= set->size().width()
-        || tilePos.y() < 0 || tilePos.y() >= set->size().height()) {
+    if (tilePos.x() < 0 || tilePos.x() >= set->imageSizeTiles().width()
+        || tilePos.y() < 0 || tilePos.y() >= set->imageSizeTiles().height()) {
         // qWarning() << Q_FUNC_INFO << tileX << "," << tileY << "is out of tileset swatch bounds";
         return nullptr;
     }
@@ -664,56 +614,17 @@ TileObject *TilesetProject::tilesetTileAtId(int id)
     return it.value();
 }
 
-void TilesetProject::duplicateTile(TileObject *sourceTile, int xInPixels, int yInPixels)
+TileObject TilesetProject::tileObjectForIndex(const int index)
 {
-    if (!sourceTile) {
-        return;
-    }
-
-    Tileset *set = tileset();
-    if (!set) {
-        return;
-    }
-
-    // Make sure that the input positions are multiples of the tile size.
-    QPoint sourceTopLeft = sourceTile->sourceRect().topLeft();
-    sourceTopLeft.rx() -= sourceTopLeft.x() % mTileWidth;
-    sourceTopLeft.ry() -= sourceTopLeft.y() % mTileHeight;
-
-    QPoint targetTopLeft(xInPixels, yInPixels);
-    targetTopLeft.rx() -= targetTopLeft.x() % mTileWidth;
-    targetTopLeft.ry() -= targetTopLeft.y() % mTileHeight;
-
-    set->copy(sourceTopLeft, targetTopLeft);
-}
-
-void TilesetProject::rotateTileCounterClockwise(TileObject *tile)
-{
-    Tileset *set = tileset();
-    if (!set)
-        return;
-
-    QPoint topLeft = tile->sourceRect().topLeft();
-    topLeft.rx() -= topLeft.x() % mTileWidth;
-    topLeft.ry() -= topLeft.y() % mTileHeight;
-    set->rotateCounterClockwise(topLeft);
-}
-
-void TilesetProject::rotateTileClockwise(TileObject *tile)
-{
-    Tileset *set = tileset();
-    if (!set)
-        return;
-
-    QPoint topLeft = tile->sourceRect().topLeft();
-    topLeft.rx() -= topLeft.x() % mTileWidth;
-    topLeft.ry() -= topLeft.y() % mTileHeight;
-    set->rotateClockwise(topLeft);
+    const QPoint tileCoord = mTileset->tileCoordFromIndex(index);
+    const int x = tileCoord.x() * tileSize().width();
+    const int y = tileCoord.y() * tileSize().height();
+    return TileObject(index, mTileset, mTileset->tileCoordRect(tileCoord));
 }
 
 QPoint TilesetProject::tileIdToTilePos(int tileId) const
 {
-    return QPoint((tileId - 1) % mTileset->size().width(), (tileId - 1) / mTileset->size().width());
+    return QPoint(tileId % mTileset->tileSize().width(), tileId / mTileset->tileSize().width());
 }
 
 void TilesetProject::clearTiles()

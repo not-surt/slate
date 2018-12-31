@@ -24,7 +24,6 @@
 
 #include "application.h"
 #include "project.h"
-#include "swatch.h"
 #include "testhelper.h"
 #include "utils.h"
 

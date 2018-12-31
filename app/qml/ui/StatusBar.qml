@@ -14,27 +14,27 @@ Pane {
     property Project project
     property ImageCanvas canvas
 
-    Rectangle {
-        parent: statusBarPane.background
-        width: parent.width
-        height: 1
-        color: "#444"
-    }
+//    Rectangle {
+//        parent: statusBarPane.background
+//        width: parent.width
+//        height: 1
+//        color: "#444"
+//    }
 
-    Rectangle {
-        parent: statusBarPane.background
-        x: parent.width - 1
-        width: 1
-        height: parent.height
-        color: "#444"
-    }
+//    Rectangle {
+//        parent: statusBarPane.background
+//        x: parent.width - 1
+//        width: 1
+//        height: parent.height
+//        color: "#444"
+//    }
 
     RowLayout {
         id: statusBarLayout
         objectName: "statusBarLayout"
-        width: canvas ? canvas.firstPane.size * canvas.width - statusBarPane.padding * 2 : parent.width
+//        width: canvas ? canvas.firstPane.size * canvas.width - statusBarPane.padding * 2 : parent.width
         visible: project && canvas && project.loaded
-        anchors.verticalCenter: parent.verticalCenter
+//        anchors.verticalCenter: parent.verticalCenter
 
         Label {
             id: pointerIconLabel

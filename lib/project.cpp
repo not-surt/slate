@@ -42,6 +42,16 @@ Project::Project() :
     connect(&mUndoStack, SIGNAL(cleanChanged(bool)), this, SIGNAL(unsavedChangesChanged()));
 }
 
+QAbstractItemModel *Project::paletteModel() const
+{
+    return nullptr;
+}
+
+QAbstractItemModel *Project::tileSetModel() const
+{
+    return nullptr;
+}
+
 Project::Type Project::type() const
 {
     return UnknownType;
@@ -190,56 +200,6 @@ void Project::revert()
     qCDebug(lcProject) << "... reverted changes";
 }
 
-void Project::importSwatch(SwatchImportFormat format, const QUrl &swatchUrl)
-{
-    const QString filePath = swatchUrl.toLocalFile();
-    if (!QFileInfo::exists(filePath)) {
-        error(QString::fromLatin1("Swatch file does not exist:\n\n%1").arg(filePath));
-        return;
-    }
-
-    QFile swatchFile(filePath);
-    if (!swatchFile.open(QIODevice::ReadOnly)) {
-        error(QString::fromLatin1("Failed to open swatch file:\n\n%1").arg(filePath));
-        return;
-    }
-
-    if (format == SlateSwatch) {
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(swatchFile.readAll());
-        QJsonObject rootJson = jsonDoc.object();
-        readJsonSwatch(rootJson, ErrorOutOnSerialisationFailures);
-    } else if (format == PaintNetSwatch) {
-        readPaintNetSwatch(swatchFile);
-    }
-}
-
-void Project::exportSwatch(const QUrl &swatchUrl)
-{
-    QFile jsonFile;
-    const QString filePath = swatchUrl.toLocalFile();
-    if (QFile::exists(filePath)) {
-        jsonFile.setFileName(filePath);
-        if (!jsonFile.open(QIODevice::WriteOnly)) {
-            error(QString::fromLatin1("Failed to open swatch file:\n\n%1").arg(filePath));
-            return;
-        }
-    } else {
-        jsonFile.setFileName(filePath);
-        if (!jsonFile.open(QIODevice::WriteOnly)) {
-            error(QString::fromLatin1("Failed to create swatch file:\n\n%1").arg(filePath));
-            return;
-        }
-    }
-
-    QJsonObject rootJson;
-    writeJsonSwatch(rootJson);
-
-    QJsonDocument jsonDoc(rootJson);
-    const qint64 bytesWritten = jsonFile.write(jsonDoc.toJson());
-    if (bytesWritten == -1)
-        error(QString::fromLatin1("Failed to write to swatch file:\n\n%1").arg(jsonFile.errorString()));
-}
-
 void Project::error(const QString &message)
 {
     qCDebug(lcProject) << "emitting errorOccurred with message" << message;
@@ -323,56 +283,6 @@ void Project::writeGuides(QJsonObject &projectJson) const
     projectJson[QLatin1String("guides")] = guidesArray;
 }
 
-bool Project::readJsonSwatch(const QJsonObject &projectJson, SerialisationFailurePolicy serialisationFailurePolicy)
-{
-    Swatch swatch;
-    QString errorMessage;
-
-    const QJsonObject swatchJson = projectJson[QLatin1String("swatch")].toObject();
-    const bool readSuccessfully = swatch.read(swatchJson, errorMessage);
-    if (!readSuccessfully && serialisationFailurePolicy == ErrorOutOnSerialisationFailures) {
-        error(QLatin1String("Failed to read Slate (JSON) swatch: ") + errorMessage);
-        return false;
-    }
-
-    mSwatch.copy(swatch);
-    return true;
-}
-
-void Project::writeJsonSwatch(QJsonObject &projectJson) const
-{
-    QJsonObject swatchObject;
-    mSwatch.write(swatchObject);
-    projectJson[QLatin1String("swatch")] = swatchObject;
-}
-
-bool Project::readPaintNetSwatch(QFile &file)
-{
-    Swatch newSwatch;
-
-    for (int lineNumber = 1; !file.atEnd(); ++lineNumber) {
-        // Comments could conceivably contain non-latin1 characters.
-        const QString line = QString::fromUtf8(file.readLine()).trimmed();
-
-        // Ignore comments.
-        if (line.startsWith(QLatin1Char(';')))
-            continue;
-
-        const QString colourString = QLatin1Char('#') + line;
-        if (!QColor::isValidColor(colourString)) {
-            error(QString::fromLatin1("Invalid colour %1 at line %2 of paint.net swatch file %3")
-                .arg(line).arg(lineNumber).arg(file.fileName()));
-            return false;
-        }
-
-        const QColor colour(colourString);
-        newSwatch.addColour(QString(), colour);
-    }
-
-    mSwatch.copy(newSwatch);
-    return true;
-}
-
 ApplicationSettings *Project::settings() const
 {
     return mSettings;
@@ -437,16 +347,6 @@ void Project::removeGuide(const Guide &guide)
     if (mGuides.removeOne(guide)) {
         emit guidesChanged();
     }
-}
-
-Swatch *Project::swatch()
-{
-    return &mSwatch;
-}
-
-const Swatch *Project::swatch() const
-{
-    return &mSwatch;
 }
 
 int Project::currentLayerIndex() const

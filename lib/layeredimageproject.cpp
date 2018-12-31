@@ -439,9 +439,6 @@ void LayeredImageProject::doLoad(const QUrl &url)
         setCurrentLayerIndex(projectObject.value("currentLayerIndex").toInt());
 
     readGuides(projectObject);
-    // Allow older project files without swatch support (saved with version <= 0.2.1) to still be loaded.
-    if (!readJsonSwatch(projectObject, IgnoreSerialisationFailures))
-        return;
 
     mAutoExportEnabled = projectObject.value("autoExportEnabled").toBool(false);
 
@@ -536,7 +533,6 @@ void LayeredImageProject::doSaveAs(const QUrl &url)
     projectObject.insert("currentLayerIndex", mCurrentLayerIndex);
 
     writeGuides(projectObject);
-    writeJsonSwatch(projectObject);
     emit readyForWritingToJson(&projectObject);
 
     if (mAutoExportEnabled) {

@@ -22,24 +22,16 @@
 
 #include <QDebug>
 #include <QImage>
-#include <QObject>
-#include <QPointer>
 #include <QRect>
-#include <QString>
 
 #include "slate-global.h"
 
 class Tileset;
 
-class SLATE_EXPORT TileObject : public QObject
+class SLATE_EXPORT TileObject
 {
-    Q_OBJECT
-    Q_PROPERTY(int id READ id CONSTANT)
-    Q_PROPERTY(QRect sourceRect READ sourceRect CONSTANT)
-
 public:
-    TileObject();
-    TileObject(int id, const Tileset *tileset, const QRect &sourceRect, QObject *parent);
+    TileObject(const int id = -1, const Tileset *const tileset = nullptr, const QRect &sourceRect = QRect());
 
     bool isValid() const;
     int id() const;
@@ -54,9 +46,9 @@ public:
 private:
     int mId;
     QRect mSourceRect;
-    QPointer<const Tileset> mTileset;
+    const Tileset *mTileset;
 };
 
-QDebug operator<<(QDebug debug, const TileObject *tile);
+QDebug operator<<(QDebug debug, const TileObject &tile);
 
 #endif // TILE_H

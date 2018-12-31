@@ -374,7 +374,7 @@ void tilesetTileFloodFill(const TilesetProject *project, const TileObject *tile,
         return;
     }
 
-    const int tileIdAtTilePos = project->tileIndexAt(tilePos);
+    const int tileIdAtTilePos = project->tile(tilePos);
     if (tileIdAtTilePos == replacementTile) {
         qCDebug(lcTileFloodFill) << "hit the same tile as replacement tile; returning";
         return;
@@ -393,22 +393,22 @@ void tilesetTileFloodFill(const TilesetProject *project, const TileObject *tile,
     const QPoint east = tilePos + QPoint(1, 0);
     const QPoint west = tilePos - QPoint(1, 0);
 
-    if (project->isTilePosWithinBounds(north)) {
+    if (project->tileBounds().contains(north)) {
         tilesetTileFloodFill(project, tile, north, targetTile, replacementTile, filledTilePositions);
     } else {
         qCDebug(lcTileFloodFill) << north << "is out of bounds";
     }
-    if (project->isTilePosWithinBounds(south)) {
+    if (project->tileBounds().contains(south)) {
         tilesetTileFloodFill(project, tile, south, targetTile, replacementTile, filledTilePositions);
     } else {
         qCDebug(lcTileFloodFill) << south << "is out of bounds";
     }
-    if (project->isTilePosWithinBounds(east)) {
+    if (project->tileBounds().contains(east)) {
         tilesetTileFloodFill(project, tile, east, targetTile, replacementTile, filledTilePositions);
     } else {
         qCDebug(lcTileFloodFill) << east << "is out of bounds";
     }
-    if (project->isTilePosWithinBounds(west)) {
+    if (project->tileBounds().contains(west)) {
         tilesetTileFloodFill(project, tile, west, targetTile, replacementTile, filledTilePositions);
     } else {
         qCDebug(lcTileFloodFill) << west << "is out of bounds";

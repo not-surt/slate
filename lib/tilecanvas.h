@@ -39,9 +39,8 @@ class TilesetProject;
 class SLATE_EXPORT TileCanvas : public ImageCanvas
 {
     Q_OBJECT
-    Q_PROPERTY(QPoint cursorSceneTileCoord READ cursorSceneTileCoord NOTIFY cursorScenePosChanged)
     Q_PROPERTY(Mode mode READ mode WRITE setMode NOTIFY modeChanged)
-    Q_PROPERTY(TileObject *penTile READ penTile WRITE setPenTile NOTIFY penTileChanged)
+    Q_PROPERTY(QPoint cursorSceneTileCoord READ cursorSceneTileCoord NOTIFY cursorScenePosChanged)
     Q_PROPERTY(bool tileIndicesVisible READ tileIndicesVisible WRITE setTileIndicesVisible NOTIFY tileIndicesVisibleChanged)
 
 public:
@@ -61,8 +60,8 @@ public:
     virtual const QImage *imageForLayerAt(int layerIndex) const override;
     virtual QImage *imageForLayerAt(int layerIndex) override;
 
-    virtual void paintContent(QPainter *const painter, const QRect rect) override;
-    virtual void paintOverlay(QPainter *const painter, const QRect rect) const override;
+    virtual void paintContent(QPainter *const painter, const QRect &rect) override;
+    virtual void paintOverlay(QPainter *const painter, const QRect &rect) const override;
 
     QPointF pressSceneTilePos() const;
     QPoint pressSceneTileCoord() const;
@@ -78,9 +77,6 @@ public:
     bool tileIndicesVisible() const;
     void setTileIndicesVisible(bool tileIndicesVisible);
 
-    TileObject *penTile() const;
-    void setPenTile(TileObject *penTile);
-
     QPoint scenePosToTilePixelPos(const QPoint &scenePos) const;
     QRect sceneRectToTileRect(const QRect &sceneRect) const;
 
@@ -89,18 +85,7 @@ public:
 
 signals:
     void modeChanged();
-    void penTileChanged();
     void tileIndicesVisibleChanged();
-
-public slots:
-//    void createNew(int width, int height, const QColor &penBackgroundColour);
-//    void save(QUrl url = QUrl());
-//    void saveAs(const QUrl &url);
-    void swatchLeft();
-    void swatchRight();
-    void swatchUp();
-    void swatchDown();
-    void onTilesetChanged(Tileset *oldTileset, Tileset *newTileset);
 
 protected:
     void connectSignals() override;
@@ -140,7 +125,6 @@ private:
     int mCursorTilePixelY;
     QPoint mCursorSceneTile;
     Mode mMode;
-    TileObject *mPenTile;
     bool mTileIndicesVisible;
 };
 

@@ -12,10 +12,30 @@ Page {
     background: Rectangle {
         color: Ui.CanvasColours.panelColour
     }
+    Layout.preferredHeight: header.implicitHeight
+    Layout.fillWidth: true
+    Layout.fillHeight: expanded
+    clip: true
 
     property bool expanded: true
     property Popup settingsPopup: null
     property alias settingsPopupToolButton: settingsPopupToolButton
+
+    contentItem.visible: expanded
+//    onExpandedChanged: {
+//        for (var i in contentChildren) {
+//            contentChildren[i].visible = expanded
+//        }
+//    }
+
+    onSettingsPopupChanged: {
+        if (settingsPopup) {
+            settingsPopup.parent = settingsPopupToolButton
+            settingsPopup.anchors.top = settingsPopupToolButton.bottom
+//            settingsPopup.anchors.top = Qt.binding(function() { return settingsPopupToolButton.bottom })
+//            settingsPopup.y = settingsPopupToolButton.y + settingsPopupToolButton.height
+        }
+    }
 
     header: RowLayout {
         objectName: root.objectName + "Header"
@@ -40,6 +60,7 @@ Page {
             font.family: "FontAwesome"
             focusPolicy: Qt.NoFocus
             visible: settingsPopup
+            enabled: expanded
 
             Layout.preferredWidth: implicitHeight
 

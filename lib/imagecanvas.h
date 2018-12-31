@@ -49,8 +49,6 @@ class GuidesItem;
 class ImageProject;
 class Project;
 class SelectionCursorGuide;
-class TileObject;
-class Tileset;
 
 class SLATE_EXPORT ImageCanvas : public QQuickItem
 {
@@ -105,6 +103,8 @@ class SLATE_EXPORT ImageCanvas : public QQuickItem
     Q_PROPERTY(bool lineVisible READ isLineVisible NOTIFY lineVisibleChanged)
     Q_PROPERTY(int lineLength READ lineLength NOTIFY lineLengthChanged)
     Q_PROPERTY(qreal lineAngle READ lineAngle NOTIFY lineLengthChanged)
+    Q_PROPERTY(int currentColourIndex READ currentColourIndex WRITE setCurrentColourIndex NOTIFY currentColourIndexChanged)
+    Q_PROPERTY(int currentTileIndex READ currentTileIndex WRITE setCurrentTileIndex NOTIFY currentTileIndexChanged)
 
 public:
     // The order of these is important, as the number keys can activate the tools.
@@ -293,6 +293,9 @@ public:
     virtual QList<SubImageInstance> subImageInstancesInBounds(const QRect &bounds) const;
     QColor pickColour(const QPointF point) const;
 
+    int currentColourIndex() const;
+    int currentTileIndex() const;
+
     // Essentially currentProjectImage() for regular image canvas, but may return a
     // preview image if there is a selection active. For layered image canvases, this
     // should return all layers flattened into one image, or the same flattened image
@@ -316,10 +319,10 @@ public:
     virtual QImage *imageForLayerAt(const int layerIndex);
     virtual int currentLayerIndex() const;
 
-    virtual void paintBackground(QPainter *const painter, const QRect rect) const;
-    virtual void paintContent(QPainter *const painter, const QRect rect);
-    virtual void paintContentWithPreview(QPainter *const painter, const QRect rect);
-    virtual void paintOverlay(QPainter *const painter, const QRect rect) const {}
+    virtual void paintBackground(QPainter *const painter, const QRect &rect) const;
+    virtual void paintContent(QPainter *const painter, const QRect &rect);
+    virtual void paintContentWithPreview(QPainter *const painter, const QRect &rect);
+    virtual void paintOverlay(QPainter *const painter, const QRect &rect) const {}
 
     enum SelectionModification {
         NoSelectionModification,
@@ -358,8 +361,6 @@ signals:
     void scrollZoomChanged();
     void gesturesEnabledChanged();
     void currentPaneChanged();
-//    void rulerForegroundColourChanged();
-//    void rulerBackgroundColourChanged();
     void toolChanged();
     void brushTypeChanged();
     void toolBlendModeChanged();
@@ -382,6 +383,8 @@ signals:
     void lineVisibleChanged();
     void lineLengthChanged();
     void pasteSelectionConfirmed();
+    void currentColourIndexChanged(const int currentColourIndex);
+    void currentTileIndexChanged(const int currentTileIndex);
 
     // Used to signal CanvasPaneItem classes that they should redraw,
     // instead of them having to connect to lots of specific signals.
@@ -406,6 +409,8 @@ public slots:
     void deleteSelectionOrContents();
     void selectAll();
     void brushFromSelection();
+    void setCurrentColourIndex(const int currentColourIndex);
+    void setCurrentTileIndex(const int currentTileIndex);
 
     void cycleFillTools();
 
@@ -639,6 +644,8 @@ protected:
     QColor mPenForegroundColour;
     QColor mPenBackgroundColour;
     Brush mBrush;
+    int mCurrentColourIndex;
+    int mCurrentTileIndex;
 
     TexturedFillParameters mTexturedFillParameters;
 

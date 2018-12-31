@@ -20,62 +20,24 @@
 #ifndef TILESET_H
 #define TILESET_H
 
-#include <QObject>
 #include <QString>
 #include <QImage>
 
 #include "slate-global.h"
 
-class SLATE_EXPORT Tileset : public QObject
+#include "tilesetmodel.h"
+
+class SLATE_EXPORT Tileset : public TileSetModel
 {
-    Q_OBJECT
-
-    Q_PROPERTY(QSize size READ size WRITE setSize NOTIFY sizeChanged)
-    Q_PROPERTY(QSize tileSize READ tileSize WRITE setTileSize NOTIFY tileSizeChanged)
-
 public:
-    Tileset(const QString &fileName, int tilesWide, int tilesHigh, QObject *parent);
+    Tileset(const QString &fileName, const QImage &image, const QSize tileSize, const int columns, const int pixelSize, QObject *const parent = nullptr);
 
     bool isValid() const;
     QString fileName() const;
     void setFileName(const QString &fileName);
-    const QImage *image() const;
-    QImage *image();
-    void setPixelColor(int x, int y, const QColor &colour);
-    void copy(const QPoint &sourceTopLeft, const QPoint &targetTopLeft);
-    void rotateCounterClockwise(const QPoint &tileTopLeft);
-    void rotateClockwise(const QPoint &tileTopLeft);
-
-    QSize pixelSize() const;
-
-    void resize(const QSize size, const QSize tileSize);
-
-    void notifyImageChanged();
-
-    QSize size() const;
-
-    QSize tileSize() const;
-
-public slots:
-
-    void setSize(QSize size);
-
-    void setTileSize(QSize tileSize);
-
-signals:
-    void imageChanged();
-    void sizeChanged();
-    void tileSizeChanged();
 
 private:
-    bool validTopLeft(const QPoint &topLeft) const;
-
-    void rotate(const QPoint &tileTopLeft, int angle);
-
     QString mFileName;
-    QImage mImage;
-    QSize mSize;
-    QSize mTileSize;
 };
 
 #endif // TILESET_H
