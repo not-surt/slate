@@ -165,24 +165,39 @@ ApplicationWindow {
         aboutDialog: aboutDialog
     }
 
-    header: Ui.ToolBar {
-        id: toolBar
-        objectName: "toolBar"
-        project: window.project
-        canvas: window.canvas
-        canvasSizePopup: canvasSizePopup
-        imageSizePopup: imageSizePopup
+    header: ColumnLayout {
+        Ui.ToolBar {
+            id: toolBar
+            objectName: "toolBar"
+            project: window.project
+            canvas: window.canvas
+            canvasSizePopup: canvasSizePopup
+            imageSizePopup: imageSizePopup
+            Layout.fillWidth: true
+        }
+
+        TabBar {
+            Layout.fillWidth: true
+
+            TabButton {
+                text: qsTr("Home")
+            }
+
+            TabButton {
+                text: qsTr("Discover")
+            }
+
+            TabButton {
+                text: qsTr("Activity")
+            }
+        }
     }
 
     footer: Ui.StatusBar {
         id: statusBar
-//        z: 1
-//        parent: ApplicationWindow.window.contentItem
-//        width: canvasContainer.width
-//        anchors.bottom: parent.bottom
         project: canvasContainer.project
-//        canvas: canvasContainer.canvas
-
+        canvas: canvasContainer.canvas
+        Layout.fillWidth: true
     }
 
     RowLayout {
@@ -195,7 +210,7 @@ ApplicationWindow {
 
             checkedToolButton: toolBar.toolButtonGroup.checkedButton
 
-            Layout.preferredWidth: window.width / 3
+            Layout.preferredWidth: parent.width
             Layout.fillWidth: true
             Layout.fillHeight: true
         }
@@ -204,6 +219,7 @@ ApplicationWindow {
             id: panelColumnLayout
             objectName: "panelColumnLayout"
             Layout.minimumWidth: 240
+            Layout.preferredWidth: parent.width / 4
             Layout.fillHeight: true
 
             Ui.ColourPanel {
@@ -211,57 +227,61 @@ ApplicationWindow {
                 canvas: window.canvas
                 project: window.project
 
-                Layout.maximumHeight: expanded ? implicitHeight : header.implicitHeight
+                Layout.maximumHeight: Layout.preferredHeight
             }
 
-            Ui.Panel {
-                title: qsTr("Palette")
-                topPadding: 0
-                leftPadding: 0
-                rightPadding: 0
-                bottomPadding: 6
+//            Ui.Panel {
+//                title: qsTr("Palette")
 
-                contentItem: Ui.Palette {
-                    z: 100
-                    id: colourPalette
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    model: project ? project.paletteModel : null
-                    delegate: Ui.ColourPaletteDelegate {}
-//                    columns: project ? project.paletteModel.columnCount() : 4
-//                    swatchSize: project ? project.paletteModel.swatchSize : 8
-//                    currentIndex: canvas.currentColourIndex
-                }
+//                contentItem: Ui.Palette {
+//                    id: colourPalette
+//                    Layout.fillWidth: true
+//                    Layout.fillHeight: true
+//                    model: project ? project.paletteModel : null
+//                    delegate: Ui.ColourPaletteDelegate {}
+////                    columns: project ? project.paletteModel.columnCount() : 4
+////                    swatchSize: project ? project.paletteModel.swatchSize : 8
+////                    currentIndex: canvas.currentColourIndex
 
-                Binding {
-                    target: canvas
-                    property: "currentColourIndex"
-                    value: colourPalette.currentIndex
-                }
+////                    swatchScale: colourPaletteSettingsPopup.swatchScale
+////                    columns: colourPaletteSettingsPopup.columns
+////                    fixedColumns: colourPaletteSettingsPopup.fixedColumns
+////                    showIndices: colourPaletteSettingsPopup.showIndices
+//                }
 
-                settingsPopup: Popup {
-                    contentItem: Label { text: "Poo!" }
-                }
-            }
+//                Binding {
+//                    target: canvas
+//                    property: "currentColourIndex"
+//                    value: colourPalette.currentIndex
+//                }
+
+//                settingsPopup: Ui.PaletteSettingsPopup {
+//                    id: colourPaletteSettingsPopup
+//                    swatchScale: colourPalette.swatchScale
+//                    columns: colourPalette.columns
+//                    fixedColumns: colourPalette.fixedColumns
+//                    showIndices: colourPalette.showIndices
+//                }
+//            }
 
             Ui.Panel {
                 visible: window.projectType === Project.TilesetType && window.canvas
                 title: qsTr("Tileset")
-                topPadding: 0
-                leftPadding: 0
-                rightPadding: 0
-                bottomPadding: 6
 
                 contentItem: Ui.Palette {
-                    z: 100
                     id: tileSetPalette
-                    Layout.fillWidth: true
+//                    Layout.fillWidth: true
                     Layout.fillHeight: true
                     model: project ? project.tileSetModel : null
                     delegate: Ui.TileSetPaletteDelegate {}
 //                    columns: project ? project.tileSetModel.columnCount() : 4
-//                    swatchSize: project ? project.tileSetModel.swatchSize : 8
+//                    swatchSize: project ? project.tileSetModel.swatchSize : Qt.size(8, 8)
 //                    currentIndex: canvas.currentTileIndex
+
+                    swatchScale: tileSetSettingsPopup.swatchScale
+                    columns: tileSetSettingsPopup.columns
+                    fixedColumns: tileSetSettingsPopup.fixedColumns
+                    showIndices: tileSetSettingsPopup.showIndices
                 }
 
                 Binding {
@@ -270,8 +290,12 @@ ApplicationWindow {
                     value: tileSetPalette.currentIndex
                 }
 
-                settingsPopup: Popup {
-
+                settingsPopup: Ui.PaletteSettingsPopup {
+                    id: tileSetSettingsPopup
+//                    swatchScale: tileSetPalette.swatchScale
+//                    columns: tileSetPalette.columns
+//                    fixedColumns: tileSetPalette.fixedColumns
+//                    showIndices: tileSetPalette.showIndices
                 }
             }
 

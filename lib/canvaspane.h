@@ -35,9 +35,6 @@ class SLATE_EXPORT CanvasPane : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(qreal zoomLevel READ zoomLevel WRITE setZoomLevel NOTIFY zoomLevelChanged)
-    Q_PROPERTY(int integerZoomLevel READ integerZoomLevel NOTIFY zoomLevelChanged)
-    Q_PROPERTY(int maxZoomLevel READ maxZoomLevel CONSTANT)
-    Q_PROPERTY(QPoint integerOffset READ integerOffset WRITE setIntegerOffset NOTIFY integerOffsetChanged)
     Q_PROPERTY(QRectF geometry READ geometry NOTIFY geometryChanged)
     Q_PROPERTY(bool visible READ visible NOTIFY visibleChanged)
 
@@ -51,14 +48,10 @@ public:
     void setVisible(const bool visible);
 
     qreal zoomLevel() const;
-    int integerZoomLevel() const;
     void setZoomLevel(qreal zoomLevel);
-    int maxZoomLevel() const;
 
     QTransform transform() const;
 
-    QPoint integerOffset() const;
-    void setIntegerOffset(const QPoint &integerOffset);
     QPointF offset() const;
     void setOffset(const QPointF &offset);
 
@@ -72,7 +65,6 @@ signals:
     void geometryChanged();
     void visibleChanged();
     void sizeChanged();
-    void integerOffsetChanged();
     void offsetChanged();
 
 private:
@@ -80,7 +72,6 @@ private:
     bool mVisible;
     qreal mSize;
     qreal mZoomLevel;
-    int mMaxZoomLevel;
     QPointF mOffset;
 };
 

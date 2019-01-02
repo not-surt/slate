@@ -31,8 +31,7 @@ CanvasPane::CanvasPane(QObject *parent) :
     mGeometry(),
     mVisible(true),
     mSize(0.5),
-    mZoomLevel(1.0),
-    mMaxZoomLevel(48)
+    mZoomLevel(1.0)
 {
 }
 
@@ -67,46 +66,25 @@ qreal CanvasPane::zoomLevel() const
     return mZoomLevel;
 }
 
-int CanvasPane::integerZoomLevel() const
-{
-    return qFloor(mZoomLevel);
-}
-
 void CanvasPane::setZoomLevel(qreal zoomLevel)
 {
-    const qreal adjustedLevel = qBound(1.0, zoomLevel, qreal(mMaxZoomLevel));
-    if (qFuzzyCompare(adjustedLevel, mZoomLevel))
+    if (qFuzzyCompare(zoomLevel, mZoomLevel))
         return;
 
-    mZoomLevel = adjustedLevel;
+    mZoomLevel = zoomLevel;
     emit zoomLevelChanged();
-}
-
-int CanvasPane::maxZoomLevel() const
-{
-    return mMaxZoomLevel;
 }
 
 QTransform CanvasPane::transform() const
 {
     // Canvas to scene transform
     QTransform transform;
-    const QPointF offset = QPointF(qRound(mGeometry.width() / 2.0), qRound(mGeometry.height() / 2.0)) + mGeometry.topLeft();
+    const QPointF offset = QPointF(qRound(mGeometry.width() / 2.0), qRound(mGeometry.height() / 2.0))/* - mGeometry.topLeft()*/;
     transform.translate(offset.x(), offset.y());
     transform.scale(mZoomLevel, mZoomLevel);
     const QPointF pan = mOffset;
     transform.translate(pan.x(), pan.y());
     return transform;
-}
-
-QPoint CanvasPane::integerOffset() const
-{
-    return QPoint(qFloor(mOffset.x()), qFloor(mOffset.y()));
-}
-
-void CanvasPane::setIntegerOffset(const QPoint &offset)
-{
-    setOffset(QPointF(offset.x(), offset.y()));
 }
 
 QPointF CanvasPane::offset() const
@@ -119,15 +97,10 @@ void CanvasPane::setOffset(const QPointF &offset)
     if (offset == mOffset)
         return;
 
-    const QPoint oldIntegerOffset = integerOffset();
-
     qCDebug(lcCanvasPane) << "setting offset of" << objectName() << "to" << offset;
 
     mOffset = offset;
     emit offsetChanged();
-
-    if (integerOffset() != oldIntegerOffset)
-        emit integerOffsetChanged();
 }
 
 void CanvasPane::read(const QJsonObject &json)
@@ -156,7 +129,7 @@ QDebug operator<<(QDebug debug, const CanvasPane *pane)
 {
     QDebugStateSaver stateSaver(debug);
     debug.nospace() << "(CanvasPane objectName=" << pane->objectName()
-        << " offset=" << pane->integerOffset()
+        << " offset=" << pane->offset()
         << " zoomLevel=" << pane->zoomLevel()
         << " geometry=" << pane->geometry()
         << ")";

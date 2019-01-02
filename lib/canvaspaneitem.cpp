@@ -130,7 +130,7 @@ void CanvasPaneItem::paint(QPainter *painter)
     painter->save();
     const QTransform transform = mPane->transform();
     painter->setTransform(transform);
-    const QRect sceneRect = transform.inverted().mapRect(mPane->geometry()).toAlignedRect();
+    const QRect sceneRect = transform.inverted().mapRect(QRectF(QPointF(0.0, 0.0), mPane->geometry().size())).toAlignedRect();
     painter->setClipRect(sceneRect);
 
     mCanvas->paintBackground(painter, sceneRect);

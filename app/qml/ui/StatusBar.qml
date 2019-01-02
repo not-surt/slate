@@ -13,21 +13,8 @@ Pane {
 
     property Project project
     property ImageCanvas canvas
-
-//    Rectangle {
-//        parent: statusBarPane.background
-//        width: parent.width
-//        height: 1
-//        color: "#444"
-//    }
-
-//    Rectangle {
-//        parent: statusBarPane.background
-//        x: parent.width - 1
-//        width: 1
-//        height: parent.height
-//        color: "#444"
-//    }
+    property CanvasPane pane: canvas ? canvas.currentPane : null
+    property TileCanvas tileCanvas: canvas instanceof TileCanvas ? canvas : null
 
     RowLayout {
         id: statusBarLayout
@@ -53,10 +40,16 @@ Pane {
                 if (!canvas)
                     return "-1, -1";
 
-                if (canvas.hasOwnProperty("cursorTilePixelX"))
-                    return canvas.cursorTilePixelX + ", " + canvas.cursorTilePixelY;
+//                if (canvas instanceof TileCanvas) {
+//                if (canvas.hasOwnProperty("cursorSceneTileCoord")) {
+                if (tileCanvas) {
+//                    console.log("TileCanvas!");
+                    // Why crash? Calling on ImageCanvas?
+//                    return canvas.cursorSceneTileCoord.x + ", " + canvas.cursorSceneTileCoord.y;
+//                    return tileCanvas.cursorSceneTileCoord.x + ", " + tileCanvas.cursorSceneTileCoord.y;
+                }
 
-                return canvas.cursorSceneX + ", " + canvas.cursorSceneY;
+                return canvas.cursorScenePixelCoord.x + ", " + canvas.cursorScenePixelCoord.y;
             }
 
             // Specify a fixed size to avoid causing items to the right of us jumping
@@ -214,18 +207,34 @@ Pane {
             Layout.fillWidth: true
         }
 
-        ZoomIndicator {
+        RowLayout {
+            id: zoomLevelIndicator
             objectName: "firstPaneZoomIndicator"
-            pane: canvas ? canvas.firstPane : null
-        }
-    }
 
-    ZoomIndicator {
-        objectName: "secondPaneZoomIndicator"
-        z: 1
-        anchors.right: parent.right
-        visible: project && canvas && project.loaded && canvas.splitScreen
-        pane: canvas ? canvas.secondPane : null
-        anchors.verticalCenter: parent.verticalCenter
+            TextMetrics {
+                id: maxZoomTextMetrics
+                text: settings.maxZoomLevel.toString()
+            }
+
+            Label {
+                text: "\uf002"
+                font.family: "FontAwesome"
+                color: "#ffffff"
+            }
+
+            Label {
+                text: "x"
+                color: "#ffffff"
+            }
+
+            Label {
+                id: zoomLevelText
+                text: pane ? pane.zoomLevel : ""
+                color: "#ffffff"
+
+                Layout.minimumWidth: maxZoomTextMetrics.width
+                Layout.maximumWidth: maxZoomTextMetrics.width
+            }
+        }
     }
 }

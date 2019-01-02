@@ -19,12 +19,8 @@ LayeredImageCanvas {
     guidesVisible: settings.guidesVisible
     guidesLocked: settings.guidesLocked
     splitColour: CanvasColours.splitColour
-    splitter.width: 32
-    rulerForegroundColour: CanvasColours.rulerForegroundColour
-    rulerBackgroundColour: CanvasColours.rulerBackgroundColour
     scrollZoom: settings.scrollZoom
     gesturesEnabled: settings.gesturesEnabled
-    anchors.fill: parent
 
     readonly property bool useCrosshairCursor: layeredCanvas.tool === ImageCanvas.SelectionTool
         || (layeredCanvas.upperToolSize < 4 && layeredCanvas.currentPane.zoomLevel <= 3)
@@ -39,17 +35,4 @@ LayeredImageCanvas {
     SplitterBar {
         canvas: layeredCanvas
     }
-
-//    PinchHandler {
-//        id: handler
-//        target: layeredCanvas
-//        onScaleChanged: {
-//            print("scale", scale, "position", centroid.position, centroid.pressPosition, centroid.sceneGrabPosition, centroid.scenePosition, centroid.scenePressPosition)
-////            layeredCanvas.currentPane.zoomLevel = scale
-//            layeredCanvas.applyZoom(scale, centroid.position)
-//        }
-////        centroid.onPositionChanged: print("centroid", centroid.position)
-////        onRotationChanged: print(rotation)
-////        onTranslationChanged: print(translation)
-//    }
 }

@@ -19,12 +19,8 @@ TileCanvas {
     guidesVisible: settings.guidesVisible
     guidesLocked: settings.guidesLocked
     splitColour: CanvasColours.splitColour
-    splitter.width: 32
-    rulerForegroundColour: CanvasColours.rulerForegroundColour
-    rulerBackgroundColour: CanvasColours.rulerBackgroundColour
     scrollZoom: settings.scrollZoom
     gesturesEnabled: settings.gesturesEnabled
-    anchors.fill: parent
 
     readonly property bool useCrosshairCursor: tileCanvas.mode === TileCanvas.TileMode
         || tileCanvas.tool === TileCanvas.SelectionTool || (tileCanvas.upperToolSize < 4 && tileCanvas.currentPane.zoomLevel <= 3)

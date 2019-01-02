@@ -60,6 +60,7 @@ Q_LOGGING_CATEGORY(lcApplication, "app.application")
 static QGuiApplication *createApplication(int &argc, char **argv, const QString &applicationName)
 {
     QLoggingCategory::setFilterRules("app.* = false");
+//    QLoggingCategory::setFilterRules(QStringLiteral("qt.qml.binding.removal.info=true"));
     QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
     QApplication *app = new QApplication(argc, argv);

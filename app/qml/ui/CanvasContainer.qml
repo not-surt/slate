@@ -31,6 +31,8 @@ Item {
     property ImageCanvas canvas: loader.item
     property var checkedToolButton
 
+    property list<Item> canvasPanes: [Item {}]
+
     Loader {
         id: loader
         objectName: "canvasContainerLoader"
@@ -76,14 +78,4 @@ Item {
         font.family: "FontAwesome"
         color: "#ccc"
     }
-
-//    StatusBar {
-//        id: statusBar
-////        z: 1
-//        parent: ApplicationWindow.window.contentItem
-//        width: canvasContainer.width
-//        anchors.bottom: parent.bottom
-//        project: canvasContainer.project
-//        canvas: canvasContainer.canvas
-//    }
 }

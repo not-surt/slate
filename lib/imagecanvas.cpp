@@ -893,6 +893,8 @@ const CanvasPane *ImageCanvas::paneAt(int index) const
     if (index < 0 || index >= mPanes.size())
         return nullptr;
 
+    qDebug() << "ImageCanvas::paneAt" << mPanes[index]->geometry();////////////////////
+
     return mPanes[index];
 }
 
@@ -1741,7 +1743,7 @@ void ImageCanvas::panWithSelectionIfAtEdge(ImageCanvas::SelectionPanReason reaso
         const QPoint finalOffsetChange(
              (scaledXOffsetChange * xOffsetChangeSign) * maxVelocity,
              (scaledYOffsetChange * yOffsetChangeSign) * maxVelocity);
-        mCurrentPane->setIntegerOffset(mCurrentPane->integerOffset() + finalOffsetChange);
+        mCurrentPane->setOffset(mCurrentPane->offset() + finalOffsetChange);
 
         // Ensure that the panning still occurs when the mouse is at the edge but isn't moving.
         if (!mSelectionEdgePanTimer.isActive()) {
@@ -1852,7 +1854,8 @@ void ImageCanvas::zoomIn()
     if (!pane)
         return;
 
-    pane->setZoomLevel(pane->integerZoomLevel() + 1);
+    const qreal adjustedLevel = qBound(1.0, pane->zoomLevel() + 1, qreal(mProject->settings()->maxZoomLevel()));
+    pane->setZoomLevel(adjustedLevel);
 }
 
 void ImageCanvas::zoomOut()
@@ -1861,7 +1864,8 @@ void ImageCanvas::zoomOut()
     if (!pane)
         return;
 
-    pane->setZoomLevel(pane->integerZoomLevel() - 1);
+    const qreal adjustedLevel = qBound(1.0, pane->zoomLevel() - 1, qreal(mProject->settings()->maxZoomLevel()));
+    pane->setZoomLevel(adjustedLevel);
 }
 
 void ImageCanvas::flipSelection(Qt::Orientation orientation)
@@ -2347,14 +2351,14 @@ void ImageCanvas::updateCursorPos(const QPoint &eventPos)
         return;
     }
 
-    const QPoint oldCursorSceneInteger = cursorScenePixelCoord();
+    const QPoint oldCursorScenePixelCoord = cursorScenePixelCoord();
 
     // We need the position as floating point numbers so that pen sizes > 1 work properly.
-    setCursorScenePos(pane->transform().inverted().map(QPointF(eventPos)));
+    setCursorScenePos(pane->transform().inverted().map(QPointF(eventPos) - pane->geometry().topLeft()));
 
     setCursorPixelColour(pickColour(cursorScenePixelCoord()));
 
-    if (cursorScenePixelCoord() != oldCursorSceneInteger && mSelectionCursorGuide->isVisible())
+    if (cursorScenePixelCoord() != oldCursorScenePixelCoord && mSelectionCursorGuide->isVisible())
         mSelectionCursorGuide->update();
 }
 
@@ -2567,7 +2571,7 @@ bool ImageCanvas::event(QEvent *event)
 
                 // TODO
                 // Apply an easing curve to make zooming faster the more zoomed-in we are.
-                const qreal percentageOfMaxZoomLevel = mCurrentPane->zoomLevel() / mCurrentPane->maxZoomLevel();
+                const qreal percentageOfMaxZoomLevel = mCurrentPane->zoomLevel() / mProject->settings()->maxZoomLevel();
                 const QEasingCurve zoomCurve(QEasingCurve::OutQuart);
                 const qreal scaledZoomFactor = qMax(minZoomFactor, zoomCurve.valueForProgress(percentageOfMaxZoomLevel) * maxZoomFactor);
 
@@ -2584,12 +2588,13 @@ bool ImageCanvas::event(QEvent *event)
 
 void ImageCanvas::applyZoom(qreal zoom, const QPoint &origin)
 {
+    const QPointF point = QPointF(origin) - mCurrentPane->geometry().topLeft();
     // Get point before transform
-    const QPointF pointBefore = mCurrentPane->transform().inverted().map(QPointF(origin));
+    const QPointF pointBefore = mCurrentPane->transform().inverted().map(point);
     // Apply transform
     mCurrentPane->setZoomLevel(zoom);
     // Get point after transform
-    const QPointF pointAfter = mCurrentPane->transform().inverted().map(QPointF(origin));
+    const QPointF pointAfter = mCurrentPane->transform().inverted().map(point);
     // Offset by difference between points
     const QPointF delta = pointAfter - pointBefore;
     mCurrentPane->setOffset(mCurrentPane->offset() + delta);

@@ -19,10 +19,8 @@ ImageCanvas {
     guidesVisible: settings.guidesVisible
     guidesLocked: settings.guidesLocked
     splitColour: CanvasColours.splitColour
-    splitter.width: 32
     scrollZoom: settings.scrollZoom
     gesturesEnabled: settings.gesturesEnabled
-    anchors.fill: parent
 
     readonly property bool useCrosshairCursor: imageCanvas.tool === TileCanvas.SelectionTool
         || (imageCanvas.upperToolSize < 4 && imageCanvas.currentPane.zoomLevel <= 3)

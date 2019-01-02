@@ -6,8 +6,7 @@ Project {
 
     references: [
         "app/app.qbs",
-        "lib/lib.qbs",
-        "tests/tests.qbs"
+        "lib/lib.qbs"
     ]
 }
 

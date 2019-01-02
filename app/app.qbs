@@ -25,7 +25,7 @@ QtGuiApplication {
     cpp.useRPaths: qbs.targetOS.contains("darwin")
     cpp.rpaths: ["@loader_path/../Frameworks"]
 
-    cpp.cxxLanguageVersion: "c++11"
+    cpp.cxxLanguageVersion: "c++14"
 
     cpp.defines: [
         // The following define makes your compiler emit warnings if you use

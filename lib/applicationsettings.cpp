@@ -430,6 +430,56 @@ void ApplicationSettings::setCheckerColour2(const QColor &colour)
     emit checkerColour2Changed();
 }
 
+qreal ApplicationSettings::minZoomLevel() const
+{
+    return contains("minZoomLevel") ? value("minZoomLevel").toReal() : defaultMinZoomLevel();
+}
+
+void ApplicationSettings::setMinZoomLevel(const qreal minZoomLevel)
+{
+    QVariant existingValue = value("minZoomLevel");
+    qreal existingRealValue = defaultMinZoomLevel();
+    if (contains("minZoomLevel")) {
+        existingRealValue = existingValue.toReal();
+    }
+
+    if (qFuzzyCompare(minZoomLevel, existingRealValue))
+        return;
+
+    setValue("minZoomLevel", existingRealValue);
+    emit minZoomLevelChanged();
+}
+
+qreal ApplicationSettings::defaultMinZoomLevel() const
+{
+    return 0;
+}
+
+qreal ApplicationSettings::maxZoomLevel() const
+{
+    return contains("maxZoomLevel") ? value("maxZoomLevel").toReal() : defaultMaxZoomLevel();
+}
+
+void ApplicationSettings::setMaxZoomLevel(const qreal maxZoomLevel)
+{
+    QVariant existingValue = value("maxZoomLevel");
+    qreal existingRealValue = defaultMaxZoomLevel();
+    if (contains("maxZoomLevel")) {
+        existingRealValue = existingValue.toReal();
+    }
+
+    if (qFuzzyCompare(maxZoomLevel, existingRealValue))
+        return;
+
+    setValue("maxZoomLevel", existingRealValue);
+    emit maxZoomLevelChanged();
+}
+
+qreal ApplicationSettings::defaultMaxZoomLevel() const
+{
+    return 48;
+}
+
 void ApplicationSettings::resetShortcutsToDefaults()
 {
     static QVector<QString> allShortcuts;

@@ -55,6 +55,7 @@ Group {
             "ui/OptionsDialog.qml",
             "ui/Palette.qml",
             "ui/PaletteDelegate.qml",
+            "ui/PaletteSettingsPopup.qml",
             "ui/Panel.qml",
             "ui/ProjectTemplateButton.qml",
             "ui/SaturationLightnessPicker.qml",
@@ -69,8 +70,7 @@ Group {
             "ui/TilesetTypeCanvas.qml",
             "ui/ToolBar.qml",
             "ui/ToolButtonMenuIndicator.qml",
-            "ui/ToolSizePopup.qml",
-            "ui/ZoomIndicator.qml"
+            "ui/ToolSizePopup.qml"
         ]
 
         Group {

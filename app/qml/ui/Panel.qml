@@ -12,21 +12,19 @@ Page {
     background: Rectangle {
         color: Ui.CanvasColours.panelColour
     }
-    Layout.preferredHeight: header.implicitHeight
+    Layout.preferredHeight: expanded ? implicitHeight : header.implicitHeight
     Layout.fillWidth: true
     Layout.fillHeight: expanded
     clip: true
+    padding: 16
 
     property bool expanded: true
     property Popup settingsPopup: null
     property alias settingsPopupToolButton: settingsPopupToolButton
 
-    contentItem.visible: expanded
-//    onExpandedChanged: {
-//        for (var i in contentChildren) {
-//            contentChildren[i].visible = expanded
-//        }
-//    }
+    onContentItemChanged: {
+        contentItem.visible = Qt.binding(function() { return expanded })
+    }
 
     onSettingsPopupChanged: {
         if (settingsPopup) {

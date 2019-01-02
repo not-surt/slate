@@ -11,8 +11,6 @@ Panel {
     title: qsTr("Colour")
     objectName: "colourPanel"
     clip: true
-    padding: 16
-    topPadding: 0
 
     property ImageCanvas canvas
     property alias project: picker.project

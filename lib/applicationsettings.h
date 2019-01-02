@@ -90,6 +90,8 @@ class SLATE_EXPORT ApplicationSettings : public QSettings
     Q_PROPERTY(QString swatchUpShortcut READ swatchUpShortcut WRITE setSwatchUpShortcut NOTIFY swatchUpShortcutChanged)
     Q_PROPERTY(QString swatchDownShortcut READ swatchDownShortcut WRITE setSwatchDownShortcut NOTIFY swatchDownShortcutChanged)
     Q_PROPERTY(QString fullScreenToggleShortcut READ fullScreenToggleShortcut WRITE setFullScreenToggleShortcut NOTIFY fullScreenToggleShortcutChanged)
+    Q_PROPERTY(qreal minZoomLevel READ minZoomLevel WRITE setMinZoomLevel NOTIFY minZoomLevelChanged)
+    Q_PROPERTY(qreal maxZoomLevel READ maxZoomLevel WRITE setMaxZoomLevel NOTIFY maxZoomLevelChanged)
 
 public:
     explicit ApplicationSettings(QObject *parent = nullptr);
@@ -311,6 +313,14 @@ public:
     QString fullScreenToggleShortcut() const;
     void setFullScreenToggleShortcut(const QString &shortcut);
 
+    qreal maxZoomLevel() const;
+    void setMaxZoomLevel(const qreal zoomLevel);
+    qreal defaultMaxZoomLevel() const;
+
+    qreal minZoomLevel() const;
+    void setMinZoomLevel(const qreal zoomLevel);
+    qreal defaultMinZoomLevel() const;
+
 signals:
     void loadLastOnStartupChanged();
     void recentFilesChanged();
@@ -327,6 +337,8 @@ signals:
     void windowOpacityChanged();
     void checkerColour1Changed();
     void checkerColour2Changed();
+    void minZoomLevelChanged();
+    void maxZoomLevelChanged();
 
     void quitShortcutChanged();
     void newShortcutChanged();

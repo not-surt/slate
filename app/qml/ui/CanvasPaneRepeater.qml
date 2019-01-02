@@ -57,15 +57,10 @@ Repeater {
         canvas: root.canvas
         pane: canvas.paneAt(index)
         paneIndex: index
-        anchors.fill: parent
-        visible: index === 0 || canvas.splitScreen
-        
-        Rectangle {
-            x: index === 0 ? 0 : Math.floor(parent.width - width)
-            width: Math.floor(paneItem.pane.size * parent.width)
-            height: parent.height
-            color: CanvasColours.backgroundColour
-            z: -1
-        }
+        visible: pane.visible
+        x: pane.geometry.x
+        y: pane.geometry.y
+        width: pane.geometry.width
+        height: pane.geometry.height
     }
 }
