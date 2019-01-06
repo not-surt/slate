@@ -20,7 +20,11 @@
 #include "utils.h"
 
 #include <QDebug>
+#include <QFile>
+#include <QOpenGLContext>
 #include <QPainter>
+#include <QSurface>
+#include <QThread>
 
 QImage Utils::paintImageOntoPortionOfImage(const QImage &image, const QRect &portion, const QImage &replacementImage)
 {
@@ -172,5 +176,30 @@ void Utils::modifyHsl(QImage &image, qreal hue, qreal saturation, qreal lightnes
                 rgb.alphaF());
             image.setPixelColor(x, y, hsl.toRgb());
         }
+    }
+}
+
+QString Utils::fileToString(const QString &path)
+{
+    QFile file(path);
+    Q_ASSERT(file.exists());
+    if (file.open(QIODevice::ReadOnly)) return QTextStream(&file).readAll();
+    else return QString();
+}
+
+Utils::ContextGrabber::ContextGrabber(QSurface *const surface, QOpenGLContext *const context) :
+    oldContext(QOpenGLContext::currentContext()),
+    oldSurface(oldContext ? oldContext->surface() : nullptr)
+{
+    Q_ASSERT(surface && context);
+    Q_ASSERT(QThread::currentThread() == context->thread());
+    const bool makeCurrentSuccess = context->makeCurrent(surface);
+    Q_ASSERT(makeCurrentSuccess);
+}
+
+Utils::ContextGrabber::~ContextGrabber() {
+    QOpenGLContext::currentContext()->doneCurrent();
+    if (oldContext) {
+        oldContext->makeCurrent(oldSurface);
     }
 }

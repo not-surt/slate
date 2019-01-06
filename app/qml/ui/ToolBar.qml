@@ -277,83 +277,83 @@ ToolBar {
         }
 
         ToolButton {
-            id: toolSizeButton
-            objectName: "toolSizeButton"
+            id: brushSettingsButton
+            objectName: "brushSettingsButton"
             hoverEnabled: true
             focusPolicy: Qt.NoFocus
 
             icon.source: "qrc:/images/change-tool-size.png"
 
-            ToolTip.text: qsTr("Change the size of drawing tools")
-            ToolTip.visible: hovered && !toolSizeSliderPopup.visible
+            ToolTip.text: qsTr("Change the brush settings")
+            ToolTip.visible: hovered && !brushSettingsPopup.visible
 
-            onClicked: toolSizeSliderPopup.open()
+            onClicked: brushSettingsPopup.open()
 
             ToolButtonMenuIndicator {}
 
-            ToolSizePopup {
-                id: toolSizeSliderPopup
+            BrushSettingsPopup {
+                id: brushSettingsPopup
                 x: parent.width / 2 - width / 2
                 y: parent.height
                 canvas: root.canvas
             }
         }
 
-        ToolButton {
-            id: brushTypeButton
-            objectName: "brushTypeButton"
-            hoverEnabled: true
-            focusPolicy: Qt.NoFocus
+//        ToolButton {
+//            id: brushTypeButton
+//            objectName: "brushTypeButton"
+//            hoverEnabled: true
+//            focusPolicy: Qt.NoFocus
 
-            icon.source: brushTypeGroup.checkedAction.icon.source
+//            icon.source: brushTypeGroup.checkedAction.icon.source
 
-            ToolTip.text: qsTr("Choose brush shape")
-            ToolTip.visible: hovered
+//            ToolTip.text: qsTr("Choose brush shape")
+//            ToolTip.visible: hovered
 
-            onClicked: brushTypeMenu.open()
+//            onClicked: brushTypeMenu.open()
 
-            ToolButtonMenuIndicator {}
+//            ToolButtonMenuIndicator {}
 
-            ActionGroup {
-                id: brushTypeGroup
-                exclusive: true
-                onTriggered: if (canvas) canvas.brushType = action.brushType
-                checkedAction: canvas ? actions[canvas.brushType] : squareBrushType
+//            ActionGroup {
+//                id: brushTypeGroup
+//                exclusive: true
+//                onTriggered: if (canvas) canvas.brushType = action.brushType
+//                checkedAction: canvas ? actions[canvas.brushType] : squareBrushType
 
-                Action {
-                    id: squareBrushType
-                    text: qsTr("Square")
-                    icon.source: "qrc:/images/square-tool-shape.png"
-                    checkable: true
-                    property int brushType: Brush.SquareType
-                }
+//                Action {
+//                    id: squareBrushType
+//                    text: qsTr("Square")
+//                    icon.source: "qrc:/images/square-tool-shape.png"
+//                    checkable: true
+//                    property int brushType: Brush.SquareType
+//                }
 
-                Action {
-                    id: circleBrushType
-                    text: qsTr("Circle")
-                    icon.source: "qrc:/images/circle-tool-shape.png"
-                    checkable: true
-                    property int brushType: Brush.CircleType
-                }
+//                Action {
+//                    id: circleBrushType
+//                    text: qsTr("Circle")
+//                    icon.source: "qrc:/images/circle-tool-shape.png"
+//                    checkable: true
+//                    property int brushType: Brush.CircleType
+//                }
 
-                Action {
-                    id: imageBrushType
-                    text: qsTr("Image")
-                    icon.source: "qrc:/images/image-tool-shape.png"
-                    checkable: true
-                    property int brushType: Brush.ImageType
-                }
-            }
+//                Action {
+//                    id: imageBrushType
+//                    text: qsTr("Image")
+//                    icon.source: "qrc:/images/image-tool-shape.png"
+//                    checkable: true
+//                    property int brushType: Brush.ImageType
+//                }
+//            }
 
-            Menu {
-                id: brushTypeMenu
-                y: parent.height
+//            Menu {
+//                id: brushTypeMenu
+//                y: parent.height
 
-                MenuItem { action: squareBrushType}
-                MenuItem { action: circleBrushType }
-                MenuItem { action: imageBrushType }
-            }
-        }
+//                MenuItem { action: squareBrushType}
+//                MenuItem { action: circleBrushType }
+//                MenuItem { action: imageBrushType }
+//            }
+//        }
 
         ToolButton {
             id: toolBlendModeButton

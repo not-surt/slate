@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/shaders">
+        <file>brush.vsh</file>
+        <file>brush.fsh</file>
+    </qresource>
+</RCC>

@@ -40,6 +40,7 @@
 #include "texturedfillparameters.h"
 #include "brush.h"
 #include "stroke.h"
+#include "strokerenderer.h"
 
 Q_DECLARE_LOGGING_CATEGORY(lcImageCanvas)
 Q_DECLARE_LOGGING_CATEGORY(lcImageCanvasLifecycle)
@@ -91,6 +92,11 @@ class SLATE_EXPORT ImageCanvas : public QQuickItem
     Q_PROPERTY(qreal lowerToolOpacity READ lowerToolOpacity WRITE setLowerToolOpacity NOTIFY lowerToolOpacityChanged)
     Q_PROPERTY(qreal upperToolOpacity READ upperToolOpacity WRITE setUpperToolOpacity NOTIFY upperToolOpacityChanged)
     Q_PROPERTY(bool toolOpacityUsePressure READ toolOpacityUsePressure WRITE setToolOpacityUsePressure NOTIFY toolOpacityUsePressureChanged)
+    Q_PROPERTY(qreal lowerToolHardness READ lowerToolHardness WRITE setLowerToolHardness NOTIFY lowerToolHardnessChanged)
+    Q_PROPERTY(qreal upperToolHardness READ upperToolHardness WRITE setUpperToolHardness NOTIFY upperToolHardnessChanged)
+    Q_PROPERTY(bool toolHardnessUsePressure READ toolHardnessUsePressure WRITE setToolHardnessUsePressure NOTIFY toolHardnessUsePressureChanged)
+    Q_PROPERTY(bool toolSingleColour READ toolSingleColour WRITE setToolSingleColour NOTIFY toolSingleColourChanged)
+    Q_PROPERTY(qreal toolSpacing READ toolSpacing WRITE setToolSpacing NOTIFY toolSpacingChanged)
     Q_PROPERTY(Brush::Type brushType READ brushType WRITE setBrushType NOTIFY brushTypeChanged)
     Q_PROPERTY(ToolBlendMode toolBlendMode READ toolBlendMode WRITE setToolBlendMode NOTIFY toolBlendModeChanged)
     Q_PROPERTY(QColor penForegroundColour READ penForegroundColour WRITE setPenForegroundColour NOTIFY penForegroundColourChanged)
@@ -241,6 +247,19 @@ public:
     bool toolOpacityUsePressure() const;
     void setToolOpacityUsePressure(bool toolOpacityUsePressure);
 
+    bool toolSingleColour() const;
+    void setToolSingleColour(bool toolSingleColour);
+
+    qreal lowerToolHardness() const;
+    void setLowerToolHardness(qreal lowerToolHardness);
+    qreal upperToolHardness() const;
+    void setUpperToolHardness(qreal upperToolHardness);
+    bool toolHardnessUsePressure() const;
+    void setToolHardnessUsePressure(bool toolHardnessUsePressure);
+
+    qreal toolSpacing() const;
+    void setToolSpacing(qreal toolSpacing);
+
     QColor penForegroundColour() const;
     void setPenForegroundColour(const QColor &penForegroundColour);
 
@@ -371,6 +390,11 @@ signals:
     void lowerToolOpacityChanged();
     void upperToolOpacityChanged();
     void toolOpacityUsePressureChanged();
+    void lowerToolHardnessChanged();
+    void upperToolHardnessChanged();
+    void toolSpacingChanged();
+    void toolHardnessUsePressureChanged();
+    void toolSingleColourChanged();
     void penForegroundColourChanged();
     void penBackgroundColourChanged();
     void hasBlankCursorChanged();
@@ -647,9 +671,14 @@ protected:
     bool mToolSizeUsePressure;
     qreal mLowerToolOpacity, mUpperToolOpacity;
     bool mToolOpacityUsePressure;
+    qreal mLowerToolHardness, mUpperToolHardness;
+    bool mToolHardnessUsePressure;
+    bool mToolSingleColour;
+    qreal mToolSpacing;
     QColor mPenForegroundColour;
     QColor mPenBackgroundColour;
     Brush mBrush;
+    StrokeRenderer mStrokeRenderer;
 
     TexturedFillParameters mTexturedFillParameters;
 

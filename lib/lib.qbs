@@ -170,6 +170,7 @@ Product {
         "selectioncursorguide.h",
         "selectionitem.cpp",
         "selectionitem.h",
+        "shaders/shaders.qrc",
         "slate-global.h",
         "splitter.cpp",
         "splitter.h",
@@ -179,6 +180,8 @@ Product {
         "spriteimageprovider.h",
         "stroke.cpp",
         "stroke.h",
+        "strokerenderer.cpp",
+        "strokerenderer.h",
         "swatch.cpp",
         "swatch.h",
         "swatchcolour.cpp",
@@ -205,5 +208,6 @@ Product {
         "tilesetswatchimage.h",
         "utils.cpp",
         "utils.h",
+        "shaders/shaders.qrc",
     ]
 }

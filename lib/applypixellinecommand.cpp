@@ -25,6 +25,7 @@
 #include <QtMath>
 
 #include "commands.h"
+#include "utils.h"
 
 Q_LOGGING_CATEGORY(lcApplyPixelLineCommand, "app.undo.applyPixelLineCommand")
 
@@ -37,7 +38,7 @@ ApplyPixelLineCommand::ApplyPixelLineCommand(ImageCanvas *const canvas, const in
     mOldStroke(mCanvas->mOldStroke),
     mCompositionMode(compositionMode),
     mStroke(stroke), mStrokeUpdateStartIndex(0),
-    mBufferRegion(), mUndoBuffer(), mRedoBuffer(), mBufferBounds(),
+    mBufferRegion(), mUndoBuffer(), mRedoBuffer(), mStrokeBuffer(), mBufferBounds(),
     mPreviousCommand(previousCommand), mNeedDraw(true)
 {
     qCDebug(lcApplyPixelLineCommand) << "constructed" << this;
@@ -119,11 +120,13 @@ void ApplyPixelLineCommand::redo()
                 if (mUndoBuffer.isNull()) {
                     mUndoBuffer = QImage(mBufferBounds.size(), mCanvas->imageForLayerAt(mLayerIndex)->format());
                     mRedoBuffer = QImage(mBufferBounds.size(), mCanvas->imageForLayerAt(mLayerIndex)->format());
+                    mStrokeBuffer = QImage(mBufferBounds.size(), mCanvas->imageForLayerAt(mLayerIndex)->format());
                 }
                 else {
                     const QRect copyRect = QRect(mBufferBounds.topLeft() - oldBufferBounds.topLeft(), mBufferBounds.size());
                     mUndoBuffer = mUndoBuffer.copy(copyRect);
                     mRedoBuffer = mRedoBuffer.copy(copyRect);
+                    mStrokeBuffer = mRedoBuffer.copy(copyRect);
                 }
             }
 
@@ -136,19 +139,21 @@ void ApplyPixelLineCommand::redo()
             painter.end();
 
             // Draw stroke to image
-            painter.begin(mCanvas->imageForLayerAt(mLayerIndex));
-            for (auto const &key : subImageRegions.keys()) {
-                painter.save();
-                painter.setClipRegion(subImageRegions[key]);
-                for (auto const &offset : instanceOffsets[key]) {
-                    painter.save();
-                    painter.translate(offset);
-                    mStroke.draw(&painter, mBrush, mScaleMin, mScaleMax, mColour, mCompositionMode, true);
-                    painter.restore();
+            {
+                Utils::ContextGrabber grabber(&mCanvas->mStrokeRenderer.surface(), &mCanvas->mStrokeRenderer.context());
+                mCanvas->mStrokeRenderer.setImage(mCanvas->imageForLayerAt(mLayerIndex));
+                mCanvas->mStrokeRenderer.upload(bufferDrawRegion.boundingRect());
+                for (auto const &key : subImageRegions.keys()) {
+                    for (auto const &rect : subImageRegions[key].rects()) {
+//                        mCanvas->mStrokeRenderer.upload(rect);
+                        for (auto const &offset : instanceOffsets[key]) {
+                            mCanvas->mStrokeRenderer.render(mStroke, mBrush, mColour, mScaleMin, mScaleMax, mCanvas->lowerToolOpacity(), mCanvas->upperToolOpacity(), mCanvas->lowerToolHardness(), mCanvas->upperToolHardness(), mCanvas->toolSingleColour(), QTransform().translate(offset.x(), offset.y()), rect);
+                        }
+//                        mCanvas->mStrokeRenderer.download(rect);
+                    }
                 }
-                painter.restore();
+                mCanvas->mStrokeRenderer.download(bufferDrawRegion.boundingRect());
             }
-            painter.end();
 
             // Store changed image in redo buffer
             painter.begin(&mRedoBuffer);

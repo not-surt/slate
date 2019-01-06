@@ -5,6 +5,7 @@
 #include <QVector>
 #include <QPainter>
 #include <QtMath>
+#include <functional>
 
 #include "brush.h"
 
@@ -31,11 +32,11 @@ public:
     using QVector::QVector;
     Stroke(const QVector<StrokePoint> &vector) : QVector<StrokePoint>(vector) {}
 
-    static qreal strokeSegment(QPainter *const painter, const Brush &brush, const QColor &colour, const StrokePoint &point0, const StrokePoint &point1, const qreal scaleMin, const qreal scaleMax, const qreal stepOffset = 0.0, const bool stepOffsetOnly = false);
+    static qreal strokeSegment(std::function<void(const StrokePoint &)> render, QPainter *const painter, const Brush &brush, const QColor &colour, const StrokePoint &point0, const StrokePoint &point1, const qreal scaleMin, const qreal scaleMax, const qreal stepOffset = 0.0, const bool stepOffsetOnly = false);
 
-    StrokePoint snapped(const int index, const QPointF snapOffset = {0.0, 0.0}, const bool snapToPixel = true);
+    StrokePoint snapped(const int index, const QPointF snapOffset = {0.0, 0.0}, const bool snapToPixel = true) const;
 
-    void draw(QPainter *const painter, const Brush &brush, const qreal scaleMin, const qreal scaleMax, const QColor &colour, const QPainter::CompositionMode mode, const bool snapToPixel = false);
+    void draw(std::function<void(const StrokePoint &)> render, QPainter *const painter, const Brush &brush, const qreal scaleMin, const qreal scaleMax, const QColor &colour, const QPainter::CompositionMode mode, const bool snapToPixel = false) const;
 
     QRect bounds(const Brush &brush, const qreal scaleMin, const qreal scaleMax);
 };

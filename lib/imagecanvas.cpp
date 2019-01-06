@@ -110,9 +110,15 @@ ImageCanvas::ImageCanvas() :
     mLowerToolOpacity(0.0),
     mUpperToolOpacity(1.0),
     mToolOpacityUsePressure(false),
+    mLowerToolHardness(0.0),
+    mUpperToolHardness(1.0),
+    mToolHardnessUsePressure(false),
+    mToolSingleColour(false),
+    mToolSpacing(0.25),
     mPenForegroundColour(Qt::black),
     mPenBackgroundColour(Qt::white),
     mBrush(),
+    mStrokeRenderer(),
     mPotentiallySelecting(false),
     mHasSelection(false),
     mMovingSelection(false),
@@ -554,8 +560,8 @@ void ImageCanvas::setLowerToolSize(int lowerToolSize)
 
     mLowerToolSize = clamped;
     emit lowerToolSizeChanged();
-    if (mLowerToolSize > mUpperToolSize)
-        setUpperToolSize(mLowerToolSize);
+//    if (mLowerToolSize > mUpperToolSize)
+//        setUpperToolSize(mLowerToolSize);
 }
 
 int ImageCanvas::upperToolSize() const
@@ -571,8 +577,8 @@ void ImageCanvas::setUpperToolSize(int upperToolSize)
 
     mUpperToolSize = clamped;
     emit upperToolSizeChanged();
-    if (mUpperToolSize < mLowerToolSize)
-        setLowerToolSize(mUpperToolSize);
+//    if (mUpperToolSize < mLowerToolSize)
+//        setLowerToolSize(mUpperToolSize);
 
     updateBrush();
 }
@@ -593,7 +599,6 @@ void ImageCanvas::setToolSizeUsePressure(bool toolSizeUsePressure)
         return;
 
     mToolSizeUsePressure = toolSizeUsePressure;
-
     emit toolSizeUsePressureChanged();
 }
 
@@ -642,8 +647,78 @@ void ImageCanvas::setToolOpacityUsePressure(bool toolOpacityUsePressure)
         return;
 
     mToolOpacityUsePressure = toolOpacityUsePressure;
-
     emit toolOpacityUsePressureChanged();
+}
+
+qreal ImageCanvas::lowerToolHardness() const
+{
+    return mLowerToolHardness;
+}
+
+void ImageCanvas::setLowerToolHardness(qreal lowerToolHardness)
+{
+    const qreal clamped = qBound(0.0, lowerToolHardness, 1.0);
+    if (qFuzzyCompare(clamped, mLowerToolHardness))
+        return;
+
+    mLowerToolHardness = clamped;
+    emit lowerToolHardnessChanged();
+}
+
+qreal ImageCanvas::upperToolHardness() const
+{
+    return mUpperToolHardness;
+}
+
+void ImageCanvas::setUpperToolHardness(qreal upperToolHardness)
+{
+    const qreal clamped = qBound(0.0, upperToolHardness, 1.0);
+    if (qFuzzyCompare(clamped, mUpperToolHardness))
+        return;
+
+    mUpperToolHardness = clamped;
+    emit upperToolHardnessChanged();
+}
+
+bool ImageCanvas::toolHardnessUsePressure() const {
+    return mToolHardnessUsePressure;
+}
+
+void ImageCanvas::setToolHardnessUsePressure(bool toolHardnessUsePressure)
+{
+    if (toolHardnessUsePressure == mToolHardnessUsePressure)
+        return;
+
+    mToolHardnessUsePressure = toolHardnessUsePressure;
+    emit toolHardnessUsePressureChanged();
+}
+
+bool ImageCanvas::toolSingleColour() const {
+    return mToolSingleColour;
+}
+
+void ImageCanvas::setToolSingleColour(bool toolSingleColour)
+{
+    if (toolSingleColour == mToolSingleColour)
+        return;
+
+    mToolSingleColour = toolSingleColour;
+    emit toolSingleColourChanged();
+}
+
+qreal ImageCanvas::toolSpacing() const
+{
+    return mToolSpacing;
+}
+
+void ImageCanvas::setToolSpacing(qreal toolSpacing)
+{
+    const qreal clamped = qBound(0.0, toolSpacing, 1.0);
+    if (qFuzzyCompare(clamped, mToolSpacing))
+        return;
+
+    mToolSpacing = clamped;
+    emit toolSpacingChanged();
 }
 
 QColor ImageCanvas::penForegroundColour() const
@@ -1146,7 +1221,9 @@ QImage ImageCanvas::getContentImage()
     QUndoStack tempUndoStack;
     QImage image;
 
-    const bool showPreview = containsMouse() && (mProject->settings()->isBrushPreviewVisible() || isLineVisible()) && previewTools.contains(mTool);
+    // TODO: can't GL render stroke in render thread.
+//    const bool showPreview = containsMouse() && (mProject->settings()->isBrushPreviewVisible() || isLineVisible()) && previewTools.contains(mTool);
+    const bool showPreview = false;
 
     // Draw the brush/line preview to the image
     if (showPreview) {

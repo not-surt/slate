@@ -71,7 +71,7 @@ Group {
             "ui/TilesetTypeCanvas.qml",
             "ui/ToolBar.qml",
             "ui/ToolButtonMenuIndicator.qml",
-            "ui/ToolSizePopup.qml",
+            "ui/BrushSettingsPopup.qml",
             "ui/ZoomIndicator.qml"
         ]
 

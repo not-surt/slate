@@ -1,4 +1,5 @@
 #include "stroke.h"
+#include "utils.h"
 
 bool StrokePoint::operator==(const StrokePoint &other) const
 {
@@ -20,7 +21,7 @@ QPoint StrokePoint::pixel() const
     return QPoint{qFloor(pos.x()), qFloor(pos.y())};
 }
 
-qreal Stroke::strokeSegment(QPainter *const painter, const Brush &brush, const QColor &colour, const StrokePoint &point0, const StrokePoint &point1, const qreal scaleMin, const qreal scaleMax, const qreal stepOffset, const bool stepOffsetOnly)
+qreal Stroke::strokeSegment(std::function<void(const StrokePoint &)> render, QPainter *const painter, const Brush &brush, const QColor &colour, const StrokePoint &point0, const StrokePoint &point1, const qreal scaleMin, const qreal scaleMax, const qreal stepOffset, const bool stepOffsetOnly)
 {
     const QPointF posDelta = {point1.pos.x() - point0.pos.x(), point1.pos.y() - point0.pos.y()};
     const qreal pressureDelta = point1.pressure - point0.pressure;
@@ -28,39 +29,57 @@ qreal Stroke::strokeSegment(QPainter *const painter, const Brush &brush, const Q
     const qreal step = 1.0 / steps;
     qreal pos = stepOffset * step;
     while (pos < 1.0 || qFuzzyCompare(pos, 1.0)) {
-        const QPointF point = point0.pos + pos * posDelta;
+        const QPointF point =  Utils::lerp(point0.pos, point1.pos, pos);
         if (!stepOffsetOnly) {
-            const qreal pressure = point0.pressure + pos * pressureDelta;
-            const qreal scale = scaleMin + pressure * (scaleMax - scaleMin);
-            brush.draw(painter, colour, point, scale);
+            const qreal pressure = Utils::lerp(point0.pressure, point1.pressure, pos);
+            const qreal scale = Utils::lerp(scaleMin, scaleMax, pressure);
+            render(StrokePoint{point, pressure});
         }
         pos += step;
     }
     return (pos - 1.0) * steps;
 }
 
-StrokePoint Stroke::snapped(const int index, const QPointF snapOffset, const bool snapToPixel)
+StrokePoint Stroke::snapped(const int index, const QPointF snapOffset, const bool snapToPixel) const
 {
     if (!snapToPixel) return at(index);
     else return at(index).snapped(snapOffset);
 }
 
-void Stroke::draw(QPainter *const painter, const Brush &brush, const qreal scaleMin, const qreal scaleMax, const QColor &colour, const QPainter::CompositionMode mode, const bool snapToPixel)
+void Stroke::draw(std::function<void(const StrokePoint &)> render, QPainter *const painter, const Brush &brush, const qreal scaleMin, const qreal scaleMax, const QColor &colour, const QPainter::CompositionMode mode, const bool snapToPixel) const
 {
-    painter->save();
-    painter->setCompositionMode(mode);
-    if (length() == 1) {
-        strokeSegment(painter, brush, colour, snapped(0, brush.handle, snapToPixel), snapped(0, brush.handle, snapToPixel), scaleMin, scaleMax);
-    } else {
-        qreal stepOffset = 0.0;
-        for (int i = 1; i < length(); ++i) {
-            const QRect clipRect = painter->clipBoundingRect().toAlignedRect();
-            const QRect segmentBounds = Stroke{at(i - 1), at(i)}.bounds(brush, scaleMin, scaleMax);
-            const bool drawSegment = clipRect.isValid() && clipRect.intersects(segmentBounds);
-            stepOffset = strokeSegment(painter, brush, colour, snapped(i - 1, brush.handle, snapToPixel), snapped(i, brush.handle, snapToPixel), scaleMin, scaleMax, stepOffset, !drawSegment);
-        }
+    if (isEmpty()) return;
+
+    int i = 0;
+    StrokePoint from = snapped(i, brush.handle, snapToPixel), to;
+    if (length() > 1) {
+        ++i;
     }
-    painter->restore();
+    qreal stepOffset = 0.0;
+
+    auto arePixelsNeighbors = [](const QPoint &point0, const QPoint &point1) {
+        return qAbs(point1.x() - point0.x()) <= 1 &&
+               qAbs(point1.y() - point0.y()) <= 1;
+    };
+    QVector<QPoint> pixels(3);
+    pixels.append(from.pos.toPoint());
+//    if (pixels[pixels.length() - 1] == pixels[pixels.length() - 2] && pixels.length() > 1) {
+
+//    }
+
+    while (i < length()) {
+        do {
+            to = snapped(i, brush.handle, snapToPixel);
+            ++i;
+        } while (to == from && i < length());
+//        const QRect clipRect = painter->clipBoundingRect().toAlignedRect();
+        const QRect segmentBounds = Stroke{from, to}.bounds(brush, scaleMin, scaleMax);
+//        const bool drawSegment = clipRect.isValid() && clipRect.intersects(segmentBounds);
+        const bool drawSegment = true;
+        stepOffset = strokeSegment(render, painter, brush, colour, from, to, scaleMin, scaleMax, stepOffset, !drawSegment);
+        from = to;
+    }
+//    painter->restore();
 }
 
 QRect Stroke::bounds(const Brush &brush, const qreal scaleMin, const qreal scaleMax)

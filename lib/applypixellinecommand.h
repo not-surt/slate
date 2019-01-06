@@ -62,6 +62,7 @@ private:
     QRegion mBufferRegion;
     QImage mUndoBuffer;
     QImage mRedoBuffer;
+    QImage mStrokeBuffer;
     QRect mBufferBounds;
 
     const QUndoCommand *mPreviousCommand;

@@ -24,6 +24,9 @@
 #include <QImage>
 #include <QRect>
 
+class QSurface;
+class QOpenGLContext;
+
 namespace Utils {
     QImage paintImageOntoPortionOfImage(const QImage &image, const QRect &portion, const QImage &replacementImage);
 
@@ -39,6 +42,8 @@ namespace Utils {
     void strokeRectWithDashes(QPainter *painter, const QRect &rect);
 
     QRect ensureWithinArea(const QRect &rect, const QSize &boundsSize);
+
+    QString fileToString(const QString &path);
 
     template<typename T>
     QString enumToString(T enumValue)
@@ -70,6 +75,19 @@ namespace Utils {
     inline T modCeil(const T dividend, const T divisor) {
         return modFloor(dividend + (divisor - 1), divisor);
     }
+
+    template<typename T, typename S>
+    inline T lerp(const T from, const T to, const S pos) {
+        return from + pos * (to - from);
+    }
+
+    struct ContextGrabber {
+        ContextGrabber(QSurface *const surface, QOpenGLContext *const context);
+        ~ContextGrabber();
+
+        QOpenGLContext *const oldContext;
+        QSurface *const oldSurface;
+    };
 }
 
 #endif // UTILS_H
