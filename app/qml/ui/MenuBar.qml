@@ -187,7 +187,7 @@ Controls.MenuBar {
             objectName: "redoMenuItem"
             text: qsTr("Redo")
             enabled: project && project.undoStack.canRedo
-            onTriggered: project.undoStack.redo()
+            onTriggered: canvas.redo()
         }
 
         MenuSeparator {}

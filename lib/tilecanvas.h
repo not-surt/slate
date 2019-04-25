@@ -103,7 +103,7 @@ protected:
     void disconnectSignals() override;
     void toolChange() override;
     bool supportsSelectionTool() const override;
-    virtual QImage getComposedImage() override;
+    virtual QImage getComposedImage() const override;
 
     void onLoadedChanged() override;
 
@@ -133,7 +133,6 @@ private:
 
     void updateCursorPos(const QPoint &eventPos) override;
     void error(const QString &message);
-    QColor penColour() const;
     void setHasBlankCursor(bool hasBlankCursor);
     void updateTilePenPreview();
     void setTilePenPreview(bool tilePenPreview);

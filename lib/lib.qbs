@@ -5,7 +5,7 @@ Product {
     type: Qt.core.staticBuild ? "staticlibrary" : "dynamiclibrary"
 
     Depends { name: "cpp" }
-    Depends { name: "Qt"; submodules: ["core", "gui", "quick", "widgets"]; versionAtLeast: "5.12" }
+    Depends { name: "Qt"; submodules: ["core", "gui", "quick", "widgets", "opengl"]; versionAtLeast: "5.12" }
     // For version info.
     Depends { name: "vcs" }
     Depends { name: "bundle" }
@@ -32,7 +32,7 @@ Product {
         Depends { name: "cpp" }
         Depends {
             name: "Qt"
-            submodules: ["core", "gui", "quick", "widgets"]
+            submodules: ["core", "gui", "quick", "widgets", "opengl"]
         }
 
 //        cpp.includePaths: "."
@@ -114,6 +114,8 @@ Product {
         "deletelayercommand.h",
         "duplicatelayercommand.cpp",
         "duplicatelayercommand.h",
+        "editingcontext.cpp",
+        "editingcontext.h",
         "filevalidator.cpp",
         "filevalidator.h",
         "fillalgorithms.cpp",

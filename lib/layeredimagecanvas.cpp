@@ -159,7 +159,7 @@ int LayeredImageCanvas::currentLayerIndex() const
     return mLayeredImageProject->currentLayerIndex();
 }
 
-QImage LayeredImageCanvas::getComposedImage()
+QImage LayeredImageCanvas::getComposedImage() const
 {
     return mLayeredImageProject->flattenedImage([=](int index) {
         QImage layerImage;

@@ -191,7 +191,7 @@ void tst_App::newProjectWithNewTileset()
     QCOMPARE(tilesetProject->tileset()->image()->height(), expectedHeight);
     QImage expectedTilesetImage(expectedWidth, expectedHeight, tilesetProject->tileset()->image()->format());
     expectedTilesetImage.fill(Qt::white);
-    expectedTilesetImage.setPixelColor(10, 10, tileCanvas->penForegroundColour());
+    expectedTilesetImage.setPixelColor(10, 10, tileCanvas->editingContext()->foregroundColour());
 
     // Draw a tile on.
     QVERIFY2(switchMode(TileCanvas::TileMode), failureMessage);
@@ -430,7 +430,7 @@ void tst_App::saveAsAndLoad()
     QVERIFY(swatchesPanel->setProperty("expanded", QVariant(true)));
     QQuickItem *newSwatchColourButton = window->findChild<QQuickItem*>("newSwatchColourButton");
     QVERIFY(newSwatchColourButton);
-    canvas->setPenForegroundColour(Qt::red);
+    canvas->editingContext()->setForegroundColour(Qt::red);
     mouseEventOnCentre(newSwatchColourButton, MouseClick);
     QCOMPARE(project->swatch()->colours().size(), 1);
     QVERIFY(project->swatch()->colours().contains(SwatchColour(QString(), Qt::red)));
@@ -1185,13 +1185,13 @@ void tst_App::undoWithDuplicates()
     QTest::mouseMove(window, cursorWindowPos);
 
     QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QCOMPARE(tilesetProject->tileAt(cursorPos)->pixelColor(cursorPos), tileCanvas->penForegroundColour());
+    QCOMPARE(tilesetProject->tileAt(cursorPos)->pixelColor(cursorPos), tileCanvas->editingContext()->foregroundColour());
     QVERIFY(*tilesetProject->tileAt(cursorPos)->tileset()->image() != lastImage);
 
     lastImage = *tilesetProject->tileAt(cursorPos)->tileset()->image();
     setCursorPosInScenePixels(0, 2);
     QTest::mouseMove(window, cursorWindowPos);
-    QCOMPARE(tilesetProject->tileAt(cursorPos)->pixelColor(cursorPos), tileCanvas->penForegroundColour());
+    QCOMPARE(tilesetProject->tileAt(cursorPos)->pixelColor(cursorPos), tileCanvas->editingContext()->foregroundColour());
     QVERIFY(*tilesetProject->tileAt(cursorPos)->tileset()->image() != lastImage);
 
     // Go back over the same pixels.
@@ -1238,13 +1238,13 @@ void tst_App::undoWithDuplicates()
     for (; x < tilesetProject->tileWidth(); ++x) {
         setCursorPosInScenePixels(x, y);
         QTest::mouseMove(window, cursorWindowPos);
-        QCOMPARE(tilesetProject->tileAt(cursorPos)->pixelColor(cursorPos), tileCanvas->penForegroundColour());
+        QCOMPARE(tilesetProject->tileAt(cursorPos)->pixelColor(cursorPos), tileCanvas->editingContext()->foregroundColour());
     }
     // The last pixel is on the next tile.
     setCursorPosInScenePixels(++x, y);
     QTest::mouseMove(window, cursorWindowPos);
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QCOMPARE(tilesetProject->tileAt(cursorPos)->pixelColor(cursorPos - QPoint(tilesetProject->tileWidth(), 0)), tileCanvas->penForegroundColour());
+    QCOMPARE(tilesetProject->tileAt(cursorPos)->pixelColor(cursorPos - QPoint(tilesetProject->tileWidth(), 0)), tileCanvas->editingContext()->foregroundColour());
 
     mouseEventOnCentre(undoButton, MouseClick);
     QCOMPARE(*tilesetProject->tileAt(cursorPos)->tileset()->image(), originalImage);
@@ -1344,8 +1344,8 @@ void tst_App::undoImageSizeChange()
     setCursorPosInScenePixels(2, 2);
     QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QCOMPARE(imageProject->image()->pixelColor(QPoint(0, 0)), imageCanvas->penForegroundColour());
-    QCOMPARE(imageProject->image()->pixelColor(QPoint(3, 3)), imageCanvas->penForegroundColour());
+    QCOMPARE(imageProject->image()->pixelColor(QPoint(0, 0)), imageCanvas->editingContext()->foregroundColour());
+    QCOMPARE(imageProject->image()->pixelColor(QPoint(3, 3)), imageCanvas->editingContext()->foregroundColour());
 
     QVERIFY(imageGrabber.requestImage(canvas));
     QTRY_VERIFY(imageGrabber.isReady());
@@ -1354,8 +1354,8 @@ void tst_App::undoImageSizeChange()
     QVERIFY2(changeImageSize(6, 6), failureMessage);
 
     // The contents should have been scaled down by 50%.
-    QCOMPARE(imageProject->image()->pixelColor(QPoint(0, 0)), imageCanvas->penForegroundColour());
-    QCOMPARE(imageProject->image()->pixelColor(QPoint(1, 1)), imageCanvas->penForegroundColour());
+    QCOMPARE(imageProject->image()->pixelColor(QPoint(0, 0)), imageCanvas->editingContext()->foregroundColour());
+    QCOMPARE(imageProject->image()->pixelColor(QPoint(1, 1)), imageCanvas->editingContext()->foregroundColour());
     QCOMPARE(imageProject->image()->pixelColor(QPoint(2, 2)), QColor(Qt::white));
 
     // Move the mouse back so the image comparison works.
@@ -1372,8 +1372,8 @@ void tst_App::undoImageSizeChange()
     mouseEventOnCentre(undoButton, MouseClick);
 
     QCOMPARE(imageProject->image()->size(), QSize(12, 12));
-    QCOMPARE(imageProject->image()->pixelColor(QPoint(0, 0)), imageCanvas->penForegroundColour());
-    QCOMPARE(imageProject->image()->pixelColor(QPoint(3, 3)), imageCanvas->penForegroundColour());
+    QCOMPARE(imageProject->image()->pixelColor(QPoint(0, 0)), imageCanvas->editingContext()->foregroundColour());
+    QCOMPARE(imageProject->image()->pixelColor(QPoint(3, 3)), imageCanvas->editingContext()->foregroundColour());
 
     QVERIFY(imageGrabber.requestImage(canvas));
     QTRY_VERIFY(imageGrabber.isReady());
@@ -1405,7 +1405,7 @@ void tst_App::undoLayeredImageSizeChange()
 
     // Draw on the new layer.
     setCursorPosInScenePixels(6, 2);
-    layeredImageCanvas->setPenForegroundColour(Qt::red);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::red);
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
     QCOMPARE(layer2->image()->pixelColor(4, 0), QColor(Qt::red));
     QCOMPARE(layer2->image()->pixelColor(7, 3), QColor(Qt::red));
@@ -1501,7 +1501,7 @@ void tst_App::undoPixelFill()
     QVERIFY2(switchTool(TileCanvas::FillTool), failureMessage);
     setCursorPosInScenePixels(1, 0);
     const QColor red = QColor(Qt::red);
-    tileCanvas->setPenForegroundColour(red);
+    tileCanvas->editingContext()->setForegroundColour(red);
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
     QCOMPARE(targetTile->pixelColor(0, 0), red);
     QCOMPARE(targetTile->pixelColor(1, 0), red);
@@ -1820,8 +1820,8 @@ void tst_App::colours()
 
     QVERIFY2(createNewProject(projectType), failureMessage);
     QVERIFY2(togglePanel("colourPanel", true), failureMessage);
-    QCOMPARE(canvas->penForegroundColour(), QColor(Qt::black));
-    QCOMPARE(canvas->penBackgroundColour(), QColor(Qt::white));
+    QCOMPARE(canvas->editingContext()->foregroundColour(), QColor(Qt::black));
+    QCOMPARE(canvas->editingContext()->backgroundColour(), QColor(Qt::white));
 
     QQuickItem *hueSlider = window->findChild<QQuickItem*>("hueSlider");
     QVERIFY(hueSlider);
@@ -1836,9 +1836,9 @@ void tst_App::colours()
     // Choose a colour.
     mouseEventOnCentre(saturationLightnessPicker, MouseClick);
     const QColor expectedColour = QColor("#c04141");
-    QVERIFY2(fuzzyColourCompare(canvas->penForegroundColour(), expectedColour), failureMessage);
+    QVERIFY2(fuzzyColourCompare(canvas->editingContext()->foregroundColour(), expectedColour), failureMessage);
     // Background colour shouldn't be affected.
-    QCOMPARE(canvas->penBackgroundColour(), QColor(Qt::white));
+    QCOMPARE(canvas->editingContext()->backgroundColour(), QColor(Qt::white));
 
     // Now try changing the background colour.
     mouseEvent(penBackgroundColourButton,
@@ -1847,42 +1847,42 @@ void tst_App::colours()
     // Choose a colour.
     mouseEvent(saturationLightnessPicker, QPointF(saturationLightnessPicker->width() * 0.25,
         saturationLightnessPicker->height() * 0.25), MouseClick);
-    QVERIFY(canvas->penBackgroundColour() != QColor(Qt::white));
+    QVERIFY(canvas->editingContext()->backgroundColour() != QColor(Qt::white));
     // Foreground colour shouldn't be affected.
-    QVERIFY2(fuzzyColourCompare(canvas->penForegroundColour(), expectedColour), failureMessage);
+    QVERIFY2(fuzzyColourCompare(canvas->editingContext()->foregroundColour(), expectedColour), failureMessage);
 
     // Hex field should represent background colour when selected.
     QQuickItem *hexTextField = window->findChild<QQuickItem*>("hexTextField");
     QVERIFY(hexTextField);
-    QCOMPARE(hexTextField->property("text").toString().prepend("#"), canvas->penBackgroundColour().name());
+    QCOMPARE(hexTextField->property("text").toString().prepend("#"), canvas->editingContext()->backgroundColour().name());
 
     // Hex field should represent foreground colour when selected.
     mouseEventOnCentre(penForegroundColourButton, MouseClick);
-    QCOMPARE(hexTextField->property("text").toString().prepend("#"), canvas->penForegroundColour().name());
+    QCOMPARE(hexTextField->property("text").toString().prepend("#"), canvas->editingContext()->foregroundColour().name());
 
     // TODO: fix issue where hue slider handle is missing
     // For now, we work around it.
     mouseEvent(hueSlider, QPointF(hueSlider->width() / 2, hueSlider->height() / 2), MouseClick);
 
     // Test that the "Lighter" button works.
-    QColor oldColour = canvas->penForegroundColour();
+    QColor oldColour = canvas->editingContext()->foregroundColour();
     mouseEventOnCentre(lighterButton, MouseClick);
-    QVERIFY(canvas->penForegroundColour().lightnessF() > oldColour.lightnessF());
+    QVERIFY(canvas->editingContext()->foregroundColour().lightnessF() > oldColour.lightnessF());
 
     // Test that the "Darker" button works.
-    oldColour = canvas->penForegroundColour();
+    oldColour = canvas->editingContext()->foregroundColour();
     mouseEventOnCentre(darkerButton, MouseClick);
-    QVERIFY(canvas->penForegroundColour().lightnessF() < oldColour.lightnessF());
+    QVERIFY(canvas->editingContext()->foregroundColour().lightnessF() < oldColour.lightnessF());
 
     // Test that the "Saturate" button works.
-    oldColour = canvas->penForegroundColour();
+    oldColour = canvas->editingContext()->foregroundColour();
     mouseEventOnCentre(saturateButton, MouseClick);
-    QVERIFY(canvas->penForegroundColour().saturationF() > oldColour.saturationF());
+    QVERIFY(canvas->editingContext()->foregroundColour().saturationF() > oldColour.saturationF());
 
     // Test that the "Desaturate" button works.
-    oldColour = canvas->penForegroundColour();
+    oldColour = canvas->editingContext()->foregroundColour();
     mouseEventOnCentre(desaturateButton, MouseClick);
-    QVERIFY(canvas->penForegroundColour().saturationF() < oldColour.saturationF());
+    QVERIFY(canvas->editingContext()->foregroundColour().saturationF() < oldColour.saturationF());
 }
 
 // Test that two colours that only differ by saturation
@@ -1895,12 +1895,12 @@ void tst_App::colourPickerSaturationHex()
     const QColor colour2 = QColor("#fffbee");
 
     // Draw with one colour.
-    imageCanvas->setPenForegroundColour(colour1);
+    imageCanvas->editingContext()->setForegroundColour(colour1);
     setCursorPosInScenePixels(0, 0);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
     // Now draw with a colour that only varies in saturation from the previous colour.
-    imageCanvas->setPenForegroundColour(colour2);
+    imageCanvas->editingContext()->setForegroundColour(colour2);
     setCursorPosInScenePixels(1, 0);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
@@ -1909,7 +1909,7 @@ void tst_App::colourPickerSaturationHex()
     setCursorPosInScenePixels(0, 0);
     QTest::mouseMove(window, cursorWindowPos);
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QCOMPARE(imageCanvas->penForegroundColour(), colour1);
+    QCOMPARE(imageCanvas->editingContext()->foregroundColour(), colour1);
 
     QQuickItem *hexTextField = window->findChild<QQuickItem*>("hexTextField");
     QVERIFY(hexTextField);
@@ -1987,17 +1987,17 @@ void tst_App::eyedropper()
     Tile *originalTile = tilesetProject->tileAt(cursorPos);
     QVERIFY(originalTile);
     const QPoint pixelPos = QPoint(tilesetProject->tileWidth() / 2, tilesetProject->tileHeight() / 2);
-    QVERIFY(tileCanvas->penForegroundColour() != originalTile->pixelColor(pixelPos));
+    QVERIFY(tileCanvas->editingContext()->foregroundColour() != originalTile->pixelColor(pixelPos));
 
     QVERIFY2(switchMode(TileCanvas::PixelMode), failureMessage);
     QVERIFY2(switchTool(TileCanvas::EyeDropperTool), failureMessage);
 
-    QColor lastForegroundColour = tileCanvas->penForegroundColour();
+    QColor lastForegroundColour = tileCanvas->editingContext()->foregroundColour();
     QTest::mouseMove(window, cursorWindowPos);
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-    QVERIFY(tileCanvas->penForegroundColour() != lastForegroundColour);
+    QVERIFY(tileCanvas->editingContext()->foregroundColour() != lastForegroundColour);
     // TODO: no idea why this doesn't work.. the positions are both {12, 12}.
-//    QCOMPARE(canvas->penForegroundColour(), originalTile->pixelColor(pixelPos));
+//    QCOMPARE(canvas->editingContext()->foregroundColour(), originalTile->pixelColor(pixelPos));
 
     QVERIFY2(switchMode(TileCanvas::TileMode), failureMessage);
 
@@ -2031,7 +2031,7 @@ void tst_App::eyedropperBackgroundColour()
     // Select the black pixel; the background colour should then be black.
     QVERIFY2(switchTool(ImageCanvas::EyeDropperTool), failureMessage);
     QTest::mouseClick(window, Qt::RightButton, Qt::NoModifier, cursorWindowPos);
-    QCOMPARE(canvas->penBackgroundColour(), QColor(Qt::black));
+    QCOMPARE(canvas->editingContext()->backgroundColour(), QColor(Qt::black));
 }
 
 void tst_App::zoomAndPan()
@@ -2176,7 +2176,7 @@ void tst_App::useTilesetSwatch()
     QVERIFY2(switchMode(TileCanvas::PixelMode), failureMessage);
     // Make sure that the pixel's colour will actually change.
     const QPoint pixelPos = QPoint(tilesetProject->tileWidth() / 2, tilesetProject->tileHeight() / 2);
-    QVERIFY(tileCanvas->penForegroundColour() != expectedTile->tileset()->image()->pixelColor(pixelPos));
+    QVERIFY(tileCanvas->editingContext()->foregroundColour() != expectedTile->tileset()->image()->pixelColor(pixelPos));
 
     // Take a snapshot of the swatch to make sure that it's actually updated.
     QVERIFY(imageGrabber.requestImage(tilesetSwatchPanel));
@@ -2354,10 +2354,10 @@ void tst_App::colourPickerHexField()
 
     QQuickItem *hexTextField = window->findChild<QQuickItem*>("hexTextField");
     QVERIFY(hexTextField);
-    QCOMPARE(canvas->penForegroundColour(), QColor(Qt::black));
-    QCOMPARE(hexTextField->property("text").toString().prepend("#"), canvas->penForegroundColour().name());
+    QCOMPARE(canvas->editingContext()->foregroundColour(), QColor(Qt::black));
+    QCOMPARE(hexTextField->property("text").toString().prepend("#"), canvas->editingContext()->foregroundColour().name());
 
-    const QColor originalPenColour = canvas->penForegroundColour();
+    const QColor originalPenColour = canvas->editingContext()->foregroundColour();
 
     mouseEventOnCentre(hexTextField, MouseClick);
     ENSURE_ACTIVE_FOCUS(hexTextField);
@@ -2365,33 +2365,33 @@ void tst_App::colourPickerHexField()
     QTest::keySequence(window, QKeySequence::SelectAll);
     QTest::keyClick(window, Qt::Key_Backspace);
     QCOMPARE(hexTextField->property("text").toString(), QString());
-    QCOMPARE(canvas->penForegroundColour(), originalPenColour);
+    QCOMPARE(canvas->editingContext()->foregroundColour(), originalPenColour);
 
     QTest::keyClick(window, Qt::Key_A);
     QCOMPARE(hexTextField->property("text").toString(), QLatin1String("a"));
-    QCOMPARE(canvas->penForegroundColour(), originalPenColour);
+    QCOMPARE(canvas->editingContext()->foregroundColour(), originalPenColour);
 
     // Invalid character.
     QTest::keyClick(window, Qt::Key_Z);
     QCOMPARE(hexTextField->property("text").toString(), QLatin1String("a"));
-    QCOMPARE(canvas->penForegroundColour(), originalPenColour);
+    QCOMPARE(canvas->editingContext()->foregroundColour(), originalPenColour);
 
     QTest::keyClick(window, Qt::Key_1);
     QCOMPARE(hexTextField->property("text").toString(), QLatin1String("a1"));
-    QCOMPARE(canvas->penForegroundColour(), originalPenColour);
+    QCOMPARE(canvas->editingContext()->foregroundColour(), originalPenColour);
 
     QTest::keyClick(window, Qt::Key_2);
     QCOMPARE(hexTextField->property("text").toString(), QLatin1String("a12"));
-    QCOMPARE(canvas->penForegroundColour(), originalPenColour);
+    QCOMPARE(canvas->editingContext()->foregroundColour(), originalPenColour);
 
     QTest::keyClick(window, Qt::Key_3);
     QTest::keyClick(window, Qt::Key_4);
     QTest::keyClick(window, Qt::Key_5);
     QCOMPARE(hexTextField->property("text").toString(), QLatin1String("a12345"));
-    QCOMPARE(canvas->penForegroundColour(), originalPenColour);
+    QCOMPARE(canvas->editingContext()->foregroundColour(), originalPenColour);
 
     QTest::keyClick(window, Qt::Key_Enter);
-    QCOMPARE(canvas->penForegroundColour(), QColor("#a12345"));
+    QCOMPARE(canvas->editingContext()->foregroundColour(), QColor("#a12345"));
     // Accepting the input should give the canvas focus.
     QCOMPARE(canvas->hasActiveFocus(), true);
 
@@ -2406,7 +2406,7 @@ void tst_App::colourPickerHexField()
 
     // Cancel the changes.
     QTest::keyClick(window, Qt::Key_Escape);
-    QCOMPARE(canvas->penForegroundColour(), QColor("#a12345"));
+    QCOMPARE(canvas->editingContext()->foregroundColour(), QColor("#a12345"));
     // Accepting the input should give the canvas focus.
     QCOMPARE(canvas->hasActiveFocus(), true);
 }
@@ -2534,7 +2534,7 @@ void tst_App::autoSwatch()
 
     // Draw a pixel with a colour that we know we haven't used yet.
     setCursorPosInScenePixels(0, 0);
-    canvas->setPenForegroundColour(Qt::cyan);
+    canvas->editingContext()->setForegroundColour(Qt::cyan);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
     // There should be one more colour in the swatch.
@@ -2580,7 +2580,7 @@ void tst_App::autoSwatchGridViewContentY()
     // The model should be reset and the view along with it, but
     // we want to make sure that the contentY stays the same to avoid
     // interrupting the user.
-    canvas->setPenForegroundColour(Qt::cyan);
+    canvas->editingContext()->setForegroundColour(Qt::cyan);
     setCursorPosInScenePixels(0, 0);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
     QQuickItem *viewContentItem = autoSwatchGridView->property("contentItem").value<QQuickItem*>();
@@ -3270,7 +3270,7 @@ void tst_App::flipOnTransparentBackground()
 
     // Draw a red dot.
     setCursorPosInScenePixels(0, 0);
-    canvas->setPenForegroundColour(Qt::red);
+    canvas->editingContext()->setForegroundColour(Qt::red);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
     // Select the image.
@@ -3490,10 +3490,10 @@ void tst_App::rotateSelection()
     QCOMPARE(undoButton->isEnabled(), true);
     // For some reason, layered image project images are Format_ARGB32_Premultiplied.
     // We don't care about the format, so just convert them.
-    // Also, we need to use contentImage() since modifications to selections
+    // Also, we need to use getComposedImage() since modifications to selections
     // are now combined into one undo command when the selection is confirmed -
     // the actual project's images contents won't change, so we need to get the selection preview image.
-    QImage actualImage = canvas->contentImage().convertToFormat(QImage::Format_ARGB32);
+    QImage actualImage = canvas->getComposedImage().convertToFormat(QImage::Format_ARGB32);
     const QImage expected90Image(":/resources/rotateSelection-90.png");
     QCOMPARE(actualImage, expected90Image);
 
@@ -3523,20 +3523,20 @@ void tst_App::rotateSelection()
     QVERIFY2(selectArea(QRect(3, 2, 4, 5)), failureMessage);
     QCOMPARE(canvas->hasSelection(), true);
     canvas->rotateSelection(90);
-    actualImage = canvas->contentImage().convertToFormat(QImage::Format_ARGB32);
+    actualImage = canvas->getComposedImage().convertToFormat(QImage::Format_ARGB32);
     QCOMPARE(actualImage, expected90Image);
 
     // Rotate 90 degrees again for a total of 180 degrees of rotation.
     canvas->rotateSelection(90);
     QCOMPARE(canvas->hasSelection(), true);
-    actualImage = canvas->contentImage().convertToFormat(QImage::Format_ARGB32);
+    actualImage = canvas->getComposedImage().convertToFormat(QImage::Format_ARGB32);
     const QImage expected180Image(":/resources/rotateSelection-180.png");
     QCOMPARE(actualImage, expected180Image);
 
     // Rotate 90 degrees again for a total of 270 degrees of rotation.
     canvas->rotateSelection(90);
     QCOMPARE(canvas->hasSelection(), true);
-    actualImage = canvas->contentImage().convertToFormat(QImage::Format_ARGB32);
+    actualImage = canvas->getComposedImage().convertToFormat(QImage::Format_ARGB32);
     const QImage expected270Image(":/resources/rotateSelection-270.png");
     QCOMPARE(actualImage, expected270Image);
 
@@ -3576,7 +3576,7 @@ void tst_App::rotateSelectionAtEdge()
     QVERIFY2(selectArea(QRect(0, 2, 2, 5)), failureMessage);
     canvas->rotateSelection(90);
     QCOMPARE(canvas->selectionArea(), QRect(0, 4, 5, 2));
-    QImage actualImage = canvas->contentImage().convertToFormat(QImage::Format_ARGB32);
+    QImage actualImage = canvas->getComposedImage().convertToFormat(QImage::Format_ARGB32);
     const QImage expected90Image(":/resources/rotateSelectionAtEdge-90.png");
     QCOMPARE(actualImage, expected90Image);
 
@@ -3616,13 +3616,13 @@ void tst_App::rotateSelectionTransparentBackground()
     QVERIFY2(selectArea(QRect(3, 2, 4, 6)), failureMessage);
     canvas->rotateSelection(90);
     QCOMPARE(canvas->selectionArea(), QRect(2, 3, 6, 4));
-    QImage actualImage = canvas->contentImage().convertToFormat(QImage::Format_ARGB32);
+    QImage actualImage = canvas->getComposedImage().convertToFormat(QImage::Format_ARGB32);
     const QImage expected90Image(":/resources/rotateSelectionTransparentBackground-90.png");
     QCOMPARE(actualImage, expected90Image);
 
     // Rotate 90 degrees again for a total of 180 degrees of rotation.
     canvas->rotateSelection(90);
-    actualImage = canvas->contentImage().convertToFormat(QImage::Format_ARGB32);
+    actualImage = canvas->getComposedImage().convertToFormat(QImage::Format_ARGB32);
     const QImage expected180Image(":/resources/rotateSelectionTransparentBackground-180.png");
     QCOMPARE(actualImage.pixelColor(0, 0), expected180Image.pixelColor(0, 0));
     QCOMPARE(actualImage, expected180Image);
@@ -3710,7 +3710,7 @@ void tst_App::hueSaturation()
     const QImage expectedImage(expectedImagePath);
     QVERIFY(!expectedImage.isNull());
     // The changes should be rendered...
-    QCOMPARE(canvas->contentImage().convertToFormat(QImage::Format_ARGB32), expectedImage);
+    QCOMPARE(canvas->getComposedImage().convertToFormat(QImage::Format_ARGB32), expectedImage);
     // ... but not committed yet.
     QCOMPARE(canvas->currentProjectImage()->convertToFormat(QImage::Format_ARGB32), originalImage);
 
@@ -3720,7 +3720,7 @@ void tst_App::hueSaturation()
     QVERIFY(hueSaturationDialogCancelButton);
     mouseEventOnCentre(hueSaturationDialogCancelButton, MouseClick);
     QTRY_COMPARE(hueSaturationDialog->property("visible").toBool(), false);
-    QCOMPARE(canvas->contentImage().convertToFormat(QImage::Format_ARGB32), originalImage);
+    QCOMPARE(canvas->getComposedImage().convertToFormat(QImage::Format_ARGB32), originalImage);
     QCOMPARE(canvas->currentProjectImage()->convertToFormat(QImage::Format_ARGB32), originalImage);
 
     // Re-open the dialog and increase/decrease the value again.
@@ -3728,7 +3728,7 @@ void tst_App::hueSaturation()
     QTRY_COMPARE(hueSaturationDialog->property("opened").toBool(), true);
     // There was an issue where reopening the dialog after changing some values the last
     // time it was opened (even if it was cancelled) would cause the selection contents to disappear.
-    QCOMPARE(canvas->contentImage().convertToFormat(QImage::Format_ARGB32), originalImage);
+    QCOMPARE(canvas->getComposedImage().convertToFormat(QImage::Format_ARGB32), originalImage);
     QCOMPARE(canvas->currentProjectImage()->convertToFormat(QImage::Format_ARGB32), originalImage);
     hueSaturationDialogHueTextField->forceActiveFocus();
     QVERIFY(hueSaturationDialogHueTextField->hasActiveFocus());
@@ -3739,7 +3739,7 @@ void tst_App::hueSaturation()
         qPrintable(QString::fromLatin1("Expected HSL value of %1 but got %2").arg(expectedHslValue).arg(hslValue)));
 
     // The changes should be rendered...
-    QCOMPARE(canvas->contentImage().convertToFormat(QImage::Format_ARGB32), expectedImage);
+    QCOMPARE(canvas->getComposedImage().convertToFormat(QImage::Format_ARGB32), expectedImage);
     // ... but not committed yet.
     QCOMPARE(canvas->currentProjectImage()->convertToFormat(QImage::Format_ARGB32), originalImage);
 
@@ -3751,7 +3751,7 @@ void tst_App::hueSaturation()
     QTRY_COMPARE(hueSaturationDialog->property("visible").toBool(), false);
     // Confirm the selection to make the changes to the project's image.
     QTest::keyClick(window, Qt::Key_Escape);
-    QCOMPARE(canvas->contentImage().convertToFormat(QImage::Format_ARGB32), expectedImage);
+    QCOMPARE(canvas->getComposedImage().convertToFormat(QImage::Format_ARGB32), expectedImage);
     QCOMPARE(canvas->currentProjectImage()->convertToFormat(QImage::Format_ARGB32), expectedImage);
 }
 
@@ -3795,7 +3795,7 @@ void tst_App::fillLayeredImageCanvas()
     QVERIFY2(switchTool(ImageCanvas::FillTool), failureMessage);
 
     // Fill layer 1.
-    layeredImageCanvas->setPenForegroundColour(Qt::red);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::red);
     setCursorPosInScenePixels(0, 0);
     QTest::mouseMove(window, cursorWindowPos);
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
@@ -3839,7 +3839,7 @@ void tst_App::greedyPixelFillImageCanvas()
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
     QVERIFY2(switchTool(ImageCanvas::FillTool), failureMessage);
-    canvas->setPenForegroundColour(Qt::blue);
+    canvas->editingContext()->setForegroundColour(Qt::blue);
     setCursorPosInScenePixels(4, 4);
     QTest::mouseMove(window, cursorWindowPos);
     QTest::keyPress(window, Qt::Key_Shift);
@@ -4229,7 +4229,7 @@ void tst_App::addAndRemoveLayers()
 
     // Draw a blue square at {10, 10}.
     setCursorPosInScenePixels(10, 10);
-    layeredImageCanvas->setPenForegroundColour(Qt::blue);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::blue);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
     // Ensure that the blue square is visible.
@@ -4253,7 +4253,7 @@ void tst_App::addAndRemoveLayers()
 
     // Draw a red dot on the new layer.
     setCursorPosInScenePixels(20, 20);
-    layeredImageCanvas->setPenForegroundColour(Qt::red);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::red);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
     // Ensure that both dots are visible.
@@ -4322,7 +4322,7 @@ void tst_App::layerVisibility()
 
     // Draw a blue square at {10, 10}.
     setCursorPosInScenePixels(10, 10);
-    layeredImageCanvas->setPenForegroundColour(Qt::blue);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::blue);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
     // Ensure that the blue square is visible.
@@ -4339,7 +4339,7 @@ void tst_App::layerVisibility()
     QVERIFY2(selectLayer("Layer 2", 0), failureMessage);
 
     // Draw a red dot at the same position.
-    layeredImageCanvas->setPenForegroundColour(Qt::red);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::red);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
     // Ensure that it's visible.
@@ -4435,7 +4435,7 @@ void tst_App::mergeLayerUpAndDown()
 
     // Draw something on Layer 1.
     setCursorPosInScenePixels(0, 0);
-    layeredImageCanvas->setPenForegroundColour(Qt::red);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::red);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
     // Add a new layer.
@@ -4451,7 +4451,7 @@ void tst_App::mergeLayerUpAndDown()
 
     // Draw something on Layer 2.
     setCursorPosInScenePixels(1, 0);
-    layeredImageCanvas->setPenForegroundColour(Qt::green);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::green);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
     // It should be possible to merge the highest layer down but not up.
@@ -4471,7 +4471,7 @@ void tst_App::mergeLayerUpAndDown()
 
     // Draw something on Layer 3.
     setCursorPosInScenePixels(2, 0);
-    layeredImageCanvas->setPenForegroundColour(Qt::blue);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::blue);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
     // Make Layer 2 the current layer.
@@ -4606,7 +4606,7 @@ void tst_App::saveAndLoadLayeredImageProject()
 
     // Draw a blue square.
     setCursorPosInScenePixels(10, 10);
-    layeredImageCanvas->setPenForegroundColour(Qt::blue);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::blue);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
     // Add a new layer.
@@ -4618,7 +4618,7 @@ void tst_App::saveAndLoadLayeredImageProject()
 
     // Draw a red dot.
     setCursorPosInScenePixels(20, 20);
-    layeredImageCanvas->setPenForegroundColour(Qt::red);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::red);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
     // Ensure that what the user sees is correct.
@@ -4704,7 +4704,7 @@ void tst_App::layerVisibilityAfterMoving()
 
     // Draw a red dot.
     setCursorPosInScenePixels(20, 20);
-    layeredImageCanvas->setPenForegroundColour(Qt::red);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::red);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
     // Ensure that what the user sees is correct.
@@ -4851,14 +4851,14 @@ void tst_App::undoAfterMovingTwoSelections()
     // Select Layer 3, draw a semi-transparent grey dot on it.
     QVERIFY2(selectLayer("Layer 3", 0), failureMessage);
     const QColor semiTransparentGrey(QColor::fromRgba(0xAA000000));
-    layeredImageCanvas->setPenForegroundColour(semiTransparentGrey);
+    layeredImageCanvas->editingContext()->setForegroundColour(semiTransparentGrey);
     setCursorPosInScenePixels(10, 10);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
     // Select Layer 2 and draw a red dot on it.
     QVERIFY2(selectLayer("Layer 2", 1), failureMessage);
     const QColor red(Qt::red);
-    layeredImageCanvas->setPenForegroundColour(red);
+    layeredImageCanvas->editingContext()->setForegroundColour(red);
     setCursorPosInScenePixels(10, 20);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
@@ -4955,7 +4955,7 @@ void tst_App::exportFileNamedLayers()
     layeredImageProject->setAutoExportEnabled(true);
 
     // Draw a red dot.
-    layeredImageCanvas->setPenForegroundColour(Qt::red);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::red);
     setCursorPosInScenePixels(0, 0);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
@@ -4971,7 +4971,7 @@ void tst_App::exportFileNamedLayers()
     QVERIFY2(selectLayer("Layer 2", 1), failureMessage);
 
     // Draw a green dot on layer 2.
-    layeredImageCanvas->setPenForegroundColour(Qt::green);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::green);
     setCursorPosInScenePixels(1, 0);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
@@ -4979,7 +4979,7 @@ void tst_App::exportFileNamedLayers()
     QVERIFY2(selectLayer("Layer 3", 0), failureMessage);
 
     // Draw a blue dot on layer 3.
-    layeredImageCanvas->setPenForegroundColour(Qt::blue);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::blue);
     setCursorPosInScenePixels(2, 0);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
@@ -5030,7 +5030,7 @@ void tst_App::exportFileNamedLayers()
     QVERIFY2(makeCurrentAndRenameLayer("Layer 4", "[test] Layer 4"), failureMessage);
 
     // Draw a dot on it.
-    layeredImageCanvas->setPenForegroundColour(Qt::darkMagenta);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::darkMagenta);
     setCursorPosInScenePixels(3, 0);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
@@ -5059,7 +5059,7 @@ void tst_App::exportFileNamedLayers()
     // - Layer 1
 
     // Draw a dot on it as usual, so that we can verify it exports correctly.
-    layeredImageCanvas->setPenForegroundColour(Qt::darkBlue);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::darkBlue);
     setCursorPosInScenePixels(4, 0);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
@@ -5154,7 +5154,7 @@ void tst_App::undoMoveContents()
     QVERIFY2(createNewLayeredImageProject(), failureMessage);
 
     // Draw a red dot.
-    layeredImageCanvas->setPenForegroundColour(Qt::red);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::red);
     setCursorPosInScenePixels(0, 0);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
@@ -5176,7 +5176,7 @@ void tst_App::undoMoveContentsOfVisibleLayers()
     QVERIFY2(togglePanel("layerPanel", true), failureMessage);
 
     // Draw a red dot.
-    layeredImageCanvas->setPenForegroundColour(Qt::red);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::red);
     setCursorPosInScenePixels(0, 0);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 
@@ -5190,7 +5190,7 @@ void tst_App::undoMoveContentsOfVisibleLayers()
     QVERIFY2(selectLayer("Layer 2", 0), failureMessage);
 
     // Draw a blue dot on layer 2.
-    layeredImageCanvas->setPenForegroundColour(Qt::blue);
+    layeredImageCanvas->editingContext()->setForegroundColour(Qt::blue);
     setCursorPosInScenePixels(1, 0);
     QVERIFY2(drawPixelAtCursorPos(), failureMessage);
 

@@ -27,6 +27,8 @@
 #include "utils.h"
 
 #include <QPainter>
+#include <QThread>
+#include <QGuiApplication>
 
 /*
     This class is a purely visual respresentation of a canvas pane;
@@ -135,7 +137,8 @@ void CanvasPaneItem::paint(QPainter *painter)
     const QSize zoomedCanvasSize = mCanvas->project()->bounds().size() * mPane->integerZoomLevel();
     painter->drawTiledPixmap(0, 0, zoomedCanvasSize.width(), zoomedCanvasSize.height(), mCanvas->mCheckerPixmap);
 
-    const QImage image = mCanvas->contentImage();
+    const QImage image = mCanvas->getComposedImage();
+
     const QSize zoomedImageSize = image.size() * mPane->integerZoomLevel();
     painter->drawImage(QRectF(QPointF(0, 0), zoomedImageSize), image, QRectF(0, 0, image.width(), image.height()));
 }

@@ -29,14 +29,13 @@
 
 Q_LOGGING_CATEGORY(lcApplyPixelLineCommand, "app.undo.applyPixelLineCommand")
 
-ApplyPixelLineCommand::ApplyPixelLineCommand(ImageCanvas *const canvas, const int layerIndex, const Stroke &stroke, const qreal scaleMin, const qreal scaleMax, const Brush &brush, const QColor &colour,
+ApplyPixelLineCommand::ApplyPixelLineCommand(ImageCanvas *const canvas, const int layerIndex, const Stroke &stroke,
         const QPainter::CompositionMode compositionMode, const QUndoCommand *const previousCommand, QUndoCommand *const parent) :
     QUndoCommand(parent),
     mCanvas(canvas), mLayerIndex(layerIndex),
-    mBrush(brush), mColour(colour),
-    mScaleMin(scaleMin), mScaleMax(scaleMax),
     mOldStroke(mCanvas->mOldStroke),
     mCompositionMode(compositionMode),
+    mEditingContext(nullptr),
     mStroke(stroke), mStrokeUpdateStartIndex(0),
     mBufferRegion(), mUndoBuffer(), mRedoBuffer(), mStrokeBuffer(), mBufferBounds(),
     mPreviousCommand(previousCommand), mNeedDraw(true)
@@ -46,6 +45,7 @@ ApplyPixelLineCommand::ApplyPixelLineCommand(ImageCanvas *const canvas, const in
 
 ApplyPixelLineCommand::~ApplyPixelLineCommand()
 {
+    delete mEditingContext;
     qCDebug(lcApplyPixelLineCommand) << "destructed" << this;
 }
 
@@ -75,9 +75,12 @@ void ApplyPixelLineCommand::redo()
 
     // First "redo" so draw and store undo/redo buffers
     if (mNeedDraw) {
+        // Copy canvas's editing context
+        mEditingContext = new EditingContextManager(*mCanvas->editingContext());
+
         // Find intersections of subimages with draw area
         QMap<int, QRegion> subImageRegions;
-        QRect mDrawBounds = Stroke(mStroke.mid(mStrokeUpdateStartIndex)).bounds(mBrush, mScaleMin, mScaleMax);
+        QRect mDrawBounds = Stroke(mStroke.mid(mStrokeUpdateStartIndex)).bounds(*mCanvas->mEditingContext->brush(), mCanvas->mEditingContext->brushScalingMin(), mCanvas->mEditingContext->brushScalingMax());
         for (auto const &instance : mCanvas->subImageInstancesInBounds(mDrawBounds)) {
             const ImageCanvas::SubImage subImage = mCanvas->getSubImage(instance.index);
             const QPoint instanceDrawOffset = subImage.bounds.topLeft() - instance.position;
@@ -92,7 +95,7 @@ void ApplyPixelLineCommand::redo()
 
         // Find offsets of subimage instances within stroke area
         QMap<int, QVector<QPoint>> instanceOffsets;
-        for (auto const &instance : mCanvas->subImageInstancesInBounds(mStroke.bounds(mBrush, mScaleMin, mScaleMax))) {
+        for (auto const &instance : mCanvas->subImageInstancesInBounds(mStroke.bounds(*mCanvas->mEditingContext->brush(), mCanvas->mEditingContext->brushScalingMin(), mCanvas->mEditingContext->brushScalingMax()))) {
             const ImageCanvas::SubImage subImage = mCanvas->getSubImage(instance.index);
             const QPoint instanceDrawOffset = subImage.bounds.topLeft() - instance.position;
             if (subImageRegions.contains(instance.index)) instanceOffsets[instance.index] += instanceDrawOffset;
@@ -141,13 +144,15 @@ void ApplyPixelLineCommand::redo()
             // Draw stroke to image
             {
                 Utils::ContextGrabber grabber(&mCanvas->mStrokeRenderer.surface(), &mCanvas->mStrokeRenderer.context());
+                mCanvas->mStrokeRenderer.setStroke(mStroke);
+                mCanvas->mStrokeRenderer.setEditingContext(*mCanvas->mEditingContext);
                 mCanvas->mStrokeRenderer.setImage(mCanvas->imageForLayerAt(mLayerIndex));
                 mCanvas->mStrokeRenderer.upload(bufferDrawRegion.boundingRect());
                 for (auto const &key : subImageRegions.keys()) {
                     for (auto const &rect : subImageRegions[key].rects()) {
 //                        mCanvas->mStrokeRenderer.upload(rect);
                         for (auto const &offset : instanceOffsets[key]) {
-                            mCanvas->mStrokeRenderer.render(mStroke, mBrush, mColour, mScaleMin, mScaleMax, mCanvas->lowerToolOpacity(), mCanvas->upperToolOpacity(), mCanvas->lowerToolHardness(), mCanvas->upperToolHardness(), mCanvas->toolSingleColour(), QTransform().translate(offset.x(), offset.y()), rect);
+                            mCanvas->mStrokeRenderer.render(QTransform().translate(offset.x(), offset.y()), rect);
                         }
 //                        mCanvas->mStrokeRenderer.download(rect);
                     }
@@ -208,7 +213,7 @@ bool ApplyPixelLineCommand::canMerge(const QUndoCommand *const command) const
         return false;
     const ApplyPixelLineCommand *mergeCommand = static_cast<const ApplyPixelLineCommand*>(command);
     if (mCanvas != mergeCommand->mCanvas || mLayerIndex != mergeCommand->mLayerIndex ||
-        mBrush != mergeCommand->mBrush || mColour != mergeCommand->mColour ||
+        *mCanvas->editingContext() != *mergeCommand->mEditingContext ||
         mStroke.first() != mergeCommand->mStroke.last())
         return false;
 

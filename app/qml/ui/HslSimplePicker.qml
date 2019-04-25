@@ -12,6 +12,7 @@ GridLayout {
     rowSpacing: 0
 
     property ImageCanvas canvas
+    property EditingContext editingContext
     property Project project
 
     readonly property real spinBoxFactor: 1000
@@ -37,21 +38,26 @@ GridLayout {
             id: hueSlider
             implicitHeight: saturationLightnessPicker.height
 
-            onHuePicked: canvas[hexColourRowLayout.colourSelector.currentPenPropertyName] = saturationLightnessPicker.color
+            onHuePicked: canvas.editingContext[hexColourRowLayout.colourSelector.currentPenPropertyName] = saturationLightnessPicker.color
 
             function updateOurColour() {
-                hueSlider.hue = project && canvas ? canvas[hexColourRowLayout.colourSelector.currentPenPropertyName].hslHue : 0;
+                hueSlider.hue = project && canvas ? canvas.editingContext[hexColourRowLayout.colourSelector.currentPenPropertyName].hslHue : 0;
             }
 
             Connections {
-                target: canvas
-                onPenForegroundColourChanged: hueSlider.updateOurColour()
-                onPenBackgroundColourChanged: hueSlider.updateOurColour()
+                target: editingContext
+                onForegroundColourChanged: hueSlider.updateOurColour()
+                onBackgroundColourChanged: hueSlider.updateOurColour()
             }
 
             Connections {
                 target: root
                 onProjectChanged: hueSlider.updateOurColour()
+            }
+
+            Connections {
+                target: root
+                onCanvasChanged: editingContext = canvas.editingContext
             }
         }
         SaturationLightnessPicker {
@@ -63,13 +69,13 @@ GridLayout {
             alpha: opacitySlider.value
 
             function updateOurColour() {
-                saturationLightnessPicker.color = canvas[hexColourRowLayout.colourSelector.currentPenPropertyName];
+                saturationLightnessPicker.color = canvas.editingContext[hexColourRowLayout.colourSelector.currentPenPropertyName];
             }
 
             Connections {
-                target: canvas
-                onPenForegroundColourChanged: saturationLightnessPicker.updateOurColour()
-                onPenBackgroundColourChanged: saturationLightnessPicker.updateOurColour()
+                target: editingContext
+                onForegroundColourChanged: saturationLightnessPicker.updateOurColour()
+                onBackgroundColourChanged: saturationLightnessPicker.updateOurColour()
             }
 
             Connections {
@@ -81,7 +87,7 @@ GridLayout {
                 if (!canvas)
                     return;
 
-                canvas[hexColourRowLayout.colourSelector.currentPenPropertyName] = saturationLightnessPicker.color
+                canvas.editingContext[hexColourRowLayout.colourSelector.currentPenPropertyName] = saturationLightnessPicker.color
             }
         }
     }
@@ -100,7 +106,7 @@ GridLayout {
     Slider {
         id: opacitySlider
         objectName: "opacitySlider"
-        value: canvas ? canvas[hexColourRowLayout.colourSelector.currentPenPropertyName].a : 1
+        value: canvas ? canvas.editingContext[hexColourRowLayout.colourSelector.currentPenPropertyName].a : 1
         focusPolicy: Qt.NoFocus
 
         Layout.fillWidth: true
@@ -113,7 +119,7 @@ GridLayout {
                 return;
 
             ignoreChanges = true;
-            canvas[hexColourRowLayout.colourSelector.currentPenPropertyName].a = opacitySlider.value;
+            canvas.editingContext[hexColourRowLayout.colourSelector.currentPenPropertyName].a = opacitySlider.value;
             ignoreChanges = false;
         }
 
@@ -121,7 +127,7 @@ GridLayout {
             if (ignoreChanges)
                 return;
 
-            opacitySlider.value = canvas[hexColourRowLayout.colourSelector.currentPenPropertyName].a;
+            opacitySlider.value = canvas.editingContext[hexColourRowLayout.colourSelector.currentPenPropertyName].a;
         }
 
         Connections {
@@ -134,9 +140,9 @@ GridLayout {
         }
 
         Connections {
-            target: canvas
-            onPenForegroundColourChanged: opacitySlider.updateOurValue()
-            onPenBackgroundColourChanged: opacitySlider.updateOurValue()
+            target: editingContext
+            onForegroundColourChanged: opacitySlider.updateOurValue()
+            onBackgroundColourChanged: opacitySlider.updateOurValue()
         }
 
         ToolTip {

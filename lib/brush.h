@@ -2,8 +2,7 @@
 #define BRUSH_H
 
 #include <QObject>
-#include <QBitmap>
-#include <QPixmap>
+#include <QImage>
 #include <QTransform>
 #include <QDebug>
 
@@ -11,7 +10,7 @@
 
 class QPainter;
 
-class SLATE_EXPORT Brush {
+struct SLATE_EXPORT Brush {
     Q_GADGET
 
 public:
@@ -22,36 +21,89 @@ public:
     };
     Q_ENUM(Type)
 
-    Brush() : type(), size(), pixmap(), handle() {}
-    Brush(const Brush &other) : type(other.type), size(other.size), pixmap(other.pixmap), handle(other.handle) {}
-    Brush(const Type type, const QSize &size, const QPointF handle = {0.5, 0.5}, const bool relativeHandle = true);
-    Brush(const QImage &image, const QPointF handle = {0.5, 0.5}, const bool relativeHandle = true);
+    Brush(const Brush::Type type = SquareType, const QSizeF &size = {1, 1}, const qreal angle = 0.0, const qreal hardness = 1.0, const qreal opacity = 1.0, const QImage &image = QImage(), const QPointF handle = {0.5, 0.5});
+    Brush(const Brush &other);
 
     bool operator==(const Brush &other) const;
     bool operator!=(const Brush &other) const;
     Brush &operator=(const Brush &other);
 
-    QTransform transform() const;
-
-    QRectF bounds(const QPointF pos = {0.0, 0.0}, const qreal scale = 1.0, const qreal rotation = 0.0) const;
-
-    static void drawPixel(QImage &image, const QRect &clip, const QPoint point, const QRgb colour);
-    static void drawSpan(QImage &image, const QRect &clip, const int x0, const int x1, const int y, const QRgb colour);
-    static void fillRectangle(QImage &image, const QRect &clip, const QRectF &rect, const QRgb colour);
-    static void fillEllipse(QImage &image, const QRect &clip, const QRectF &rect, const QRgb colour);
-
-    void draw(QPainter *const painter, const QColor &colour, const QPointF pos = {0.0, 0.0}, const qreal scale = 1.0, const qreal rotation = 0.0) const;
-
-    Type type;
-    QSize size;
-    QPixmap pixmap;
-    QPointF handle;
+    Type mType;
+    QSizeF mSize;
+    qreal mAngle;
+    qreal mHardness;
+    qreal mOpacity;
+    QImage mImage;
+    bool mSingleColour;
+    QPointF mHandle;
 };
 
 inline QDebug operator<<(QDebug debug, const Brush &brush)
 {
-    debug.nospace() << "Brush(" << brush.type << ", " << brush.size << ", " << brush.pixmap << ", " << brush.handle << ")";
+    debug.nospace() << "Brush(" << brush.mType << ", " << brush.mSize << ", " << brush.mAngle << ", " << brush.mHardness << ", " << brush.mOpacity << ", " << brush.mImage << ", " << brush.mHandle << ")";
     return debug.space();
 }
+
+class SLATE_EXPORT BrushManager : public QObject {
+    Q_OBJECT
+
+    Q_PROPERTY(Brush::Type type READ type WRITE setType NOTIFY typeChanged)
+    Q_PROPERTY(QSizeF size READ size WRITE setSize NOTIFY sizeChanged)
+    Q_PROPERTY(qreal angle READ angle WRITE setAngle NOTIFY angleChanged)
+    Q_PROPERTY(qreal hardness READ hardness WRITE setHardness NOTIFY hardnessChanged)
+    Q_PROPERTY(qreal opacity READ opacity WRITE setOpacity NOTIFY opacityChanged)
+    Q_PROPERTY(QImage image READ image WRITE setImage NOTIFY imageChanged)
+    Q_PROPERTY(bool singleColour READ singleColour WRITE setSingleColour NOTIFY singleColourChanged)
+    Q_PROPERTY(QPointF handle READ handle WRITE setHandle NOTIFY handleChanged)
+
+public:
+    BrushManager(const Brush &brush = Brush(), QObject *const parent = nullptr);
+    BrushManager(const BrushManager &other);
+
+    bool operator==(const BrushManager &other) const;
+    bool operator!=(const BrushManager &other) const;
+    BrushManager &operator=(const BrushManager &other);
+
+    QTransform transform() const;
+
+    QRectF bounds(const QPointF pos = {0.0, 0.0}, const qreal scale = 1.0, const qreal rotation = 0.0) const;
+
+    void draw(QPainter *const painter, const QColor &colour, const QPointF pos = {0.0, 0.0}, const qreal scale = 1.0, const qreal rotation = 0.0) const;
+
+    const Brush &brush() const;
+    Brush::Type type() const;
+    QSizeF size() const;
+    qreal angle() const;
+    qreal hardness() const;
+    qreal opacity() const;
+    QImage image() const;
+    bool singleColour() const;
+    QPointF handle() const;
+
+public slots:
+    void setBrush(const Brush &brush);
+    void setType(Brush::Type type);
+    void setSize(QSizeF size);
+    void setAngle(qreal angle);
+    void setHardness(qreal hardness);
+    void setOpacity(qreal opacity);
+    void setImage(QImage image);
+    void setSingleColour(bool singleColour);
+    void setHandle(QPointF handle);
+
+signals:
+    void brushChanged(const Brush &brush);
+    void typeChanged(Brush::Type type);
+    void sizeChanged(QSizeF size);
+    void angleChanged(qreal angle);
+    void hardnessChanged(qreal hardness);
+    void opacityChanged(qreal opacity);
+    void imageChanged(QImage image);
+    void singleColourChanged(bool singleColour);
+    void handleChanged(QPointF handle);
+
+protected:
+    Brush mBrush;
+};
 
 #endif // BRUSH_H

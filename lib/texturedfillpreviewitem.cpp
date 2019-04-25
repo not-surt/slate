@@ -39,16 +39,16 @@ void TexturedFillPreviewItem::paint(QPainter *painter)
     // Ensure that the target colour is not the same as the pen colour
     // by inverting it.
     QColor targetColour;
-    if (mCanvas->penForegroundColour() == QColor(Qt::black)) {
+    if (mCanvas->editingContext()->foregroundColour() == QColor(Qt::black)) {
         // Can't invert black, apparently.
         targetColour = Qt::white;
     } else {
-        targetColour = ImageCanvas::invertedColour(mCanvas->penForegroundColour());
+        targetColour = ImageCanvas::invertedColour(mCanvas->editingContext()->foregroundColour());
     }
 
     QImage image(width(), height(), QImage::Format_ARGB32_Premultiplied);
     image.fill(targetColour);
-    image = texturedFill(&image, QPoint(0, 0), targetColour, mCanvas->penForegroundColour(), mParameters);
+    image = texturedFill(&image, QPoint(0, 0), targetColour, mCanvas->editingContext()->foregroundColour(), mParameters);
 
     painter->drawImage(0, 0, image);
 }

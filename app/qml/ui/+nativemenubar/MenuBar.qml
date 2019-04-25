@@ -171,7 +171,7 @@ Item {
             Platform.MenuItem {
                 objectName: "redoMenuItem"
                 text: qsTr("Redo")
-                onTriggered: project.undoStack.redo()
+                onTriggered: canvas.redo()
                 enabled: project && project.undoStack.canRedo
             }
 

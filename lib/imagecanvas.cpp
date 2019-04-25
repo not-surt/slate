@@ -29,6 +29,7 @@
 #include <QQuickWindow>
 #include <QtMath>
 #include <QBitmap>
+#include <QThread>
 
 #include "addguidecommand.h"
 #include "applicationsettings.h"
@@ -57,6 +58,8 @@ Q_LOGGING_CATEGORY(lcImageCanvasLifecycle, "app.canvas.lifecycle")
 Q_LOGGING_CATEGORY(lcImageCanvasSelection, "app.canvas.selection")
 Q_LOGGING_CATEGORY(lcImageCanvasSelectionCursorGuideVisibility, "app.canvas.selection.cursorguidevisibility")
 Q_LOGGING_CATEGORY(lcImageCanvasSelectionPreviewImage, "app.canvas.selection.previewimage")
+
+const QSet<ImageCanvas::Tool> ImageCanvas::mPreviewTools{ImageCanvas::PenTool, ImageCanvas::EraserTool};
 
 ImageCanvas::ImageCanvas() :
     mProject(nullptr),
@@ -100,25 +103,11 @@ ImageCanvas::ImageCanvas() :
     mTabletPressure(0.0),
     mIsTabletEvent(false),
     mTool(PenTool),
-    mBrushType(Brush::SquareType),
-    mToolBlendMode(ReplaceToolBlendMode),
+    mToolBlendMode(EditingContextManager::BlendMode::Replace),
     mLastFillToolUsed(FillTool),
-    mLowerToolSize(0),
-    mUpperToolSize(1),
     mMaxToolSize(100),
-    mToolSizeUsePressure(false),
-    mLowerToolOpacity(0.0),
-    mUpperToolOpacity(1.0),
-    mToolOpacityUsePressure(false),
-    mLowerToolHardness(0.0),
-    mUpperToolHardness(1.0),
-    mToolHardnessUsePressure(false),
-    mToolSingleColour(false),
-    mToolSpacing(0.25),
-    mPenForegroundColour(Qt::black),
-    mPenBackgroundColour(Qt::white),
-    mBrush(),
     mStrokeRenderer(),
+    mEditingContext(new EditingContextManager),
     mPotentiallySelecting(false),
     mHasSelection(false),
     mMovingSelection(false),
@@ -132,7 +121,9 @@ ImageCanvas::ImageCanvas() :
     mToolBeforeAltPressed(PenTool),
     mSpacePressed(false),
     mHasBlankCursor(false),
-    mWindow(nullptr)
+    mWindow(nullptr),
+    mToolPreviewUndoStack(),
+    mToolPreviewHideCount(0)
 {
     setEnabled(false);
     setFlag(QQuickItem::ItemIsFocusScope);
@@ -190,9 +181,10 @@ ImageCanvas::ImageCanvas() :
     connect(&mSecondPane, SIGNAL(sizeChanged()), this, SLOT(onPaneSizeChanged()));
     connect(&mSplitter, SIGNAL(positionChanged()), this, SLOT(onSplitterPositionChanged()));
 
-    recreateCheckerImage();
+    // TODO: reconnect when new brush assigned
+    connect(mEditingContext->brush(), &BrushManager::sizeChanged, this, &ImageCanvas::brushRectChanged);
 
-    updateBrush();
+    recreateCheckerImage();
 
     // Need to capture tablet events from application and window
     qApp->installEventFilter(this);
@@ -203,6 +195,7 @@ ImageCanvas::ImageCanvas() :
 
 ImageCanvas::~ImageCanvas()
 {
+    delete mEditingContext;
     qCDebug(lcImageCanvasLifecycle) << "destructing ImageCanvas" << this;
 }
 
@@ -500,28 +493,12 @@ void ImageCanvas::setTool(const Tool &tool)
     emit toolChanged();
 }
 
-Brush::Type ImageCanvas::brushType() const
-{
-    return mBrushType;
-}
-
-void ImageCanvas::setBrushType(const Brush::Type &brushType)
-{
-    if (brushType == mBrushType)
-        return;
-
-    mBrushType = brushType;
-
-    emit brushTypeChanged();
-    updateBrush();
-}
-
-ImageCanvas::ToolBlendMode ImageCanvas::toolBlendMode() const
+EditingContextManager::BlendMode ImageCanvas::toolBlendMode() const
 {
     return mToolBlendMode;
 }
 
-void ImageCanvas::setToolBlendMode(const ImageCanvas::ToolBlendMode &toolBlendMode)
+void ImageCanvas::setToolBlendMode(const EditingContextManager::BlendMode &toolBlendMode)
 {
     if (toolBlendMode == mToolBlendMode)
         return;
@@ -547,40 +524,18 @@ void ImageCanvas::setLastFillToolUsed(Tool lastFillToolUsed)
     emit lastFillToolUsedChanged();
 }
 
-int ImageCanvas::lowerToolSize() const
+EditingContextManager *ImageCanvas::editingContext() const
 {
-    return mLowerToolSize;
+    return mEditingContext;
 }
 
-void ImageCanvas::setLowerToolSize(int lowerToolSize)
+void ImageCanvas::setEditingContext(EditingContextManager *editingContext)
 {
-    const int clamped = qBound(0, lowerToolSize, mMaxToolSize);
-    if (clamped == mLowerToolSize)
+    if (editingContext == mEditingContext)
         return;
 
-    mLowerToolSize = clamped;
-    emit lowerToolSizeChanged();
-//    if (mLowerToolSize > mUpperToolSize)
-//        setUpperToolSize(mLowerToolSize);
-}
-
-int ImageCanvas::upperToolSize() const
-{
-    return mUpperToolSize;
-}
-
-void ImageCanvas::setUpperToolSize(int upperToolSize)
-{
-    const int clamped = qBound(1, upperToolSize, mMaxToolSize);
-    if (clamped == mUpperToolSize)
-        return;
-
-    mUpperToolSize = clamped;
-    emit upperToolSizeChanged();
-//    if (mUpperToolSize < mLowerToolSize)
-//        setLowerToolSize(mUpperToolSize);
-
-    updateBrush();
+    mEditingContext = editingContext;
+    emit editingContextChanged();
 }
 
 int ImageCanvas::maxToolSize() const
@@ -588,177 +543,9 @@ int ImageCanvas::maxToolSize() const
     return mMaxToolSize;
 }
 
-bool ImageCanvas::toolSizeUsePressure() const
-{
-    return mToolSizeUsePressure;
-}
-
-void ImageCanvas::setToolSizeUsePressure(bool toolSizeUsePressure)
-{
-    if (toolSizeUsePressure == mToolSizeUsePressure)
-        return;
-
-    mToolSizeUsePressure = toolSizeUsePressure;
-    emit toolSizeUsePressureChanged();
-}
-
 QRectF ImageCanvas::brushRect()
 {
-    return mBrush.bounds();
-}
-
-qreal ImageCanvas::lowerToolOpacity() const
-{
-    return mLowerToolOpacity;
-}
-
-void ImageCanvas::setLowerToolOpacity(qreal lowerToolOpacity)
-{
-    const qreal clamped = qBound(0.0, lowerToolOpacity, 1.0);
-    if (qFuzzyCompare(clamped, mLowerToolOpacity))
-        return;
-
-    mLowerToolOpacity = clamped;
-    emit lowerToolOpacityChanged();
-}
-
-qreal ImageCanvas::upperToolOpacity() const
-{
-    return mUpperToolOpacity;
-}
-
-void ImageCanvas::setUpperToolOpacity(qreal upperToolOpacity)
-{
-    const qreal clamped = qBound(0.0, upperToolOpacity, 1.0);
-    if (qFuzzyCompare(clamped, mUpperToolOpacity))
-        return;
-
-    mUpperToolOpacity = clamped;
-    emit upperToolOpacityChanged();
-}
-
-bool ImageCanvas::toolOpacityUsePressure() const {
-    return mToolOpacityUsePressure;
-}
-
-void ImageCanvas::setToolOpacityUsePressure(bool toolOpacityUsePressure)
-{
-    if (toolOpacityUsePressure == mToolOpacityUsePressure)
-        return;
-
-    mToolOpacityUsePressure = toolOpacityUsePressure;
-    emit toolOpacityUsePressureChanged();
-}
-
-qreal ImageCanvas::lowerToolHardness() const
-{
-    return mLowerToolHardness;
-}
-
-void ImageCanvas::setLowerToolHardness(qreal lowerToolHardness)
-{
-    const qreal clamped = qBound(0.0, lowerToolHardness, 1.0);
-    if (qFuzzyCompare(clamped, mLowerToolHardness))
-        return;
-
-    mLowerToolHardness = clamped;
-    emit lowerToolHardnessChanged();
-}
-
-qreal ImageCanvas::upperToolHardness() const
-{
-    return mUpperToolHardness;
-}
-
-void ImageCanvas::setUpperToolHardness(qreal upperToolHardness)
-{
-    const qreal clamped = qBound(0.0, upperToolHardness, 1.0);
-    if (qFuzzyCompare(clamped, mUpperToolHardness))
-        return;
-
-    mUpperToolHardness = clamped;
-    emit upperToolHardnessChanged();
-}
-
-bool ImageCanvas::toolHardnessUsePressure() const {
-    return mToolHardnessUsePressure;
-}
-
-void ImageCanvas::setToolHardnessUsePressure(bool toolHardnessUsePressure)
-{
-    if (toolHardnessUsePressure == mToolHardnessUsePressure)
-        return;
-
-    mToolHardnessUsePressure = toolHardnessUsePressure;
-    emit toolHardnessUsePressureChanged();
-}
-
-bool ImageCanvas::toolSingleColour() const {
-    return mToolSingleColour;
-}
-
-void ImageCanvas::setToolSingleColour(bool toolSingleColour)
-{
-    if (toolSingleColour == mToolSingleColour)
-        return;
-
-    mToolSingleColour = toolSingleColour;
-    emit toolSingleColourChanged();
-}
-
-qreal ImageCanvas::toolSpacing() const
-{
-    return mToolSpacing;
-}
-
-void ImageCanvas::setToolSpacing(qreal toolSpacing)
-{
-    const qreal clamped = qBound(0.0, toolSpacing, 1.0);
-    if (qFuzzyCompare(clamped, mToolSpacing))
-        return;
-
-    mToolSpacing = clamped;
-    emit toolSpacingChanged();
-}
-
-QColor ImageCanvas::penForegroundColour() const
-{
-    return mPenForegroundColour;
-}
-
-void ImageCanvas::setPenForegroundColour(const QColor &penForegroundColour)
-{
-    if (!penForegroundColour.isValid()) {
-        qWarning() << "Invalid penForegroundColour";
-        return;
-    }
-
-    const QColor colour = penForegroundColour.toRgb();
-    if (colour == mPenForegroundColour)
-        return;
-
-    mPenForegroundColour = colour;
-    emit penForegroundColourChanged();
-}
-
-QColor ImageCanvas::penBackgroundColour() const
-{
-    return mPenBackgroundColour;
-}
-
-void ImageCanvas::setPenBackgroundColour(const QColor &penBackgroundColour)
-{
-    if (!penBackgroundColour.isValid()) {
-        qWarning() << "Invalid penBackgroundColour";
-        return;
-    }
-
-    const QColor colour = penBackgroundColour.toRgb();
-    if (colour == mPenBackgroundColour)
-        return;
-
-    mPenBackgroundColour = colour;
-    emit penBackgroundColourChanged();
+    return mEditingContext->brush()->bounds();
 }
 
 TexturedFillParameters *ImageCanvas::texturedFillParameters()
@@ -1204,40 +991,9 @@ int ImageCanvas::currentLayerIndex() const
     return -1;
 }
 
-QImage ImageCanvas::contentImage()
-{
-    mCachedContentImage = getContentImage();
-    return mCachedContentImage;
-}
-
-QImage ImageCanvas::getComposedImage()
+QImage ImageCanvas::getComposedImage() const
 {
     return !shouldDrawSelectionPreviewImage() ? *currentProjectImage() : mSelectionPreviewImage;
-}
-
-QImage ImageCanvas::getContentImage()
-{
-    static const QSet<Tool> previewTools{PenTool, EraserTool};
-    QUndoStack tempUndoStack;
-    QImage image;
-
-    // TODO: can't GL render stroke in render thread.
-//    const bool showPreview = containsMouse() && (mProject->settings()->isBrushPreviewVisible() || isLineVisible()) && previewTools.contains(mTool);
-    const bool showPreview = false;
-
-    // Draw the brush/line preview to the image
-    if (showPreview) {
-        applyCurrentTool(&tempUndoStack);
-    }
-
-    image = getComposedImage();
-
-    // Undo drawing the line preview
-    if (showPreview) {
-        tempUndoStack.undo();
-    }
-
-    return image;
 }
 
 void ImageCanvas::centrePanes(bool respectSceneCentred)
@@ -1883,9 +1639,9 @@ void ImageCanvas::reset()
 
     mIsTabletEvent = false;
     mTabletPressure = 0.0;
-    setPenForegroundColour(Qt::black);
-    setPenBackgroundColour(Qt::white);
-    updateBrush();
+    mEditingContext->setForegroundColour(Qt::black);
+    mEditingContext->setBackgroundColour(Qt::white);
+    mEditingContext->setBrush(new BrushManager(Brush(Brush::SquareType, {1, 1})));
 
     mTexturedFillParameters.reset();
 
@@ -2164,14 +1920,38 @@ void ImageCanvas::brushFromSelection()
     if (!mHasSelection)
         return;
 
-    mBrush = Brush(currentProjectImage()->copy(mSelectionArea));
-    setBrushType(Brush::ImageType);
-    setUpperToolSize(qMax(mBrush.size.width(), mBrush.size.height()));
+    mEditingContext->brush()->setType(Brush::ImageType);
+    mEditingContext->setBrush(new BrushManager(Brush(Brush::ImageType, mSelectionArea.size(), 0.0, 1.0, 0.0, currentProjectImage()->copy(mSelectionArea))));
+    mEditingContext->setBrushScalingMax(qMax(mEditingContext->brush()->size().width(), mEditingContext->brush()->size().height()));
 }
 
 void ImageCanvas::cycleFillTools()
 {
     setTool(mLastFillToolUsed == FillTool ? TexturedFillTool : FillTool);
+}
+
+void ImageCanvas::unhideToolPreview()
+{
+    const bool showPreview = containsMouse() && (mProject->settings()->isBrushPreviewVisible() || isLineVisible()) && mPreviewTools.contains(mTool);
+
+    // Draw the brush/line preview to the image
+    if (mToolPreviewHideCount <= 0 && showPreview) {
+        while (mToolPreviewUndoStack.canUndo()) {
+            mToolPreviewUndoStack.undo();
+        }
+        applyCurrentTool(&mToolPreviewUndoStack);
+    }
+    --mToolPreviewHideCount;
+
+}
+
+void ImageCanvas::hideToolPreview()
+{
+    // Undo drawing the brush/line preview
+    while (mToolPreviewUndoStack.canUndo()) {
+        mToolPreviewUndoStack.undo();
+    }
+    ++mToolPreviewHideCount;
 }
 
 QImage ImageCanvas::fillPixels() const
@@ -2227,17 +2007,10 @@ QImage ImageCanvas::greedyTexturedFillPixels() const
     return greedyTexturedFill(currentProjectImage(), scenePos, previousColour, penColour(), mTexturedFillParameters);
 }
 
-QPainter::CompositionMode ImageCanvas::qPainterBlendMode() const
-{
-    static const QMap<ToolBlendMode, QPainter::CompositionMode> mapping{
-        { BlendToolBlendMode, QPainter::CompositionMode_SourceOver },
-        { ReplaceToolBlendMode, QPainter::CompositionMode_Source },
-    };
-    return mapping[mToolBlendMode];
-}
-
 void ImageCanvas::applyCurrentTool(QUndoStack *const alternateStack)
 {
+    Q_ASSERT(mToolPreviewHideCount >= 0);
+
     if (areToolsForbidden())
         return;
 
@@ -2246,13 +2019,13 @@ void ImageCanvas::applyCurrentTool(QUndoStack *const alternateStack)
     const QUndoCommand *const continueCommand = (mToolContinue && stack->index() > 0) ? stack->command(stack->index() - 1) : nullptr;
     QUndoCommand *command = nullptr;
 
-    const int brushSize = qMax(brush().size.width(), brush().size.height());
-    const qreal scaleMax = qreal(mUpperToolSize) / qreal(brushSize);
-    const qreal scaleMin = mToolSizeUsePressure ? qreal(mLowerToolSize) / qreal(brushSize) : scaleMax;
+    const int brushSize = qMax(mEditingContext->brush()->size().width(), mEditingContext->brush()->size().height());
+    const qreal scaleMax = qreal(mEditingContext->brushScalingMax()) / qreal(brushSize);
+    const qreal scaleMin = mEditingContext->brushScalingMode() != EditingContextManager::ScalingMode::None ? qreal(mEditingContext->brushScalingMin()) / qreal(brushSize) : scaleMax;
 
     switch (mTool) {
     case PenTool: {
-        command = new ApplyPixelLineCommand(this, mProject->currentLayerIndex(), mNewStroke, scaleMin, scaleMax, brush(), penColour(), qPainterBlendMode(), continueCommand);
+        command = new ApplyPixelLineCommand(this, mProject->currentLayerIndex(), mNewStroke, QPainter::CompositionMode_SourceOver, continueCommand);
         command->setText(QLatin1String("PixelLineTool"));
         break;
     }
@@ -2263,7 +2036,7 @@ void ImageCanvas::applyCurrentTool(QUndoStack *const alternateStack)
         break;
     }
     case EraserTool: {
-        command = new ApplyPixelLineCommand(this, mProject->currentLayerIndex(), mNewStroke, scaleMin, scaleMax, brush(), penColour(), QPainter::CompositionMode_Clear, continueCommand);
+        command = new ApplyPixelLineCommand(this, mProject->currentLayerIndex(), mNewStroke, QPainter::CompositionMode_Clear, continueCommand);
         command->setText(QLatin1String("PixelEraserTool"));
         break;
     }
@@ -2374,20 +2147,6 @@ QRect ImageCanvas::doRotateSelection(int layerIndex, const QRect &area, int angl
     return area.united(rotatedArea);
 }
 
-void ImageCanvas::updateBrush()
-{
-    // Create new brush if not image brush
-    if (mBrushType != Brush::ImageType) {
-        mBrush = Brush(mBrushType, {mUpperToolSize, mUpperToolSize});
-    }
-    emit brushRectChanged();
-}
-
-const Brush &ImageCanvas::brush()
-{
-    return mBrush;
-}
-
 qreal ImageCanvas::pressure() const
 {
     // Use tablet pressure if tablet button pressed, otherwise must be mouse so use full pressure
@@ -2430,14 +2189,11 @@ void ImageCanvas::updateCursorPos(const QPoint &eventPos)
     setCursorSceneY(mCursorSceneFY);
 
     if (mCursorSceneX < 0 || mCursorSceneX >= mProject->widthInPixels()
-        || mCursorSceneY < 0 || mCursorSceneY >= mProject->heightInPixels()
-        // The cached contents can be null for some reason during tests; probably because
-        // the canvas gets events before it has rendered. No big deal, it wouldn't be visible yet anyway.
-        || mCachedContentImage.isNull()) {
+        || mCursorSceneY < 0 || mCursorSceneY >= mProject->heightInPixels()) {
         setCursorPixelColour(QColor(Qt::black));
     } else {
         const QPoint cursorScenePos = QPoint(mCursorSceneX, mCursorSceneY);
-        setCursorPixelColour(mCachedContentImage.pixelColor(cursorScenePos));
+        setCursorPixelColour(pickColour(cursorScenePos));
     }
 
     const bool cursorScenePosChanged = mCursorSceneX != oldCursorSceneX || mCursorSceneY != oldCursorSceneY;
@@ -2616,15 +2372,18 @@ Qt::MouseButton ImageCanvas::pressedMouseButton() const
 
 QColor ImageCanvas::penColour() const
 {
-    return pressedMouseButton() == Qt::LeftButton ? mPenForegroundColour : mPenBackgroundColour;
+//    return pressedMouseButton() == Qt::LeftButton ? mPenForegroundColour : mPenBackgroundColour;
+    return pressedMouseButton() == Qt::LeftButton ? mEditingContext->foregroundColour() : mEditingContext->backgroundColour();
 }
 
 void ImageCanvas::setPenColour(const QColor &colour)
 {
     if (pressedMouseButton() == Qt::LeftButton)
-        setPenForegroundColour(colour);
+//        setPenForegroundColour(colour);
+        mEditingContext->setForegroundColour(colour);
     else
-        setPenBackgroundColour(colour);
+//        setPenBackgroundColour(colour);
+        mEditingContext->setBackgroundColour(colour);
 }
 
 void ImageCanvas::setHasBlankCursor(bool hasCustomCursor)
@@ -2788,6 +2547,8 @@ void ImageCanvas::wheelEvent(QWheelEvent *event)
 
 void ImageCanvas::mousePressEvent(QMouseEvent *event)
 {
+    hideToolPreview();
+
     QQuickItem::mousePressEvent(event);
 
     // Is it possible to get a press without a hover enter? If so, we need this line.
@@ -3000,6 +2761,8 @@ void ImageCanvas::mouseReleaseEvent(QMouseEvent *event)
     mSplitter.setPressed(false);
     mPressedRuler = nullptr;
     mGuidePositionBeforePress = 0;
+
+    unhideToolPreview();
 }
 
 void ImageCanvas::hoverEnterEvent(QHoverEvent *event)
@@ -3012,6 +2775,8 @@ void ImageCanvas::hoverEnterEvent(QHoverEvent *event)
 
     if (!mProject->hasLoaded())
         return;
+
+    unhideToolPreview();
 }
 
 void ImageCanvas::hoverMoveEvent(QHoverEvent *event)
@@ -3034,6 +2799,9 @@ void ImageCanvas::hoverMoveEvent(QHoverEvent *event)
     if (isLineVisible() || mProject->settings()->isBrushPreviewVisible()) {
         requestContentPaint();
     }
+
+    hideToolPreview();
+    unhideToolPreview();
 }
 
 void ImageCanvas::hoverLeaveEvent(QHoverEvent *event)
@@ -3044,6 +2812,8 @@ void ImageCanvas::hoverLeaveEvent(QHoverEvent *event)
 
     if (!mProject->hasLoaded())
         return;
+
+    hideToolPreview();
 }
 
 void ImageCanvas::keyPressEvent(QKeyEvent *event)
@@ -3171,10 +2941,16 @@ void ImageCanvas::updateWindow(QQuickWindow *const window)
     if (mWindow) mWindow->removeEventFilter(this);
     mWindow = window;
     if (mWindow) mWindow->installEventFilter(this);
+
+    //Locks?
+//    QObject::connect(mWindow, &QQuickWindow::beforeRendering, this, &ImageCanvas::unhideToolPreview, Qt::BlockingQueuedConnection);
+//    QObject::connect(mWindow, &QQuickWindow::afterRendering, this, &ImageCanvas::hideToolPreview, Qt::BlockingQueuedConnection);
 }
 
 void ImageCanvas::undo()
 {
+    hideToolPreview();
+
     if (mHasSelection && !mIsSelectionFromPaste) {
         if (mLastSelectionModification != NoSelectionModification) {
             qCDebug(lcImageCanvasSelection) << "Undo activated while a selection that has previously been modified is active;"
@@ -3198,4 +2974,15 @@ void ImageCanvas::undo()
     } else {
         mProject->undoStack()->undo();
     }
+
+    unhideToolPreview();
+}
+
+void ImageCanvas::redo()
+{
+    hideToolPreview();
+
+    mProject->undoStack()->redo();
+
+    unhideToolPreview();
 }

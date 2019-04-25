@@ -248,7 +248,7 @@ bool TileCanvas::supportsSelectionTool() const
     return false;
 }
 
-QImage TileCanvas::getComposedImage()
+QImage TileCanvas::getComposedImage() const
 {
     const QSize size(mTilesetProject->tilesWide() * mTilesetProject->tileWidth(), mTilesetProject->tilesHigh() * mTilesetProject->tileHeight());
     QImage image(size,  QImage::Format_ARGB32);
@@ -554,11 +554,6 @@ void TileCanvas::onLoadedChanged()
     }
 
     updateWindowCursorShape();
-}
-
-QColor TileCanvas::penColour() const
-{
-    return mMouseButtonPressed == Qt::LeftButton ? mPenForegroundColour : mPenBackgroundColour;
 }
 
 void TileCanvas::setHasBlankCursor(bool hasCustomCursor)

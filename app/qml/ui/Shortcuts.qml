@@ -85,7 +85,7 @@ Item {
         objectName: "redoShortcut"
         sequence: settings.redoShortcut
         enabled: canvasHasActiveFocus && project && project.undoStack.canRedo
-        onActivated: project.undoStack.redo()
+        onActivated: canvas.redo()
     }
 
     Shortcut {

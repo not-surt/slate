@@ -3,6 +3,7 @@
 
 #include "brush.h"
 #include "stroke.h"
+#include "editingcontext.h"
 
 #include <QOpenGLFunctions>
 #include <QOffscreenSurface>
@@ -22,15 +23,23 @@ public:
     QImage *image() const;
     void setImage(QImage *const image);
 
-    void updateBrushTexture(const QImage &image = QImage());
+    const Stroke &stroke() const;
+    void setStroke(const Stroke &brush);
+
+    EditingContextManager &editingContext();
+    const EditingContextManager &editingContext() const;
+    void setEditingContext(const EditingContextManager &editingContext);
 
     void upload(const QRect &rect = QRect());
     void download(const QRect &rect = QRect());
 
-    void renderBrush(const Brush &brush, const QColor &colour, const QTransform &transform, const QRect &rect = QRect());
-    void render(const Stroke &stroke, const Brush &brush, const QColor &colour, const qreal scaleMin, const qreal scaleMax, const qreal opacityMin, const qreal opacityMax, const qreal hardnessMin, const qreal hardnessMax, const bool singleColour, const QTransform &transform, const QRect &rect = QRect());
+    void renderBrush(const QTransform &transform);
+    void render(const QTransform &transform, const QRect &clip = QRect());
 
-private:
+    QRect brushBounds(const BrushManager &brush) const;
+    QRect strokeBounds(const Stroke &stroke, const BrushManager &brush) const;
+
+private:    
     static QVector<QVector2D> clipQuad;
 
     QOffscreenSurface mSurface;
@@ -39,10 +48,12 @@ private:
     QOpenGLFramebufferObject *mFramebuffer;
     QImage *mImage;
     QOpenGLTexture *mBrushTexture;
-    QSize mBrushTextureSize;
+    Stroke mStroke;
+    QOpenGLBuffer *mStrokeVertexBuffer;
+    EditingContextManager mEditingContext;
 
     QOpenGLShaderProgram mProgram;
-    QOpenGLBuffer mVertexBuffer;
+    QOpenGLBuffer mUnitQuadVertexBuffer;
 };
 
 #endif // STROKERENDERER_H

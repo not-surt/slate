@@ -72,7 +72,7 @@ GridView {
 
             onClicked: {
                 if (mouse.button === Qt.LeftButton) {
-                    canvas.penForegroundColour = model.colour
+                    canvas.editingContext.foregroundColour = model.colour
                 } else if (mouse.button === Qt.RightButton) {
                     swatchContextMenu.rightClickedColourIndex = index
                     swatchContextMenu.rightClickedColourName = model.name

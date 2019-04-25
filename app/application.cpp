@@ -30,6 +30,7 @@
 #include "buildinfo.h"
 #include "canvaspane.h"
 #include "canvaspaneitem.h"
+#include "editingcontext.h"
 #include "filevalidator.h"
 #include "imagecanvas.h"
 #include "imagelayer.h"
@@ -64,6 +65,8 @@ static QGuiApplication *createApplication(int &argc, char **argv, const QString 
 {
     QLoggingCategory::setFilterRules("app.* = false");
     QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    // Force ANGLE
+    QGuiApplication::setAttribute(Qt::AA_UseOpenGLES);
 
     QApplication *app = new QApplication(argc, argv);
     app->setOrganizationName("Mitch Curtis");
@@ -107,8 +110,9 @@ Application::Application(int &argc, char **argv, const QString &applicationName)
     qmlRegisterType<TileGrid>("App", 1, 0, "TileGrid");
     qmlRegisterType<TilesetSwatchImage>("App", 1, 0, "TilesetSwatchImage");
     qmlRegisterUncreatableType<AnimationPlayback>("App", 1, 0, "AnimationPlayback", QLatin1String("Cannot create objects of type AnimationPlayback"));
-    qmlRegisterUncreatableType<Brush>("App", 1, 0, "Brush", "Can't create instances of Brush");
+    qmlRegisterUncreatableType<BrushManager>("App", 1, 0, "Brush", "Can't create instances of Brush");
     qmlRegisterUncreatableType<CanvasPane>("App", 1, 0, "CanvasPane", "Can't create instances of CanvasPane");
+    qmlRegisterUncreatableType<EditingContextManager>("App", 1, 0, "EditingContext", "Can't create instances of EditingContext");
     qmlRegisterUncreatableType<Project>("App", 1, 0, "Project", QLatin1String("Cannot create objects of type Project"));
     qmlRegisterUncreatableType<LayeredImageProject>("App", 1, 0, "LayeredImageProject",
         QLatin1String("Cannot create objects of type LayeredImageProject"));
@@ -121,6 +125,7 @@ Application::Application(int &argc, char **argv, const QString &applicationName)
     qRegisterMetaType<ApplicationSettings*>();
     qRegisterMetaType<ImageLayer*>();
     qRegisterMetaType<Project::Type>();
+    qRegisterMetaType<EditingContextManager::BlendMode>();
 
     // For some reason, only when debugging, I get
     // QMetaProperty::read: Unable to handle unregistered datatype 'QUndoStack*' for property 'Project_QML_108::undoStack'

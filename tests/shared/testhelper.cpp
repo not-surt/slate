@@ -450,7 +450,7 @@ bool TestHelper::changeToolSize(int size)
 
 bool TestHelper::changeBrushType(Brush::Type brushType)
 {
-    if (canvas->brushType() == brushType)
+    if (canvas->editingContext()->brush()->type() == brushType)
         return true;
 
     mouseEventOnCentre(brushTypeButton, MouseClick);
@@ -463,13 +463,13 @@ bool TestHelper::changeBrushType(Brush::Type brushType)
         VERIFY(squareBrushTypeMenuItem);
 
         mouseEventOnCentre(squareBrushTypeMenuItem, MouseClick);
-        VERIFY(canvas->brushType() == Brush::SquareType);
+        VERIFY(canvas->editingContext()->brush()->type() == Brush::SquareType);
     } else if (brushType == Brush::CircleType) {
         QQuickItem *circleBrushTypeMenuItem = brushTypeMenu->findChild<QQuickItem*>("circleBrushTypeMenuItem");
         VERIFY(circleBrushTypeMenuItem);
 
         mouseEventOnCentre(circleBrushTypeMenuItem, MouseClick);
-        VERIFY(canvas->brushType() == Brush::CircleType);
+        VERIFY(canvas->editingContext()->brush()->type() == Brush::CircleType);
     }
 
     return true;
@@ -565,7 +565,7 @@ bool TestHelper::selectColourAtCursorPos()
 
         QTest::mouseMove(window, cursorWindowPos);
         QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
-        const QColor actualColour = canvas->penForegroundColour();
+        const QColor actualColour = canvas->editingContext()->foregroundColour();
         const QColor expectedColour = canvas->currentProjectImage()->pixelColor(cursorPos);
         VERIFY2(actualColour == expectedColour,
             qPrintable(QString::fromLatin1("Expected canvas foreground colour to be %1, but it's %2")
@@ -590,7 +590,7 @@ bool TestHelper::drawPixelAtCursorPos()
         // Draw on some pixels of the current tile.
         const QImage originalTileImage = targetTile->tileset()->image()->copy(targetTile->sourceRect());
         QImage expectedImage = originalTileImage;
-        expectedImage.setPixelColor(tileCanvas->scenePosToTilePixelPos(cursorPos), tileCanvas->penForegroundColour());
+        expectedImage.setPixelColor(tileCanvas->scenePosToTilePixelPos(cursorPos), tileCanvas->editingContext()->foregroundColour());
 
         QTest::mouseMove(window, cursorPos);
         QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
@@ -611,7 +611,7 @@ bool TestHelper::drawPixelAtCursorPos()
         QTest::mouseMove(window, cursorWindowPos);
         QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
         QColor actualColour = canvas->currentProjectImage()->pixelColor(cursorPos);
-        QColor expectedColour = canvas->penForegroundColour();
+        QColor expectedColour = canvas->editingContext()->foregroundColour();
         if (actualColour != expectedColour) {
             QString message;
             QDebug stream(&message);
@@ -823,7 +823,7 @@ bool TestHelper::addSwatchWithForegroundColour()
 
     const int previousDelegateCount = swatchGridView->property("count").toInt();
     const QString expectedDelegateObjectName = QString::fromLatin1("swatchGridView_Delegate_%1_%2")
-        .arg(previousDelegateCount).arg(canvas->penForegroundColour().name());
+        .arg(previousDelegateCount).arg(canvas->editingContext()->foregroundColour().name());
 
     // Add the swatch.
     QQuickItem *newSwatchColourButton = window->findChild<QQuickItem*>("newSwatchColourButton");
@@ -1787,12 +1787,12 @@ bool TestHelper::updateVariables(bool isNewProject, Project::Type projectType)
     // (because of wheel events) and I haven't looked into it yet because it's not really important.
     canvas->setGesturesEnabled(false);
 
-    canvas->setPenForegroundColour(Qt::black);
-    canvas->setPenBackgroundColour(Qt::white);
+    canvas->editingContext()->setForegroundColour(Qt::black);
+    canvas->editingContext()->setBackgroundColour(Qt::white);
     // This determines which colour the ColourSelector considers "current",
     // and hence which value is shown in the hex field.
     VERIFY(penForegroundColourButton->setProperty("checked", QVariant(true)));
-    canvas->setBrushType(Brush::SquareType);
+    canvas->editingContext()->brush()->setType(Brush::SquareType);
 
     app.settings()->setAutoSwatchEnabled(false);
 

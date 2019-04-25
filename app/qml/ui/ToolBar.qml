@@ -12,6 +12,7 @@ ToolBar {
 
     property Project project
     property ImageCanvas canvas
+    property EditingContext context: canvas ? canvas.editingContext : null
     property Popup canvasSizePopup
     property Popup imageSizePopup
 
@@ -111,7 +112,7 @@ ToolBar {
                 ToolTip.text: qsTr("Redo the last undone canvas operation")
                 ToolTip.visible: hovered
 
-                onClicked: project.undoStack.redo()
+                onClicked: canvas.redo()
             }
 
             ToolSeparator {}
@@ -276,18 +277,17 @@ ToolBar {
             ToolSeparator {}
         }
 
-        ToolButton {
+        Ui.IconToolButton {
             id: brushSettingsButton
             objectName: "brushSettingsButton"
+            text: "\uf1fc"
             hoverEnabled: true
             focusPolicy: Qt.NoFocus
-
-            icon.source: "qrc:/images/change-tool-size.png"
+            checkable: true
+            checked: brushSettingsPopup.visible
 
             ToolTip.text: qsTr("Change the brush settings")
             ToolTip.visible: hovered && !brushSettingsPopup.visible
-
-            onClicked: brushSettingsPopup.open()
 
             ToolButtonMenuIndicator {}
 
@@ -296,109 +296,161 @@ ToolBar {
                 x: parent.width / 2 - width / 2
                 y: parent.height
                 canvas: root.canvas
+                visible: brushSettingsButton.checked
             }
         }
 
-//        ToolButton {
-//            id: brushTypeButton
-//            objectName: "brushTypeButton"
-//            hoverEnabled: true
-//            focusPolicy: Qt.NoFocus
+        Ui.IconToolButton {
+            id: strokeSettingsButton
+            objectName: "strokeSettingsButton"
+            text: "\uf5ae"
+            hoverEnabled: true
+            focusPolicy: Qt.NoFocus
+            checkable: true
+            checked: strokeSettingsPopup.visible
 
-//            icon.source: brushTypeGroup.checkedAction.icon.source
+            ToolTip.text: qsTr("Change the stroke settings")
+            ToolTip.visible: hovered && !strokeSettingsPopup.visible
 
-//            ToolTip.text: qsTr("Choose brush shape")
-//            ToolTip.visible: hovered
+            ToolButtonMenuIndicator {}
 
-//            onClicked: brushTypeMenu.open()
+            StrokeSettingsPopup {
+                id: strokeSettingsPopup
+                x: parent.width / 2 - width / 2
+                y: parent.height
+                canvas: root.canvas
+                visible: strokeSettingsButton.checked
+            }
+        }
 
-//            ToolButtonMenuIndicator {}
+        Ui.IconToolButton {
+            id: dynamicsSettingsButton
+            objectName: "dynamicsSettingsButton"
+            text: "\uf1de"
+            hoverEnabled: true
+            focusPolicy: Qt.NoFocus
+            checkable: true
+            checked: dynamicsSettingsPopup.visible
 
-//            ActionGroup {
-//                id: brushTypeGroup
-//                exclusive: true
-//                onTriggered: if (canvas) canvas.brushType = action.brushType
-//                checkedAction: canvas ? actions[canvas.brushType] : squareBrushType
+            ToolTip.text: qsTr("Change the brush dynamics settings")
+            ToolTip.visible: hovered && !dynamicsSettingsButton.visible
 
-//                Action {
-//                    id: squareBrushType
-//                    text: qsTr("Square")
-//                    icon.source: "qrc:/images/square-tool-shape.png"
-//                    checkable: true
-//                    property int brushType: Brush.SquareType
-//                }
+            ToolButtonMenuIndicator {}
 
-//                Action {
-//                    id: circleBrushType
-//                    text: qsTr("Circle")
-//                    icon.source: "qrc:/images/circle-tool-shape.png"
-//                    checkable: true
-//                    property int brushType: Brush.CircleType
-//                }
-
-//                Action {
-//                    id: imageBrushType
-//                    text: qsTr("Image")
-//                    icon.source: "qrc:/images/image-tool-shape.png"
-//                    checkable: true
-//                    property int brushType: Brush.ImageType
-//                }
-//            }
-
-//            Menu {
-//                id: brushTypeMenu
-//                y: parent.height
-
-//                MenuItem { action: squareBrushType}
-//                MenuItem { action: circleBrushType }
-//                MenuItem { action: imageBrushType }
-//            }
-//        }
+            DynamicsSettingsPopup {
+                id: dynamicsSettingsPopup
+                x: parent.width / 2 - width / 2
+                y: parent.height
+                canvas: root.canvas
+                visible: dynamicsSettingsButton.checked
+            }
+        }
 
         ToolButton {
-            id: toolBlendModeButton
+            id: blendModeButton
             objectName: "toolBlendModeButton"
             hoverEnabled: true
             focusPolicy: Qt.NoFocus
+            checkable: true
+            checked: blendModeMenu.visible
 
-            icon.source: toolBlendModeGroup.checkedAction.icon.source
+            icon.source: blendModeGroup.checkedAction.icon.source
 
             ToolTip.text: qsTr("Choose blending mode")
             ToolTip.visible: hovered
 
-            onClicked: toolBlendModeMenu.open()
-
             ToolButtonMenuIndicator {}
 
             ActionGroup {
-                id: toolBlendModeGroup
+                id: blendModeGroup
                 exclusive: true
-                onTriggered: if (canvas) canvas.toolBlendMode = action.blendMode
-                checkedAction: canvas ? actions[canvas.toolBlendMode] : replaceToolBlendMode
+                checkedAction: canvas ? actions[context.blendMode] : replaceBlendModeAction
 
                 Action {
-                    id: blendToolBlendMode
+                    id: blendBlendModeAction
                     text: qsTr("Blend")
                     icon.source: "qrc:/images/blend-tool-blend-mode.png"
                     checkable: true
-                    property int blendMode: ImageCanvas.BlendToolBlendMode
+                    property int blendMode: EditingContext.BlendMode.Blend
                 }
 
                 Action {
-                    id: replaceToolBlendMode
+                    id: replaceBlendModeAction
                     text: qsTr("Replace")
                     icon.source: "qrc:/images/replace-tool-blend-mode.png"
                     checkable: true
-                    property int blendMode: ImageCanvas.ReplaceToolBlendMode
+                    property int blendMode: EditingContext.BlendMode.Replace
+                }
+
+                Action {
+                    id: replaceAlphaBlendModeAction
+                    text: qsTr("Replace Colour")
+                    icon.source: "qrc:/images/replace-tool-blend-mode.png"
+                    checkable: true
+                    property int blendMode: EditingContext.BlendMode.ReplaceColour
+                }
+
+                Action {
+                    id: replaceColourBlendModeAction
+                    text: qsTr("Replace Alpha")
+                    icon.source: "qrc:/images/replace-tool-blend-mode.png"
+                    checkable: true
+                    property int blendMode: EditingContext.BlendMode.ReplaceAlpha
+                }
+
+                Action {
+                    id: addBlendModeAction
+                    text: qsTr("Add")
+                    icon.source: "qrc:/images/replace-tool-blend-mode.png"
+                    checkable: true
+                    property int blendMode: EditingContext.BlendMode.Add
+                }
+
+                Action {
+                    id: subtractBlendModeAction
+                    text: qsTr("Subtract")
+                    icon.source: "qrc:/images/replace-tool-blend-mode.png"
+                    checkable: true
+                    property int blendMode: EditingContext.BlendMode.Subtract
+                }
+
+                Action {
+                    id: multiplyBlendModeAction
+                    text: qsTr("Multiply")
+                    icon.source: "qrc:/images/replace-tool-blend-mode.png"
+                    checkable: true
+                    property int blendMode: EditingContext.BlendMode.Multiply
+                }
+
+                Action {
+                    id: eraseBlendModeAction
+                    text: qsTr("Erase")
+                    icon.source: "qrc:/images/replace-tool-blend-mode.png"
+                    checkable: true
+                    property int blendMode: EditingContext.BlendMode.Erase
                 }
             }
 
-            Menu {
-                id: toolBlendModeMenu
-                y: parent.height
+            Binding {
+                target: context
+                property: "blendMode"
+                value: blendModeGroup.checkedAction.blendMode
+                when: canvas && blendModeGroup.checkedAction
+            }
 
-                MenuItem { action: blendToolBlendMode }
-                MenuItem { action: replaceToolBlendMode }
+            Menu {
+                id: blendModeMenu
+                y: parent.height
+                visible: blendModeButton.checked
+
+                MenuItem { action: blendBlendModeAction }
+                MenuItem { action: replaceBlendModeAction }
+                MenuItem { action: replaceColourBlendModeAction }
+                MenuItem { action: replaceAlphaBlendModeAction }
+                MenuItem { action: addBlendModeAction }
+                MenuItem { action: subtractBlendModeAction }
+                MenuItem { action: multiplyBlendModeAction }
+                MenuItem { action: eraseBlendModeAction }
             }
         }
 

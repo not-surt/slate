@@ -46,7 +46,7 @@ QtGuiApplication {
         "main.cpp",
         "config.qrc",
         "fonts/fonts.qrc",
-        "images/images.qrc"
+        "images/images.qrc",
     ]
 
     AppQmlFiles {}

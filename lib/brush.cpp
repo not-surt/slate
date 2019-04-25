@@ -4,34 +4,37 @@
 #include <QtMath>
 #include <QSet>
 
-Brush::Brush(const Brush::Type type, const QSize &size, const QPointF handle, const bool relativeHandle) :
-    type(type), size(size), pixmap(), handle(relativeHandle ? QPointF(handle.x() * qreal(size.width()), handle.y() * qreal(size.height())) : handle)
+Brush::Brush(const Brush::Type type, const QSizeF &size , const qreal angle, const qreal hardness, const qreal opacity, const QImage &image, const QPointF handle) :
+     mType(type),
+     mSize(size),
+     mAngle(angle),
+     mHardness(hardness),
+     mOpacity(opacity),
+     mImage(image),
+     mHandle(handle)
 {
-    if (type == ImageType) {
-        pixmap = QPixmap::fromImage(QImage(size, QImage::Format_ARGB32));
-    } else {
-        QImage image = QImage(size, QImage::Format_ARGB32);
-        image.fill(qRgba(0, 0, 0, 0));
-        const QRgb colour = qRgba(255, 255, 255, 255);
-        if (type == SquareType) {
-            fillRectangle(image, image.rect(), image.rect(), colour);
-        }
-        else {
-            fillEllipse(image, image.rect(), image.rect(), colour);
-        }
-        pixmap = QBitmap::fromImage(image.createMaskFromColor(colour, Qt::MaskOutColor));
-    }
 }
 
-Brush::Brush(const QImage &image, const QPointF handle, const bool relativeHandle) :
-    Brush(ImageType, image.size(), handle, relativeHandle)
+Brush::Brush(const Brush &other) :
+    mType(other.mType),
+    mSize(other.mSize),
+    mAngle(other.mAngle),
+    mHardness(other.mHardness),
+    mOpacity(other.mOpacity),
+    mImage(other.mImage),
+    mHandle(other.mHandle)
 {
-    pixmap = QPixmap::fromImage(image);
 }
 
 bool Brush::operator==(const Brush &other) const
 {
-    return type == other.type && size == other.size && pixmap.toImage() == other.pixmap.toImage() && handle == other.handle;
+    return mType == other.mType &&
+        mSize == other.mSize &&
+        qFuzzyCompare(mAngle, other.mAngle) &&
+        qFuzzyCompare(mHardness, other.mHardness) &&
+        qFuzzyCompare(mOpacity, other.mOpacity) &&
+        mImage == other.mImage &&
+        mHandle == other.mHandle;
 }
 
 bool Brush::operator!=(const Brush &other) const
@@ -41,96 +44,178 @@ bool Brush::operator!=(const Brush &other) const
 
 Brush &Brush::operator=(const Brush &other)
 {
-    type = other.type;
-    size = other.size;
-    pixmap = other.pixmap;
-    handle = other.handle;
+    mType = other.mType;
+    mSize = other.mSize;
+    mAngle = other.mAngle;
+    mHardness = other.mHardness;
+    mOpacity = other.mOpacity;
+    mImage = other.mImage;
+    mHandle = other.mHandle;
     return *this;
 }
 
-QTransform Brush::transform() const
+BrushManager::BrushManager(const Brush &brush, QObject *const parent) :
+    QObject(parent),
+    mBrush(brush)
+{
+}
+
+BrushManager::BrushManager(const BrushManager &other) :
+    QObject(),
+    mBrush(other.mBrush)
+{
+}
+
+bool BrushManager::operator==(const BrushManager &other) const
+{
+    return mBrush == other.mBrush;
+}
+
+bool BrushManager::operator!=(const BrushManager &other) const
+{
+    return !(*this == other);
+}
+
+BrushManager &BrushManager::operator=(const BrushManager &other)
+{
+    mBrush = other.mBrush;
+    return *this;
+}
+
+QTransform BrushManager::transform() const
 {
     QTransform transform;
-    transform.translate(-handle.x(), -handle.y());
+    transform.translate(-mBrush.mHandle.x(), -mBrush.mHandle.y());
     return transform;
 }
 
-QRectF Brush::bounds(const QPointF pos, const qreal scale, const qreal rotation) const
+QRectF BrushManager::bounds(const QPointF pos, const qreal scale, const qreal rotation) const
 {
-    return QRectF(-handle * scale, size * scale).translated(pos);
+    return QRectF(QPointF(-mBrush.mHandle.x() * mBrush.mSize.width(), -mBrush.mHandle.y() * mBrush.mSize.height()) * scale, mBrush.mSize * scale).translated(pos);
 }
 
-inline void Brush::drawPixel(QImage &image, const QRect &clip, const QPoint point, const QRgb colour)
+const Brush &BrushManager::brush() const
 {
-    Q_ASSERT(image.format() == QImage::Format_ARGB32);
-
-    const QRect clipped = clip & image.rect();
-    if (clipped.contains(point))
-        *(reinterpret_cast<QRgb *>(image.scanLine(point.y())) + point.x()) = colour;
+    return mBrush;
 }
 
-inline void Brush::drawSpan(QImage &image, const QRect &clip, const int x0, const int x1, const int y, const QRgb colour)
+Brush::Type BrushManager::type() const
 {
-    Q_ASSERT(image.format() == QImage::Format_ARGB32);
-
-    const QRect clipped = clip & image.rect();
-    if (y >= clipped.y() && y < clipped.y() + clipped.height()) {
-        const int startX = qMax(clipped.x(), x0);
-        const int endX = qMin(clipped.x() + clipped.width(), x1);
-        QRgb *const startPixel = reinterpret_cast<QRgb *>(image.scanLine(y)) + startX;
-        QRgb *const endPixel = reinterpret_cast<QRgb *>(image.scanLine(y)) + endX;
-        for (QRgb *pixel = startPixel; pixel < endPixel; ++pixel)
-            *pixel = colour;
-    }
+    return mBrush.mType;
 }
 
-void Brush::fillRectangle(QImage &image, const QRect &clip, const QRectF &rect, const QRgb colour)
+QSizeF BrushManager::size() const
 {
-    const QRectF clipped = rect & clip & image.rect();
-    for (int y = qFloor(clipped.y() + 0.5), end = qFloor(clipped.y() + clipped.height() + 0.5); y < end; ++y) {
-        const int startX = qFloor(clipped.x() + 0.5);
-        const int endX = qFloor(clipped.x() + clipped.width() + 0.5);
-        drawSpan(image, clip, startX, endX, y, colour);
-    }
+    return mBrush.mSize;
 }
 
-void Brush::fillEllipse(QImage &image, const QRect &clip, const QRectF &rect, const QRgb colour)
+qreal BrushManager::angle() const
 {
-    const QSizeF radius = rect.size() / 2.0;
-    const QPointF origin = rect.topLeft() + QPointF(radius.width(), radius.height());
-    const qreal ratio = radius.width() / radius.height();
-    const qreal heightRadiusSquared = radius.height() * radius.height();
-    const QRectF clipped = rect & clip & image.rect();
-    for (int y = qFloor(clipped.y() + 0.5), end = qFloor(clipped.y() + clipped.height() + 0.5); y < end; ++y) {
-        const qreal yOffset = y + 0.5 - origin.y();
-        const qreal halfSpanWidth = sqrt(heightRadiusSquared - yOffset * yOffset) * ratio;
-        const int startX = qMax(qFloor(clipped.x() + 0.5), qFloor(origin.x() - halfSpanWidth + 0.5));
-        const int endX = qMin(qFloor(clipped.x() + clipped.width() + 0.5), qFloor(origin.x() + halfSpanWidth + 0.5));
-        drawSpan(image, clip, startX, endX, y, colour);
-    }
+    return mBrush.mAngle;
 }
 
-void Brush::draw(QPainter *const painter, const QColor &colour, const QPointF pos, const qreal scale, const qreal rotation) const
+qreal BrushManager::hardness() const
 {
-    QTransform brushTransform;
-    brushTransform.rotate(rotation);
-    brushTransform.scale(scale, scale);
+    return mBrush.mHardness;
+}
 
-    painter->save();
-    // Transform to cursor position
-    painter->translate(pos);
-    painter->setTransform(brushTransform, true);
-    // Draw brush image
-    // Apply brush transfom
-    painter->setTransform(transform(), true);
-    // Draw brush image
-    if (QSet<QImage::Format>{QImage::Format_Mono, QImage::Format_MonoLSB}.contains(pixmap.toImage().format())) {
-        painter->setPen(colour);
-        painter->setBackgroundMode(Qt::TransparentMode);
-        painter->drawPixmap(QPointF(0.0, 0.0), pixmap);
-    }
-    else {
-        painter->drawPixmap(QPointF(0.0, 0.0), pixmap);
-    }
-    painter->restore();
+qreal BrushManager::opacity() const
+{
+    return mBrush.mOpacity;
+}
+
+QImage BrushManager::image() const
+{
+    return mBrush.mImage;
+}
+
+bool BrushManager::singleColour() const
+{
+    return mBrush.mSingleColour;
+}
+
+QPointF BrushManager::handle() const
+{
+    return mBrush.mHandle;
+}
+
+void BrushManager::setBrush(const Brush &brush)
+{
+    if (mBrush == brush)
+        return;
+
+    mBrush = brush;
+    emit brushChanged(mBrush);
+}
+
+void BrushManager::setType(Brush::Type type)
+{
+    if (mBrush.mType == type)
+        return;
+
+    mBrush.mType = type;
+    emit typeChanged(mBrush.mType);
+}
+
+void BrushManager::setSize(QSizeF size)
+{
+    if (mBrush.mSize == size)
+        return;
+
+    mBrush.mSize = size;
+    emit sizeChanged(mBrush.mSize);
+}
+
+void BrushManager::setAngle(qreal angle)
+{
+    if (qFuzzyCompare(mBrush.mAngle, angle))
+        return;
+
+    mBrush.mAngle = angle;
+    emit angleChanged(mBrush.mAngle);
+}
+
+void BrushManager::setHardness(qreal hardness)
+{
+    if (qFuzzyCompare(mBrush.mHardness, hardness))
+        return;
+
+    mBrush.mHardness = hardness;
+    emit hardnessChanged(mBrush.mHardness);
+}
+
+void BrushManager::setOpacity(qreal opacity)
+{
+    if (qFuzzyCompare(mBrush.mOpacity, opacity))
+        return;
+
+    mBrush.mOpacity = opacity;
+    emit opacityChanged(mBrush.mOpacity);
+}
+
+void BrushManager::setImage(QImage image)
+{
+    if (mBrush.mImage == image)
+        return;
+
+    mBrush.mImage = image;
+    emit imageChanged(mBrush.mImage);
+}
+
+void BrushManager::setSingleColour(bool singleColour)
+{
+    if (mBrush.mSingleColour == singleColour)
+        return;
+
+    mBrush.mSingleColour = singleColour;
+    emit singleColourChanged(mBrush.mSingleColour);
+}
+
+void BrushManager::setHandle(QPointF handle)
+{
+    if (mBrush.mHandle == handle)
+        return;
+
+    mBrush.mHandle = handle;
+    emit handleChanged(mBrush.mHandle);
 }

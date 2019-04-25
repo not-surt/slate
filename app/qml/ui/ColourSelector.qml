@@ -12,7 +12,7 @@ Item {
     property ImageCanvas canvas
 
     property string currentPenName: penBackgroundColourButton.checked ? qsTr("background") : qsTr("foreground")
-    property string currentPenPropertyName: penBackgroundColourButton.checked ? "penBackgroundColour" : "penForegroundColour"
+    property string currentPenPropertyName: penBackgroundColourButton.checked ? "backgroundColour" : "foregroundColour"
 
     ButtonGroup {
         id: buttonGroup
@@ -24,7 +24,7 @@ Item {
         objectName: "penBackgroundColourButton"
         x: penForegroundColourToolButton.width / 2
         y: penForegroundColourToolButton.height / 2
-        color: canvas ? canvas.penBackgroundColour : "white"
+        color: canvas ? canvas.editingContext.backgroundColour : "white"
         width: parent.width / 2
         height: width
 
@@ -37,7 +37,7 @@ Item {
     ColourButton {
         id: penForegroundColourToolButton
         objectName: "penForegroundColourButton"
-        color: canvas ? canvas.penForegroundColour : "black"
+        color: canvas ? canvas.editingContext.foregroundColour : "black"
         width: parent.width / 2
         height: width
         checked: true

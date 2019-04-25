@@ -47,6 +47,7 @@ ApplicationWindow {
     readonly property int projectType: project && projectManager.ready ? project.type : 0
     readonly property bool isImageProjectType: projectType === Project.ImageType || projectType === Project.LayeredImageType
     property ImageCanvas canvas: canvasContainer.canvas
+    property EditingContext context: canvas.editingContext
     property alias newProjectPopup: newProjectPopup
     property alias openProjectDialog: openProjectDialog
     property alias saveChangesDialog: discardChangesDialog
@@ -113,11 +114,13 @@ ApplicationWindow {
     }
 
     function saveOrSaveAs() {
+        canvas.hideToolPreview()
         if (project.url.toString().length > 0) {
             project.save();
         } else {
             saveAsDialog.open();
         }
+        canvas.unhideToolPreview()
     }
 
     function toggleFullScreen() {
@@ -299,7 +302,11 @@ ApplicationWindow {
         fileMode: Platform.FileDialog.SaveFile
         nameFilters: nameFiltersForProjectType(projectType)
         defaultSuffix: projectManager.projectExtensionForType(projectType)
-        onAccepted: project.saveAs(file)
+        onAccepted: {
+            canvas.hideToolPreview()
+            project.saveAs(file)
+            canvas.unhideToolPreview()
+        }
     }
 
     Platform.FileDialog {
@@ -308,7 +315,11 @@ ApplicationWindow {
         fileMode: Platform.FileDialog.SaveFile
         nameFilters: imageFilters
         defaultSuffix: projectManager.projectExtensionForType(Project.ImageType)
-        onAccepted: project.exportImage(file)
+        onAccepted: {
+            canvas.hideToolPreview()
+            project.exportImage(file)
+            canvas.unhideToolPreview()
+        }
     }
 
     Ui.ErrorPopup {
