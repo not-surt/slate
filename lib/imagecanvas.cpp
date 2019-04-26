@@ -103,11 +103,12 @@ ImageCanvas::ImageCanvas() :
     mTabletPressure(0.0),
     mIsTabletEvent(false),
     mTool(PenTool),
-    mToolBlendMode(EditingContextManager::BlendMode::Replace),
+    mToolBlendMode(EditingContext::BlendMode::Replace),
     mLastFillToolUsed(FillTool),
     mMaxToolSize(100),
     mStrokeRenderer(),
-    mEditingContext(new EditingContextManager),
+    mEditingContext(),
+    mEditingContextManager(new EditingContextManager(&mEditingContext)),
     mPotentiallySelecting(false),
     mHasSelection(false),
     mMovingSelection(false),
@@ -182,7 +183,7 @@ ImageCanvas::ImageCanvas() :
     connect(&mSplitter, SIGNAL(positionChanged()), this, SLOT(onSplitterPositionChanged()));
 
     // TODO: reconnect when new brush assigned
-    connect(mEditingContext->brush(), &BrushManager::sizeChanged, this, &ImageCanvas::brushRectChanged);
+    connect(mEditingContextManager->brushManager(), &BrushManager::sizeChanged, this, &ImageCanvas::brushRectChanged);
 
     recreateCheckerImage();
 
@@ -195,7 +196,7 @@ ImageCanvas::ImageCanvas() :
 
 ImageCanvas::~ImageCanvas()
 {
-    delete mEditingContext;
+    delete mEditingContextManager;
     qCDebug(lcImageCanvasLifecycle) << "destructing ImageCanvas" << this;
 }
 
@@ -493,12 +494,12 @@ void ImageCanvas::setTool(const Tool &tool)
     emit toolChanged();
 }
 
-EditingContextManager::BlendMode ImageCanvas::toolBlendMode() const
+EditingContext::BlendMode ImageCanvas::toolBlendMode() const
 {
     return mToolBlendMode;
 }
 
-void ImageCanvas::setToolBlendMode(const EditingContextManager::BlendMode &toolBlendMode)
+void ImageCanvas::setToolBlendMode(const EditingContext::BlendMode &toolBlendMode)
 {
     if (toolBlendMode == mToolBlendMode)
         return;
@@ -524,17 +525,17 @@ void ImageCanvas::setLastFillToolUsed(Tool lastFillToolUsed)
     emit lastFillToolUsedChanged();
 }
 
-EditingContextManager *ImageCanvas::editingContext() const
+EditingContextManager *ImageCanvas::editingContextManager() const
 {
-    return mEditingContext;
+    return mEditingContextManager;
 }
 
 void ImageCanvas::setEditingContext(EditingContextManager *editingContext)
 {
-    if (editingContext == mEditingContext)
+    if (editingContext == mEditingContextManager)
         return;
 
-    mEditingContext = editingContext;
+    mEditingContextManager = editingContext;
     emit editingContextChanged();
 }
 
@@ -545,7 +546,7 @@ int ImageCanvas::maxToolSize() const
 
 QRectF ImageCanvas::brushRect()
 {
-    return mEditingContext->brush()->bounds();
+    return mEditingContextManager->brushManager()->bounds();
 }
 
 TexturedFillParameters *ImageCanvas::texturedFillParameters()
@@ -1639,9 +1640,10 @@ void ImageCanvas::reset()
 
     mIsTabletEvent = false;
     mTabletPressure = 0.0;
-    mEditingContext->setForegroundColour(Qt::black);
-    mEditingContext->setBackgroundColour(Qt::white);
-    mEditingContext->setBrush(new BrushManager(Brush(Brush::SquareType, {1, 1})));
+    mEditingContextManager->setForegroundColour(Qt::black);
+    mEditingContextManager->setBackgroundColour(Qt::white);
+    mEditingContext.brush = Brush(Brush::SquareType, {1, 1});
+    emit mEditingContextManager->brushChanged();
 
     mTexturedFillParameters.reset();
 
@@ -1920,9 +1922,12 @@ void ImageCanvas::brushFromSelection()
     if (!mHasSelection)
         return;
 
-    mEditingContext->brush()->setType(Brush::ImageType);
-    mEditingContext->setBrush(new BrushManager(Brush(Brush::ImageType, mSelectionArea.size(), 0.0, 1.0, 0.0, currentProjectImage()->copy(mSelectionArea))));
-    mEditingContext->setBrushScalingMax(qMax(mEditingContext->brush()->size().width(), mEditingContext->brush()->size().height()));
+    mEditingContextManager->brushManager()->setType(Brush::ImageType);
+//    mEditingContext->brush()->setBrush(Brush(Brush::ImageType, mSelectionArea.size(), 0.0, 1.0, 0.0, currentProjectImage()->copy(mSelectionArea)));
+    mEditingContext.brush = Brush(Brush::ImageType, mSelectionArea.size(), 0.0, 1.0, 0.0, currentProjectImage()->copy(mSelectionArea));
+    emit mEditingContextManager->brushChanged();
+    mEditingContextManager->setBrushScalingMax(qMax(mEditingContextManager->brushManager()->size().width(), mEditingContextManager->brushManager()->size().height()));
+    emit brushRectChanged();
 }
 
 void ImageCanvas::cycleFillTools()
@@ -2019,9 +2024,9 @@ void ImageCanvas::applyCurrentTool(QUndoStack *const alternateStack)
     const QUndoCommand *const continueCommand = (mToolContinue && stack->index() > 0) ? stack->command(stack->index() - 1) : nullptr;
     QUndoCommand *command = nullptr;
 
-    const int brushSize = qMax(mEditingContext->brush()->size().width(), mEditingContext->brush()->size().height());
-    const qreal scaleMax = qreal(mEditingContext->brushScalingMax()) / qreal(brushSize);
-    const qreal scaleMin = mEditingContext->brushScalingMode() != EditingContextManager::ScalingMode::None ? qreal(mEditingContext->brushScalingMin()) / qreal(brushSize) : scaleMax;
+    const int brushSize = qMax(mEditingContextManager->brushManager()->size().width(), mEditingContextManager->brushManager()->size().height());
+    const qreal scaleMax = qreal(mEditingContextManager->brushScalingMax()) / qreal(brushSize);
+    const qreal scaleMin = mEditingContextManager->brushScalingMode() != EditingContext::ScalingMode::None ? qreal(mEditingContextManager->brushScalingMin()) / qreal(brushSize) : scaleMax;
 
     switch (mTool) {
     case PenTool: {
@@ -2373,17 +2378,17 @@ Qt::MouseButton ImageCanvas::pressedMouseButton() const
 QColor ImageCanvas::penColour() const
 {
 //    return pressedMouseButton() == Qt::LeftButton ? mPenForegroundColour : mPenBackgroundColour;
-    return pressedMouseButton() == Qt::LeftButton ? mEditingContext->foregroundColour() : mEditingContext->backgroundColour();
+    return pressedMouseButton() == Qt::LeftButton ? mEditingContextManager->foregroundColour() : mEditingContextManager->backgroundColour();
 }
 
 void ImageCanvas::setPenColour(const QColor &colour)
 {
     if (pressedMouseButton() == Qt::LeftButton)
 //        setPenForegroundColour(colour);
-        mEditingContext->setForegroundColour(colour);
+        mEditingContextManager->setForegroundColour(colour);
     else
 //        setPenBackgroundColour(colour);
-        mEditingContext->setBackgroundColour(colour);
+        mEditingContextManager->setBackgroundColour(colour);
 }
 
 void ImageCanvas::setHasBlankCursor(bool hasCustomCursor)

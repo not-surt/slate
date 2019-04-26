@@ -181,7 +181,7 @@ Panel {
                 ToolTip.delay: toolTipDelay
                 ToolTip.timeout: toolTipTimeout
 
-                onClicked: project.swatch.addColour("", canvas.editingContext.foregroundColour)
+                onClicked: project.swatch.addColour("", canvas.editingContextManager.foregroundColour)
             }
 
             Item {

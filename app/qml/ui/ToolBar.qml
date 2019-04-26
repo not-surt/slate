@@ -12,7 +12,7 @@ ToolBar {
 
     property Project project
     property ImageCanvas canvas
-    property EditingContext context: canvas ? canvas.editingContext : null
+    property EditingContextManager context: canvas ? canvas.editingContextManager : null
     property Popup canvasSizePopup
     property Popup imageSizePopup
 

@@ -85,10 +85,10 @@ class SLATE_EXPORT ImageCanvas : public QQuickItem
     Q_PROPERTY(bool containsMouse READ containsMouse NOTIFY containsMouseChanged)
     Q_PROPERTY(Tool tool READ tool WRITE setTool NOTIFY toolChanged)
     Q_PROPERTY(Tool lastFillToolUsed READ lastFillToolUsed NOTIFY lastFillToolUsedChanged)
-    Q_PROPERTY(EditingContextManager *editingContext READ editingContext WRITE setEditingContext NOTIFY editingContextChanged)
+    Q_PROPERTY(EditingContextManager *editingContextManager READ editingContextManager WRITE setEditingContext NOTIFY editingContextChanged)
     Q_PROPERTY(int maxToolSize READ maxToolSize CONSTANT)
     Q_PROPERTY(QRectF brushRect READ brushRect NOTIFY brushRectChanged)
-    Q_PROPERTY(EditingContextManager::BlendMode toolBlendMode READ toolBlendMode WRITE setToolBlendMode NOTIFY toolBlendModeChanged)
+    Q_PROPERTY(EditingContext::BlendMode toolBlendMode READ toolBlendMode WRITE setToolBlendMode NOTIFY toolBlendModeChanged)
     Q_PROPERTY(TexturedFillParameters *texturedFillParameters READ texturedFillParameters CONSTANT FINAL)
     Q_PROPERTY(bool hasSelection READ hasSelection NOTIFY hasSelectionChanged)
     Q_PROPERTY(bool hasModifiedSelection READ hasModifiedSelection NOTIFY hasModifiedSelectionChanged)
@@ -204,13 +204,13 @@ public:
     Tool tool() const;
     void setTool(const Tool &tool);
 
-    EditingContextManager::BlendMode toolBlendMode() const;
-    void setToolBlendMode(const EditingContextManager::BlendMode &toolBlendMode);
+    EditingContext::BlendMode toolBlendMode() const;
+    void setToolBlendMode(const EditingContext::BlendMode &toolBlendMode);
 
     Tool lastFillToolUsed() const;
 
-    EditingContextManager *editingContext() const;
-    void setEditingContext(EditingContextManager *editingContext);
+    EditingContextManager *editingContextManager() const;
+    void setEditingContext(EditingContextManager *editingContextManager);
     int maxToolSize() const;
     QRectF brushRect();
 
@@ -585,11 +585,12 @@ protected:
     qreal mTabletPressure;
     bool mIsTabletEvent;
     Tool mTool;
-    EditingContextManager::BlendMode mToolBlendMode;
+    EditingContext::BlendMode mToolBlendMode;
     Tool mLastFillToolUsed;
     int mMaxToolSize;
     StrokeRenderer mStrokeRenderer;
-    EditingContextManager *mEditingContext;
+    EditingContext mEditingContext;
+    EditingContextManager *mEditingContextManager;
 
     TexturedFillParameters mTexturedFillParameters;
 

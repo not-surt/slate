@@ -317,7 +317,7 @@ void tst_Screenshots::animation()
     QVERIFY2(selectLayer("background", 2), failureMessage);
     QVERIFY2(switchTool(TileCanvas::FillTool), failureMessage);
     setCursorPosInScenePixels(QPoint(project->widthInPixels() - 1, 0));
-    canvas->editingContext()->setForegroundColour(Qt::white);
+    canvas->editingContextManager()->setForegroundColour(Qt::white);
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, cursorWindowPos);
 
     screenshotPath = QLatin1String("slate-animation-tutorial-2.1.png");

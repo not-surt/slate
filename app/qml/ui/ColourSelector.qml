@@ -24,7 +24,7 @@ Item {
         objectName: "penBackgroundColourButton"
         x: penForegroundColourToolButton.width / 2
         y: penForegroundColourToolButton.height / 2
-        color: canvas ? canvas.editingContext.backgroundColour : "white"
+        color: canvas ? canvas.editingContextManager.backgroundColour : "white"
         width: parent.width / 2
         height: width
 
@@ -37,7 +37,7 @@ Item {
     ColourButton {
         id: penForegroundColourToolButton
         objectName: "penForegroundColourButton"
-        color: canvas ? canvas.editingContext.foregroundColour : "black"
+        color: canvas ? canvas.editingContextManager.foregroundColour : "black"
         width: parent.width / 2
         height: width
         checked: true

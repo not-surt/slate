@@ -1,110 +1,105 @@
 #include "editingcontext.h"
 
 EditingContext::EditingContext() :
-    mBrush(new BrushManager),
-    mStrokeMode(StrokeMode::Spaced),
-    mStrokeProportionalSpacing(0.25),
-    mStrokeAbsoluteSpacing(0),
-    mStrokeCount(1),
-    mStrokeTime(1),
+    brush(),
+    strokeMode(StrokeMode::Spaced),
+    strokeProportionalSpacing(0.25),
+    strokeAbsoluteSpacing(0),
+    strokeCount(1),
+    strokeTime(1),
 
-    mBrushScalingMode(ScalingMode::None),
-    mBrushScalingMin(0.0),
-    mBrushScalingMax(1.0),
-    mBrushRotationMode(RotationMode::None),
-    mBrushRotationMin(0.0),
-    mBrushRotationMax(1.0),
-    mBrushHardnessMode(ScalingMode::None),
-    mBrushHardnessMin(0.0),
-    mBrushHardnessMax(1.0),
-    mBrushOpacityMode(ScalingMode::None),
-    mBrushOpacityMin(0.0),
-    mBrushOpacityMax(1.0),
+    brushScalingMode(ScalingMode::None),
+    brushScalingMin(0.0),
+    brushScalingMax(1.0),
+    brushRotationMode(RotationMode::None),
+    brushRotationMin(0.0),
+    brushRotationMax(1.0),
+    brushHardnessMode(ScalingMode::None),
+    brushHardnessMin(0.0),
+    brushHardnessMax(1.0),
+    brushOpacityMode(ScalingMode::None),
+    brushOpacityMin(0.0),
+    brushOpacityMax(1.0),
 
-    mDynamicsProportionalSpacingMode(ScalingMode::None),
-    mDynamicsProportionalSpacingMin(0.0),
-    mDynamicsProportionalSpacingMax(1.0),
-    mDynamicsAbsoluteSpacingMode(ScalingMode::None),
-    mDynamicsAbsoluteSpacingMin(0.0),
-    mDynamicsAbsoluteSpacingMax(1.0),
+    dynamicsProportionalSpacingMode(ScalingMode::None),
+    dynamicsProportionalSpacingMin(0.0),
+    dynamicsProportionalSpacingMax(1.0),
+    dynamicsAbsoluteSpacingMode(ScalingMode::None),
+    dynamicsAbsoluteSpacingMin(0.0),
+    dynamicsAbsoluteSpacingMax(1.0),
 
-    mBlendMode(BlendMode::Blend),
-    mForegroundColour(0, 0, 0, 255),
-    mBackgroundColour(255, 255, 255, 255)
+    blendMode(BlendMode::Blend),
+    foregroundColour(0, 0, 0, 255),
+    backgroundColour(255, 255, 255, 255)
 {
 }
 
 EditingContext::EditingContext(const EditingContext &other)
 {
-    mBrush = new BrushManager(*other.mBrush);
-    mStrokeMode = other.mStrokeMode;
-    mStrokeProportionalSpacing = other.mStrokeProportionalSpacing;
-    mStrokeAbsoluteSpacing = other.mStrokeAbsoluteSpacing;
-    mStrokeCount = other.mStrokeCount;
-    mStrokeTime = other.mStrokeTime;
+    brush = other.brush;
+    strokeMode = other.strokeMode;
+    strokeProportionalSpacing = other.strokeProportionalSpacing;
+    strokeAbsoluteSpacing = other.strokeAbsoluteSpacing;
+    strokeCount = other.strokeCount;
+    strokeTime = other.strokeTime;
 
-    mBrushScalingMode = other.mBrushScalingMode;
-    mBrushScalingMin = other.mBrushScalingMin;
-    mBrushScalingMax = other.mBrushScalingMax;
-    mBrushRotationMode = other.mBrushRotationMode;
-    mBrushRotationMin = other.mBrushRotationMin;
-    mBrushRotationMax = other.mBrushRotationMax;
-    mBrushHardnessMode = other.mBrushHardnessMode;
-    mBrushHardnessMin = other.mBrushHardnessMin;
-    mBrushHardnessMax = other.mBrushHardnessMax;
-    mBrushOpacityMode = other.mBrushOpacityMode;
-    mBrushOpacityMin = other.mBrushOpacityMin;
-    mBrushOpacityMax = other.mBrushOpacityMax;
+    brushScalingMode = other.brushScalingMode;
+    brushScalingMin = other.brushScalingMin;
+    brushScalingMax = other.brushScalingMax;
+    brushRotationMode = other.brushRotationMode;
+    brushRotationMin = other.brushRotationMin;
+    brushRotationMax = other.brushRotationMax;
+    brushHardnessMode = other.brushHardnessMode;
+    brushHardnessMin = other.brushHardnessMin;
+    brushHardnessMax = other.brushHardnessMax;
+    brushOpacityMode = other.brushOpacityMode;
+    brushOpacityMin = other.brushOpacityMin;
+    brushOpacityMax = other.brushOpacityMax;
 
-    mDynamicsProportionalSpacingMode = other.mDynamicsProportionalSpacingMode;
-    mDynamicsProportionalSpacingMin = other.mDynamicsProportionalSpacingMin;
-    mDynamicsProportionalSpacingMax = other.mDynamicsProportionalSpacingMax;
-    mDynamicsAbsoluteSpacingMode = other.mDynamicsAbsoluteSpacingMode;
-    mDynamicsAbsoluteSpacingMin = other.mDynamicsAbsoluteSpacingMin;
-    mDynamicsAbsoluteSpacingMax = other.mDynamicsAbsoluteSpacingMax;
+    dynamicsProportionalSpacingMode = other.dynamicsProportionalSpacingMode;
+    dynamicsProportionalSpacingMin = other.dynamicsProportionalSpacingMin;
+    dynamicsProportionalSpacingMax = other.dynamicsProportionalSpacingMax;
+    dynamicsAbsoluteSpacingMode = other.dynamicsAbsoluteSpacingMode;
+    dynamicsAbsoluteSpacingMin = other.dynamicsAbsoluteSpacingMin;
+    dynamicsAbsoluteSpacingMax = other.dynamicsAbsoluteSpacingMax;
 
-    mBlendMode = other.mBlendMode;
-    mForegroundColour = other.mForegroundColour;
-    mBackgroundColour = other.mBackgroundColour;
-}
-
-EditingContext::~EditingContext()
-{
-    delete mBrush;
+    blendMode = other.blendMode;
+    foregroundColour = other.foregroundColour;
+    backgroundColour = other.backgroundColour;
 }
 
 bool EditingContext::operator==(const EditingContext &other) const
 {
-    return *mBrush == *other.mBrush &&
-        mStrokeMode == other.mStrokeMode &&
-        qFuzzyCompare(mStrokeProportionalSpacing, other.mStrokeProportionalSpacing) &&
-        qFuzzyCompare(mStrokeAbsoluteSpacing, other.mStrokeAbsoluteSpacing) &&
-        mStrokeCount == other.mStrokeCount &&
-        qFuzzyCompare(mStrokeTime, other.mStrokeTime) &&
+    return brush == other.brush &&
+        strokeMode == other.strokeMode &&
+        qFuzzyCompare(strokeProportionalSpacing, other.strokeProportionalSpacing) &&
+        qFuzzyCompare(strokeAbsoluteSpacing, other.strokeAbsoluteSpacing) &&
+        strokeCount == other.strokeCount &&
+        qFuzzyCompare(strokeTime, other.strokeTime) &&
 
-        mBrushScalingMode == other.mBrushScalingMode &&
-        qFuzzyCompare(mBrushScalingMin, other.mBrushScalingMin) &&
-        qFuzzyCompare(mBrushScalingMax, other.mBrushScalingMax) &&
-        mBrushRotationMode == other.mBrushRotationMode &&
-        qFuzzyCompare(mBrushRotationMin, other.mBrushRotationMin) &&
-        qFuzzyCompare(mBrushRotationMax, other.mBrushRotationMax) &&
-        mBrushHardnessMode == other.mBrushHardnessMode &&
-        qFuzzyCompare(mBrushHardnessMin, other.mBrushHardnessMin) &&
-        qFuzzyCompare(mBrushHardnessMax, other.mBrushHardnessMax) &&
-        mBrushOpacityMode == other.mBrushOpacityMode &&
-        qFuzzyCompare(mBrushOpacityMin, other.mBrushOpacityMin) &&
-        qFuzzyCompare(mBrushOpacityMax, other.mBrushOpacityMax) &&
+        brushScalingMode == other.brushScalingMode &&
+        qFuzzyCompare(brushScalingMin, other.brushScalingMin) &&
+        qFuzzyCompare(brushScalingMax, other.brushScalingMax) &&
+        brushRotationMode == other.brushRotationMode &&
+        qFuzzyCompare(brushRotationMin, other.brushRotationMin) &&
+        qFuzzyCompare(brushRotationMax, other.brushRotationMax) &&
+        brushHardnessMode == other.brushHardnessMode &&
+        qFuzzyCompare(brushHardnessMin, other.brushHardnessMin) &&
+        qFuzzyCompare(brushHardnessMax, other.brushHardnessMax) &&
+        brushOpacityMode == other.brushOpacityMode &&
+        qFuzzyCompare(brushOpacityMin, other.brushOpacityMin) &&
+        qFuzzyCompare(brushOpacityMax, other.brushOpacityMax) &&
 
-        mDynamicsProportionalSpacingMode == other.mDynamicsProportionalSpacingMode &&
-        qFuzzyCompare(mDynamicsProportionalSpacingMin, other.mDynamicsProportionalSpacingMin) &&
-        qFuzzyCompare(mDynamicsProportionalSpacingMax, other.mDynamicsProportionalSpacingMax) &&
-        mDynamicsAbsoluteSpacingMode == other.mDynamicsAbsoluteSpacingMode &&
-        qFuzzyCompare(mDynamicsAbsoluteSpacingMin, other.mDynamicsAbsoluteSpacingMin) &&
-        qFuzzyCompare(mDynamicsAbsoluteSpacingMax, other.mDynamicsAbsoluteSpacingMax) &&
+        dynamicsProportionalSpacingMode == other.dynamicsProportionalSpacingMode &&
+        qFuzzyCompare(dynamicsProportionalSpacingMin, other.dynamicsProportionalSpacingMin) &&
+        qFuzzyCompare(dynamicsProportionalSpacingMax, other.dynamicsProportionalSpacingMax) &&
+        dynamicsAbsoluteSpacingMode == other.dynamicsAbsoluteSpacingMode &&
+        qFuzzyCompare(dynamicsAbsoluteSpacingMin, other.dynamicsAbsoluteSpacingMin) &&
+        qFuzzyCompare(dynamicsAbsoluteSpacingMax, other.dynamicsAbsoluteSpacingMax) &&
 
-        mBlendMode == other.mBlendMode &&
-        mForegroundColour == other.mForegroundColour &&
-        mBackgroundColour == other.mBackgroundColour;
+        blendMode == other.blendMode &&
+        foregroundColour == other.foregroundColour &&
+        backgroundColour == other.backgroundColour;
 }
 
 bool EditingContext::operator!=(const EditingContext &other) const
@@ -114,147 +109,60 @@ bool EditingContext::operator!=(const EditingContext &other) const
 
 EditingContext &EditingContext::operator=(const EditingContext &other)
 {
-    mBrush = new BrushManager(*other.mBrush);
-    mStrokeMode = other.mStrokeMode;
-    mStrokeProportionalSpacing = other.mStrokeProportionalSpacing;
-    mStrokeAbsoluteSpacing = other.mStrokeAbsoluteSpacing;
-    mStrokeCount = other.mStrokeCount;
-    mStrokeTime = other.mStrokeTime;
+    brush = other.brush;
+    strokeMode = other.strokeMode;
+    strokeProportionalSpacing = other.strokeProportionalSpacing;
+    strokeAbsoluteSpacing = other.strokeAbsoluteSpacing;
+    strokeCount = other.strokeCount;
+    strokeTime = other.strokeTime;
 
-    mBrushScalingMode = other.mBrushScalingMode;
-    mBrushScalingMin = other.mBrushScalingMin;
-    mBrushScalingMax = other.mBrushScalingMax;
-    mBrushRotationMode = other.mBrushRotationMode;
-    mBrushRotationMin = other.mBrushRotationMin;
-    mBrushRotationMax = other.mBrushRotationMax;
-    mBrushHardnessMode = other.mBrushHardnessMode;
-    mBrushHardnessMin = other.mBrushHardnessMin;
-    mBrushHardnessMax = other.mBrushHardnessMax;
-    mBrushOpacityMode = other.mBrushOpacityMode;
-    mBrushOpacityMin = other.mBrushOpacityMin;
-    mBrushOpacityMax = other.mBrushOpacityMax;
+    brushScalingMode = other.brushScalingMode;
+    brushScalingMin = other.brushScalingMin;
+    brushScalingMax = other.brushScalingMax;
+    brushRotationMode = other.brushRotationMode;
+    brushRotationMin = other.brushRotationMin;
+    brushRotationMax = other.brushRotationMax;
+    brushHardnessMode = other.brushHardnessMode;
+    brushHardnessMin = other.brushHardnessMin;
+    brushHardnessMax = other.brushHardnessMax;
+    brushOpacityMode = other.brushOpacityMode;
+    brushOpacityMin = other.brushOpacityMin;
+    brushOpacityMax = other.brushOpacityMax;
 
-    mDynamicsProportionalSpacingMode = other.mDynamicsProportionalSpacingMode;
-    mDynamicsProportionalSpacingMin = other.mDynamicsProportionalSpacingMin;
-    mDynamicsProportionalSpacingMax = other.mDynamicsProportionalSpacingMax;
-    mDynamicsAbsoluteSpacingMode = other.mDynamicsAbsoluteSpacingMode;
-    mDynamicsAbsoluteSpacingMin = other.mDynamicsAbsoluteSpacingMin;
-    mDynamicsAbsoluteSpacingMax = other.mDynamicsAbsoluteSpacingMax;
+    dynamicsProportionalSpacingMode = other.dynamicsProportionalSpacingMode;
+    dynamicsProportionalSpacingMin = other.dynamicsProportionalSpacingMin;
+    dynamicsProportionalSpacingMax = other.dynamicsProportionalSpacingMax;
+    dynamicsAbsoluteSpacingMode = other.dynamicsAbsoluteSpacingMode;
+    dynamicsAbsoluteSpacingMin = other.dynamicsAbsoluteSpacingMin;
+    dynamicsAbsoluteSpacingMax = other.dynamicsAbsoluteSpacingMax;
 
-    mBlendMode = other.mBlendMode;
-    mForegroundColour = other.mForegroundColour;
-    mBackgroundColour = other.mBackgroundColour;
+    blendMode = other.blendMode;
+    foregroundColour = other.foregroundColour;
+    backgroundColour = other.backgroundColour;
     return *this;
 }
 
-EditingContextManager::EditingContextManager() :
+EditingContextManager::EditingContextManager(EditingContext *const editingContext) :
     QObject(),
-
-    mBrush(new BrushManager),
-    mStrokeMode(StrokeMode::Spaced),
-    mStrokeProportionalSpacing(0.25),
-    mStrokeAbsoluteSpacing(0),
-    mStrokeCount(1),
-    mStrokeTime(1),
-
-    mBrushScalingMode(ScalingMode::None),
-    mBrushScalingMin(0.0),
-    mBrushScalingMax(1.0),
-    mBrushRotationMode(RotationMode::None),
-    mBrushRotationMin(0.0),
-    mBrushRotationMax(1.0),
-    mBrushHardnessMode(ScalingMode::None),
-    mBrushHardnessMin(0.0),
-    mBrushHardnessMax(1.0),
-    mBrushOpacityMode(ScalingMode::None),
-    mBrushOpacityMin(0.0),
-    mBrushOpacityMax(1.0),
-
-    mDynamicsProportionalSpacingMode(ScalingMode::None),
-    mDynamicsProportionalSpacingMin(0.0),
-    mDynamicsProportionalSpacingMax(1.0),
-    mDynamicsAbsoluteSpacingMode(ScalingMode::None),
-    mDynamicsAbsoluteSpacingMin(0.0),
-    mDynamicsAbsoluteSpacingMax(1.0),
-
-    mBlendMode(BlendMode::Blend),
-    mForegroundColour(0, 0, 0, 255),
-    mBackgroundColour(255, 255, 255, 255)
+    mEditingContext(editingContext),
+    mBrushManager(&editingContext->brush)
 {
 }
 
 EditingContextManager::EditingContextManager(const EditingContextManager &other) :
     QObject()
 {
-    mBrush = new BrushManager(*other.mBrush);
-    mStrokeMode = other.mStrokeMode;
-    mStrokeProportionalSpacing = other.mStrokeProportionalSpacing;
-    mStrokeAbsoluteSpacing = other.mStrokeAbsoluteSpacing;
-    mStrokeCount = other.mStrokeCount;
-    mStrokeTime = other.mStrokeTime;
-
-    mBrushScalingMode = other.mBrushScalingMode;
-    mBrushScalingMin = other.mBrushScalingMin;
-    mBrushScalingMax = other.mBrushScalingMax;
-    mBrushRotationMode = other.mBrushRotationMode;
-    mBrushRotationMin = other.mBrushRotationMin;
-    mBrushRotationMax = other.mBrushRotationMax;
-    mBrushHardnessMode = other.mBrushHardnessMode;
-    mBrushHardnessMin = other.mBrushHardnessMin;
-    mBrushHardnessMax = other.mBrushHardnessMax;
-    mBrushOpacityMode = other.mBrushOpacityMode;
-    mBrushOpacityMin = other.mBrushOpacityMin;
-    mBrushOpacityMax = other.mBrushOpacityMax;
-
-    mDynamicsProportionalSpacingMode = other.mDynamicsProportionalSpacingMode;
-    mDynamicsProportionalSpacingMin = other.mDynamicsProportionalSpacingMin;
-    mDynamicsProportionalSpacingMax = other.mDynamicsProportionalSpacingMax;
-    mDynamicsAbsoluteSpacingMode = other.mDynamicsAbsoluteSpacingMode;
-    mDynamicsAbsoluteSpacingMin = other.mDynamicsAbsoluteSpacingMin;
-    mDynamicsAbsoluteSpacingMax = other.mDynamicsAbsoluteSpacingMax;
-
-    mBlendMode = other.mBlendMode;
-    mForegroundColour = other.mForegroundColour;
-    mBackgroundColour = other.mBackgroundColour;
+    mEditingContext = other.mEditingContext;
+    mBrushManager = BrushManager(other.mBrushManager);
 }
 
 EditingContextManager::~EditingContextManager()
 {
-    delete mBrush;
 }
 
 bool EditingContextManager::operator==(const EditingContextManager &other) const
 {
-    return *mBrush == *other.mBrush &&
-        mStrokeMode == other.mStrokeMode &&
-        qFuzzyCompare(mStrokeProportionalSpacing, other.mStrokeProportionalSpacing) &&
-        qFuzzyCompare(mStrokeAbsoluteSpacing, other.mStrokeAbsoluteSpacing) &&
-        mStrokeCount == other.mStrokeCount &&
-        qFuzzyCompare(mStrokeTime, other.mStrokeTime) &&
-
-        mBrushScalingMode == other.mBrushScalingMode &&
-        qFuzzyCompare(mBrushScalingMin, other.mBrushScalingMin) &&
-        qFuzzyCompare(mBrushScalingMax, other.mBrushScalingMax) &&
-        mBrushRotationMode == other.mBrushRotationMode &&
-        qFuzzyCompare(mBrushRotationMin, other.mBrushRotationMin) &&
-        qFuzzyCompare(mBrushRotationMax, other.mBrushRotationMax) &&
-        mBrushHardnessMode == other.mBrushHardnessMode &&
-        qFuzzyCompare(mBrushHardnessMin, other.mBrushHardnessMin) &&
-        qFuzzyCompare(mBrushHardnessMax, other.mBrushHardnessMax) &&
-        mBrushOpacityMode == other.mBrushOpacityMode &&
-        qFuzzyCompare(mBrushOpacityMin, other.mBrushOpacityMin) &&
-        qFuzzyCompare(mBrushOpacityMax, other.mBrushOpacityMax) &&
-
-        mDynamicsProportionalSpacingMode == other.mDynamicsProportionalSpacingMode &&
-        qFuzzyCompare(mDynamicsProportionalSpacingMin, other.mDynamicsProportionalSpacingMin) &&
-        qFuzzyCompare(mDynamicsProportionalSpacingMax, other.mDynamicsProportionalSpacingMax) &&
-        mDynamicsAbsoluteSpacingMode == other.mDynamicsAbsoluteSpacingMode &&
-        qFuzzyCompare(mDynamicsAbsoluteSpacingMin, other.mDynamicsAbsoluteSpacingMin) &&
-        qFuzzyCompare(mDynamicsAbsoluteSpacingMax, other.mDynamicsAbsoluteSpacingMax) &&
-
-        mBlendMode == other.mBlendMode &&
-        mForegroundColour == other.mForegroundColour &&
-        mBackgroundColour == other.mBackgroundColour;
+    return mEditingContext == other.mEditingContext;
 }
 
 bool EditingContextManager::operator!=(const EditingContextManager &other) const
@@ -264,413 +172,404 @@ bool EditingContextManager::operator!=(const EditingContextManager &other) const
 
 EditingContextManager &EditingContextManager::operator=(const EditingContextManager &other)
 {
-    mBrush = new BrushManager(*other.mBrush);
-    mStrokeMode = other.mStrokeMode;
-    mStrokeProportionalSpacing = other.mStrokeProportionalSpacing;
-    mStrokeAbsoluteSpacing = other.mStrokeAbsoluteSpacing;
-    mStrokeCount = other.mStrokeCount;
-    mStrokeTime = other.mStrokeTime;
-
-    mBrushScalingMode = other.mBrushScalingMode;
-    mBrushScalingMin = other.mBrushScalingMin;
-    mBrushScalingMax = other.mBrushScalingMax;
-    mBrushRotationMode = other.mBrushRotationMode;
-    mBrushRotationMin = other.mBrushRotationMin;
-    mBrushRotationMax = other.mBrushRotationMax;
-    mBrushHardnessMode = other.mBrushHardnessMode;
-    mBrushHardnessMin = other.mBrushHardnessMin;
-    mBrushHardnessMax = other.mBrushHardnessMax;
-    mBrushOpacityMode = other.mBrushOpacityMode;
-    mBrushOpacityMin = other.mBrushOpacityMin;
-    mBrushOpacityMax = other.mBrushOpacityMax;
-
-    mDynamicsProportionalSpacingMode = other.mDynamicsProportionalSpacingMode;
-    mDynamicsProportionalSpacingMin = other.mDynamicsProportionalSpacingMin;
-    mDynamicsProportionalSpacingMax = other.mDynamicsProportionalSpacingMax;
-    mDynamicsAbsoluteSpacingMode = other.mDynamicsAbsoluteSpacingMode;
-    mDynamicsAbsoluteSpacingMin = other.mDynamicsAbsoluteSpacingMin;
-    mDynamicsAbsoluteSpacingMax = other.mDynamicsAbsoluteSpacingMax;
-
-    mBlendMode = other.mBlendMode;
-    mForegroundColour = other.mForegroundColour;
-    mBackgroundColour = other.mBackgroundColour;
+    mEditingContext = other.mEditingContext;
+    mBrushManager = other.mBrushManager;
     return *this;
 }
 
-BrushManager *EditingContextManager::brush() const
+EditingContext *EditingContextManager::editingContext()
 {
-    return mBrush;
+    return mEditingContext;
 }
 
-EditingContextManager::StrokeMode EditingContextManager::strokeMode() const
+BrushManager *EditingContextManager::brushManager()
 {
-    return mStrokeMode;
+    return &mBrushManager;
+}
+
+const Brush &EditingContextManager::brush() const
+{
+    return mEditingContext->brush;
+}
+
+EditingContext::StrokeMode EditingContextManager::strokeMode() const
+{
+    return mEditingContext->strokeMode;
 }
 
 qreal EditingContextManager::strokeProportionalSpacing() const
 {
-    return mStrokeProportionalSpacing;
+    return mEditingContext->strokeProportionalSpacing;
 }
 
 qreal EditingContextManager::strokeAbsoluteSpacing() const
 {
-    return mStrokeAbsoluteSpacing;
+    return mEditingContext->strokeAbsoluteSpacing;
 }
 
 int EditingContextManager::strokeCount() const
 {
-    return mStrokeCount;
+    return mEditingContext->strokeCount;
 }
 
 qreal EditingContextManager::strokeTime() const
 {
-    return mStrokeTime;
+    return mEditingContext->strokeTime;
 }
 
-EditingContextManager::ScalingMode EditingContextManager::brushScalingMode() const
+EditingContext::ScalingMode EditingContextManager::brushScalingMode() const
 {
-    return mBrushScalingMode;
+    return mEditingContext->brushScalingMode;
 }
 
 qreal EditingContextManager::brushScalingMin() const
 {
-    return mBrushScalingMin;
+    return mEditingContext->brushScalingMin;
 }
 
 qreal EditingContextManager::brushScalingMax() const
 {
-    return mBrushScalingMax;
+    return mEditingContext->brushScalingMax;
 }
 
-EditingContextManager::RotationMode EditingContextManager::brushRotationMode() const
+EditingContext::RotationMode EditingContextManager::brushRotationMode() const
 {
-    return mBrushRotationMode;
+    return mEditingContext->brushRotationMode;
 }
 
 qreal EditingContextManager::brushRotationMin() const
 {
-    return mBrushRotationMin;
+    return mEditingContext->brushRotationMin;
 }
 
 qreal EditingContextManager::brushRotationMax() const
 {
-    return mBrushRotationMax;
+    return mEditingContext->brushRotationMax;
 }
 
-EditingContextManager::ScalingMode EditingContextManager::brushHardnessMode() const
+EditingContext::ScalingMode EditingContextManager::brushHardnessMode() const
 {
-    return mBrushHardnessMode;
+    return mEditingContext->brushHardnessMode;
 }
 
 qreal EditingContextManager::brushHardnessMin() const
 {
-    return mBrushHardnessMin;
+    return mEditingContext->brushHardnessMin;
 }
 
 qreal EditingContextManager::brushHardnessMax() const
 {
-    return mBrushHardnessMax;
+    return mEditingContext->brushHardnessMax;
 }
 
-EditingContextManager::ScalingMode EditingContextManager::brushOpacityMode() const
+EditingContext::ScalingMode EditingContextManager::brushOpacityMode() const
 {
-    return mBrushOpacityMode;
+    return mEditingContext->brushOpacityMode;
 }
 
 qreal EditingContextManager::brushOpacityMin() const
 {
-    return mBrushOpacityMin;
+    return mEditingContext->brushOpacityMin;
 }
 
 qreal EditingContextManager::brushOpacityMax() const
 {
-    return mBrushOpacityMax;
+    return mEditingContext->brushOpacityMax;
 }
 
-EditingContextManager::ScalingMode EditingContextManager::dynamicsProportionalSpacingMode() const
+EditingContext::ScalingMode EditingContextManager::dynamicsProportionalSpacingMode() const
 {
-    return mDynamicsProportionalSpacingMode;
+    return mEditingContext->dynamicsProportionalSpacingMode;
 }
 
 qreal EditingContextManager::dynamicsProportionalSpacingMin() const
 {
-    return mDynamicsProportionalSpacingMin;
+    return mEditingContext->dynamicsProportionalSpacingMin;
 }
 
 qreal EditingContextManager::dynamicsProportionalSpacingMax() const
 {
-    return mDynamicsProportionalSpacingMax;
+    return mEditingContext->dynamicsProportionalSpacingMax;
 }
 
-EditingContextManager::ScalingMode EditingContextManager::dynamicsAbsoluteSpacingMode() const
+EditingContext::ScalingMode EditingContextManager::dynamicsAbsoluteSpacingMode() const
 {
-    return mDynamicsAbsoluteSpacingMode;
+    return mEditingContext->dynamicsAbsoluteSpacingMode;
 }
 
 qreal EditingContextManager::dynamicsAbsoluteSpacingMin() const
 {
-    return mDynamicsAbsoluteSpacingMin;
+    return mEditingContext->dynamicsAbsoluteSpacingMin;
 }
 
 qreal EditingContextManager::dynamicsAbsoluteSpacingMax() const
 {
-    return mDynamicsAbsoluteSpacingMax;
+    return mEditingContext->dynamicsAbsoluteSpacingMax;
 }
 
-EditingContextManager::BlendMode EditingContextManager::blendMode() const
+EditingContext::BlendMode EditingContextManager::blendMode() const
 {
-    return mBlendMode;
+    return mEditingContext->blendMode;
 }
 
 QColor EditingContextManager::foregroundColour() const
 {
-    return mForegroundColour;
+    return mEditingContext->foregroundColour;
 }
 
 QColor EditingContextManager::backgroundColour() const
 {
-    return mBackgroundColour;
+    return mEditingContext->backgroundColour;
 }
 
-void EditingContextManager::setBrush(BrushManager *const brush)
+void EditingContextManager::setEditingContext(EditingContext *const editingContext)
 {
-    if (mBrush == brush)
+    if (mEditingContext == editingContext)
         return;
 
-    mBrush = brush;
-    emit brushChanged(mBrush);
+    mEditingContext = editingContext;
+    emit editingContextChanged();
 }
 
-void EditingContextManager::setStrokeMode(EditingContextManager::StrokeMode strokeMode)
+void EditingContextManager::setBrush(const Brush &brush)
 {
-    if (mStrokeMode == strokeMode)
+    if (mEditingContext->brush == brush)
         return;
 
-    mStrokeMode = strokeMode;
-    emit strokeModeChanged(mStrokeMode);
+    mEditingContext->brush = brush;
+    emit brushChanged();
+}
+
+void EditingContextManager::setStrokeMode(EditingContext::StrokeMode strokeMode)
+{
+    if (mEditingContext->strokeMode == strokeMode)
+        return;
+
+    mEditingContext->strokeMode = strokeMode;
+    emit strokeModeChanged(mEditingContext->strokeMode);
 }
 
 void EditingContextManager::setStrokeProportionalSpacing(qreal strokeProportionalSpacing)
 {
-    if (qFuzzyCompare(mStrokeProportionalSpacing, strokeProportionalSpacing))
+    if (qFuzzyCompare(mEditingContext->strokeProportionalSpacing, strokeProportionalSpacing))
         return;
 
-    mStrokeProportionalSpacing = strokeProportionalSpacing;
-    emit strokeProportionalSpacingChanged(mStrokeProportionalSpacing);
+    mEditingContext->strokeProportionalSpacing = strokeProportionalSpacing;
+    emit strokeProportionalSpacingChanged(mEditingContext->strokeProportionalSpacing);
 }
 
 void EditingContextManager::setStrokeAbsoluteSpacing(qreal strokeAbsoluteSpacing)
 {
-    if (qFuzzyCompare(mStrokeAbsoluteSpacing, strokeAbsoluteSpacing))
+    if (qFuzzyCompare(mEditingContext->strokeAbsoluteSpacing, strokeAbsoluteSpacing))
         return;
 
-    mStrokeAbsoluteSpacing = strokeAbsoluteSpacing;
-    emit strokeAbsoluteSpacingChanged(mStrokeAbsoluteSpacing);
+    mEditingContext->strokeAbsoluteSpacing = strokeAbsoluteSpacing;
+    emit strokeAbsoluteSpacingChanged(mEditingContext->strokeAbsoluteSpacing);
 }
 
 void EditingContextManager::setStrokeCount(int strokeCount)
 {
-    if (mStrokeCount == strokeCount)
+    if (mEditingContext->strokeCount == strokeCount)
         return;
 
-    mStrokeCount = strokeCount;
-    emit strokeCountChanged(mStrokeCount);
+    mEditingContext->strokeCount = strokeCount;
+    emit strokeCountChanged(mEditingContext->strokeCount);
 }
 
 void EditingContextManager::setStrokeTime(qreal strokeTime)
 {
-    if (qFuzzyCompare(mStrokeTime, strokeTime))
+    if (qFuzzyCompare(mEditingContext->strokeTime, strokeTime))
         return;
 
-    mStrokeTime = strokeTime;
-    emit strokeTimeChanged(mStrokeTime);
+    mEditingContext->strokeTime = strokeTime;
+    emit strokeTimeChanged(mEditingContext->strokeTime);
 }
 
-void EditingContextManager::setBrushScalingMode(EditingContextManager::ScalingMode brushScalingMode)
+void EditingContextManager::setBrushScalingMode(EditingContext::ScalingMode brushScalingMode)
 {
-    if (mBrushScalingMode == brushScalingMode)
+    if (mEditingContext->brushScalingMode == brushScalingMode)
         return;
 
-    mBrushScalingMode = brushScalingMode;
-    emit brushScalingModeChanged(mBrushScalingMode);
+    mEditingContext->brushScalingMode = brushScalingMode;
+    emit brushScalingModeChanged(mEditingContext->brushScalingMode);
 }
 
 void EditingContextManager::setBrushScalingMin(qreal brushScalingMin)
 {
-    if (qFuzzyCompare(mBrushScalingMin, brushScalingMin))
+    if (qFuzzyCompare(mEditingContext->brushScalingMin, brushScalingMin))
         return;
 
-    mBrushScalingMin = brushScalingMin;
-    emit brushScalingMinChanged(mBrushScalingMin);
+    mEditingContext->brushScalingMin = brushScalingMin;
+    emit brushScalingMinChanged(mEditingContext->brushScalingMin);
 }
 
 void EditingContextManager::setBrushScalingMax(qreal brushScalingMax)
 {
-    if (qFuzzyCompare(mBrushScalingMax, brushScalingMax))
+    if (qFuzzyCompare(mEditingContext->brushScalingMax, brushScalingMax))
         return;
 
-    mBrushScalingMax = brushScalingMax;
-    emit brushScalingMaxChanged(mBrushScalingMax);
+    mEditingContext->brushScalingMax = brushScalingMax;
+    emit brushScalingMaxChanged(mEditingContext->brushScalingMax);
 }
 
-void EditingContextManager::setBrushRotationMode(EditingContextManager::RotationMode brushRotationMode)
+void EditingContextManager::setBrushRotationMode(EditingContext::RotationMode brushRotationMode)
 {
-    if (mBrushRotationMode == brushRotationMode)
+    if (mEditingContext->brushRotationMode == brushRotationMode)
         return;
 
-    mBrushRotationMode = brushRotationMode;
-    emit brushRotationModeChanged(mBrushRotationMode);
+    mEditingContext->brushRotationMode = brushRotationMode;
+    emit brushRotationModeChanged(mEditingContext->brushRotationMode);
 }
 
 void EditingContextManager::setBrushRotationMin(qreal brushRotationMin)
 {
-    if (qFuzzyCompare(mBrushRotationMin, brushRotationMin))
+    if (qFuzzyCompare(mEditingContext->brushRotationMin, brushRotationMin))
         return;
 
-    mBrushRotationMin = brushRotationMin;
-    emit brushRotationMinChanged(mBrushRotationMin);
+    mEditingContext->brushRotationMin = brushRotationMin;
+    emit brushRotationMinChanged(mEditingContext->brushRotationMin);
 }
 
 void EditingContextManager::setBrushRotationMax(qreal brushRotationMax)
 {
-    if (qFuzzyCompare(mBrushRotationMax, brushRotationMax))
+    if (qFuzzyCompare(mEditingContext->brushRotationMax, brushRotationMax))
         return;
 
-    mBrushRotationMax = brushRotationMax;
-    emit brushRotationMaxChanged(mBrushRotationMax);
+    mEditingContext->brushRotationMax = brushRotationMax;
+    emit brushRotationMaxChanged(mEditingContext->brushRotationMax);
 }
 
-void EditingContextManager::setBrushHardnessMode(EditingContextManager::ScalingMode brushHardnessMode)
+void EditingContextManager::setBrushHardnessMode(EditingContext::ScalingMode brushHardnessMode)
 {
-    if (mBrushHardnessMode == brushHardnessMode)
+    if (mEditingContext->brushHardnessMode == brushHardnessMode)
         return;
 
-    mBrushHardnessMode = brushHardnessMode;
-    emit brushHardnessModeChanged(mBrushHardnessMode);
+    mEditingContext->brushHardnessMode = brushHardnessMode;
+    emit brushHardnessModeChanged(mEditingContext->brushHardnessMode);
 }
 
 void EditingContextManager::setBrushHardnessMin(qreal brushHardnessMin)
 {
-    if (qFuzzyCompare(mBrushHardnessMin, brushHardnessMin))
+    if (qFuzzyCompare(mEditingContext->brushHardnessMin, brushHardnessMin))
         return;
 
-    mBrushHardnessMin = brushHardnessMin;
-    emit brushHardnessMinChanged(mBrushHardnessMin);
+    mEditingContext->brushHardnessMin = brushHardnessMin;
+    emit brushHardnessMinChanged(mEditingContext->brushHardnessMin);
 }
 
 void EditingContextManager::setBrushHardnessMax(qreal brushHardnessMax)
 {
-    if (qFuzzyCompare(mBrushHardnessMax, brushHardnessMax))
+    if (qFuzzyCompare(mEditingContext->brushHardnessMax, brushHardnessMax))
         return;
 
-    mBrushHardnessMax = brushHardnessMax;
-    emit brushHardnessMaxChanged(mBrushHardnessMax);
+    mEditingContext->brushHardnessMax = brushHardnessMax;
+    emit brushHardnessMaxChanged(mEditingContext->brushHardnessMax);
 }
 
-void EditingContextManager::setBrushOpacityMode(EditingContextManager::ScalingMode brushOpacityMode)
+void EditingContextManager::setBrushOpacityMode(EditingContext::ScalingMode brushOpacityMode)
 {
-    if (mBrushOpacityMode == brushOpacityMode)
+    if (mEditingContext->brushOpacityMode == brushOpacityMode)
         return;
 
-    mBrushOpacityMode = brushOpacityMode;
-    emit brushOpacityModeChanged(mBrushOpacityMode);
+    mEditingContext->brushOpacityMode = brushOpacityMode;
+    emit brushOpacityModeChanged(mEditingContext->brushOpacityMode);
 }
 
 void EditingContextManager::setBrushOpacityMin(qreal brushOpacityMin)
 {
-    if (qFuzzyCompare(mBrushOpacityMin, brushOpacityMin))
+    if (qFuzzyCompare(mEditingContext->brushOpacityMin, brushOpacityMin))
         return;
 
-    mBrushOpacityMin = brushOpacityMin;
-    emit brushOpacityMinChanged(mBrushOpacityMin);
+    mEditingContext->brushOpacityMin = brushOpacityMin;
+    emit brushOpacityMinChanged(mEditingContext->brushOpacityMin);
 }
 
 void EditingContextManager::setBrushOpacityMax(qreal brushOpacityMax)
 {
-    if (qFuzzyCompare(mBrushOpacityMax, brushOpacityMax))
+    if (qFuzzyCompare(mEditingContext->brushOpacityMax, brushOpacityMax))
         return;
 
-    mBrushOpacityMax = brushOpacityMax;
-    emit brushOpacityMaxChanged(mBrushOpacityMax);
+    mEditingContext->brushOpacityMax = brushOpacityMax;
+    emit brushOpacityMaxChanged(mEditingContext->brushOpacityMax);
 }
 
-void EditingContextManager::setDynamicsProportionalSpacingMode(EditingContextManager::ScalingMode dynamicsProportionalSpacingMode)
+void EditingContextManager::setDynamicsProportionalSpacingMode(EditingContext::ScalingMode dynamicsProportionalSpacingMode)
 {
-    if (mDynamicsProportionalSpacingMode == dynamicsProportionalSpacingMode)
+    if (mEditingContext->dynamicsProportionalSpacingMode == dynamicsProportionalSpacingMode)
         return;
 
-    mDynamicsProportionalSpacingMode = dynamicsProportionalSpacingMode;
-    emit dynamicsProportionalSpacingModeChanged(mDynamicsProportionalSpacingMode);
+    mEditingContext->dynamicsProportionalSpacingMode = dynamicsProportionalSpacingMode;
+    emit dynamicsProportionalSpacingModeChanged(mEditingContext->dynamicsProportionalSpacingMode);
 }
 
 void EditingContextManager::setDynamicsProportionalSpacingMin(qreal dynamicsProportionalSpacingMin)
 {
-    if (qFuzzyCompare(mDynamicsProportionalSpacingMin, dynamicsProportionalSpacingMin))
+    if (qFuzzyCompare(mEditingContext->dynamicsProportionalSpacingMin, dynamicsProportionalSpacingMin))
         return;
 
-    mDynamicsProportionalSpacingMin = dynamicsProportionalSpacingMin;
-    emit dynamicsProportionalSpacingMinChanged(mDynamicsProportionalSpacingMin);
+    mEditingContext->dynamicsProportionalSpacingMin = dynamicsProportionalSpacingMin;
+    emit dynamicsProportionalSpacingMinChanged(mEditingContext->dynamicsProportionalSpacingMin);
 }
 
 void EditingContextManager::setDynamicsProportionalSpacingMax(qreal dynamicsProportionalSpacingMax)
 {
-    if (qFuzzyCompare(mDynamicsProportionalSpacingMax, dynamicsProportionalSpacingMax))
+    if (qFuzzyCompare(mEditingContext->dynamicsProportionalSpacingMax, dynamicsProportionalSpacingMax))
         return;
 
-    mDynamicsProportionalSpacingMax = dynamicsProportionalSpacingMax;
-    emit dynamicsProportionalSpacingMaxChanged(mDynamicsProportionalSpacingMax);
+    mEditingContext->dynamicsProportionalSpacingMax = dynamicsProportionalSpacingMax;
+    emit dynamicsProportionalSpacingMaxChanged(mEditingContext->dynamicsProportionalSpacingMax);
 }
 
-void EditingContextManager::setDynamicsAbsoluteSpacingMode(EditingContextManager::ScalingMode dynamicsAbsoluteSpacingMode)
+void EditingContextManager::setDynamicsAbsoluteSpacingMode(EditingContext::ScalingMode dynamicsAbsoluteSpacingMode)
 {
-    if (mDynamicsAbsoluteSpacingMode == dynamicsAbsoluteSpacingMode)
+    if (mEditingContext->dynamicsAbsoluteSpacingMode == dynamicsAbsoluteSpacingMode)
         return;
 
-    mDynamicsAbsoluteSpacingMode = dynamicsAbsoluteSpacingMode;
-    emit dynamicsAbsoluteSpacingModeChanged(mDynamicsAbsoluteSpacingMode);
+    mEditingContext->dynamicsAbsoluteSpacingMode = dynamicsAbsoluteSpacingMode;
+    emit dynamicsAbsoluteSpacingModeChanged(mEditingContext->dynamicsAbsoluteSpacingMode);
 }
 
 void EditingContextManager::setDynamicsAbsoluteSpacingMin(qreal dynamicsAbsoluteSpacingMin)
 {
-    if (qFuzzyCompare(mDynamicsAbsoluteSpacingMin, dynamicsAbsoluteSpacingMin))
+    if (qFuzzyCompare(mEditingContext->dynamicsAbsoluteSpacingMin, dynamicsAbsoluteSpacingMin))
         return;
 
-    mDynamicsAbsoluteSpacingMin = dynamicsAbsoluteSpacingMin;
-    emit dynamicsAbsoluteSpacingMinChanged(mDynamicsAbsoluteSpacingMin);
+    mEditingContext->dynamicsAbsoluteSpacingMin = dynamicsAbsoluteSpacingMin;
+    emit dynamicsAbsoluteSpacingMinChanged(mEditingContext->dynamicsAbsoluteSpacingMin);
 }
 
 void EditingContextManager::setDynamicsAbsoluteSpacingMax(qreal dynamicsAbsoluteSpacingMax)
 {
-    if (qFuzzyCompare(mDynamicsAbsoluteSpacingMax, dynamicsAbsoluteSpacingMax))
+    if (qFuzzyCompare(mEditingContext->dynamicsAbsoluteSpacingMax, dynamicsAbsoluteSpacingMax))
         return;
 
-    mDynamicsAbsoluteSpacingMax = dynamicsAbsoluteSpacingMax;
-    emit dynamicsAbsoluteSpacingMaxChanged(mDynamicsAbsoluteSpacingMax);
+    mEditingContext->dynamicsAbsoluteSpacingMax = dynamicsAbsoluteSpacingMax;
+    emit dynamicsAbsoluteSpacingMaxChanged(mEditingContext->dynamicsAbsoluteSpacingMax);
 }
 
-void EditingContextManager::setBlendMode(EditingContextManager::BlendMode blendMode)
+void EditingContextManager::setBlendMode(EditingContext::BlendMode blendMode)
 {
-    if (mBlendMode == blendMode)
+    if (mEditingContext->blendMode == blendMode)
         return;
 
-    mBlendMode = blendMode;
-    emit blendModeChanged(mBlendMode);
+    mEditingContext->blendMode = blendMode;
+    emit blendModeChanged(mEditingContext->blendMode);
 }
 
 void EditingContextManager::setForegroundColour(QColor foregroundColour)
 {
-    if (mForegroundColour == foregroundColour)
+    if (mEditingContext->foregroundColour == foregroundColour)
         return;
 
-    mForegroundColour = foregroundColour;
-    emit foregroundColourChanged(mForegroundColour);
+    mEditingContext->foregroundColour = foregroundColour;
+    emit foregroundColourChanged(mEditingContext->foregroundColour);
 }
 
 void EditingContextManager::setBackgroundColour(QColor backgroundColour)
 {
-    if (mBackgroundColour == backgroundColour)
+    if (mEditingContext->backgroundColour == backgroundColour)
         return;
 
-    mBackgroundColour = backgroundColour;
-    emit backgroundColourChanged(mBackgroundColour);
+    mEditingContext->backgroundColour = backgroundColour;
+    emit backgroundColourChanged(mEditingContext->backgroundColour);
 }

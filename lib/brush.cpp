@@ -5,36 +5,36 @@
 #include <QSet>
 
 Brush::Brush(const Brush::Type type, const QSizeF &size , const qreal angle, const qreal hardness, const qreal opacity, const QImage &image, const QPointF handle) :
-     mType(type),
-     mSize(size),
-     mAngle(angle),
-     mHardness(hardness),
-     mOpacity(opacity),
-     mImage(image),
-     mHandle(handle)
+     type(type),
+     size(size),
+     angle(angle),
+     hardness(hardness),
+     opacity(opacity),
+     image(image),
+     handle(handle)
 {
 }
 
 Brush::Brush(const Brush &other) :
-    mType(other.mType),
-    mSize(other.mSize),
-    mAngle(other.mAngle),
-    mHardness(other.mHardness),
-    mOpacity(other.mOpacity),
-    mImage(other.mImage),
-    mHandle(other.mHandle)
+    type(other.type),
+    size(other.size),
+    angle(other.angle),
+    hardness(other.hardness),
+    opacity(other.opacity),
+    image(other.image),
+    handle(other.handle)
 {
 }
 
 bool Brush::operator==(const Brush &other) const
 {
-    return mType == other.mType &&
-        mSize == other.mSize &&
-        qFuzzyCompare(mAngle, other.mAngle) &&
-        qFuzzyCompare(mHardness, other.mHardness) &&
-        qFuzzyCompare(mOpacity, other.mOpacity) &&
-        mImage == other.mImage &&
-        mHandle == other.mHandle;
+    return type == other.type &&
+        size == other.size &&
+        qFuzzyCompare(angle, other.angle) &&
+        qFuzzyCompare(hardness, other.hardness) &&
+        qFuzzyCompare(opacity, other.opacity) &&
+        image == other.image &&
+        handle == other.handle;
 }
 
 bool Brush::operator!=(const Brush &other) const
@@ -44,17 +44,17 @@ bool Brush::operator!=(const Brush &other) const
 
 Brush &Brush::operator=(const Brush &other)
 {
-    mType = other.mType;
-    mSize = other.mSize;
-    mAngle = other.mAngle;
-    mHardness = other.mHardness;
-    mOpacity = other.mOpacity;
-    mImage = other.mImage;
-    mHandle = other.mHandle;
+    type = other.type;
+    size = other.size;
+    angle = other.angle;
+    hardness = other.hardness;
+    opacity = other.opacity;
+    image = other.image;
+    handle = other.handle;
     return *this;
 }
 
-BrushManager::BrushManager(const Brush &brush, QObject *const parent) :
+BrushManager::BrushManager(Brush *const brush, QObject *const parent) :
     QObject(parent),
     mBrush(brush)
 {
@@ -85,61 +85,61 @@ BrushManager &BrushManager::operator=(const BrushManager &other)
 QTransform BrushManager::transform() const
 {
     QTransform transform;
-    transform.translate(-mBrush.mHandle.x(), -mBrush.mHandle.y());
+    transform.translate(-mBrush->handle.x(), -mBrush->handle.y());
     return transform;
 }
 
 QRectF BrushManager::bounds(const QPointF pos, const qreal scale, const qreal rotation) const
 {
-    return QRectF(QPointF(-mBrush.mHandle.x() * mBrush.mSize.width(), -mBrush.mHandle.y() * mBrush.mSize.height()) * scale, mBrush.mSize * scale).translated(pos);
+    return QRectF(QPointF(-mBrush->handle.x() * mBrush->size.width(), -mBrush->handle.y() * mBrush->size.height()) * scale, mBrush->size * scale).translated(pos);
 }
 
-const Brush &BrushManager::brush() const
+const Brush *BrushManager::brush() const
 {
     return mBrush;
 }
 
 Brush::Type BrushManager::type() const
 {
-    return mBrush.mType;
+    return mBrush->type;
 }
 
 QSizeF BrushManager::size() const
 {
-    return mBrush.mSize;
+    return mBrush->size;
 }
 
 qreal BrushManager::angle() const
 {
-    return mBrush.mAngle;
+    return mBrush->angle;
 }
 
 qreal BrushManager::hardness() const
 {
-    return mBrush.mHardness;
+    return mBrush->hardness;
 }
 
 qreal BrushManager::opacity() const
 {
-    return mBrush.mOpacity;
+    return mBrush->opacity;
 }
 
 QImage BrushManager::image() const
 {
-    return mBrush.mImage;
+    return mBrush->image;
 }
 
 bool BrushManager::singleColour() const
 {
-    return mBrush.mSingleColour;
+    return mBrush->singleColour;
 }
 
 QPointF BrushManager::handle() const
 {
-    return mBrush.mHandle;
+    return mBrush->handle;
 }
 
-void BrushManager::setBrush(const Brush &brush)
+void BrushManager::setBrush(Brush *const brush)
 {
     if (mBrush == brush)
         return;
@@ -150,72 +150,72 @@ void BrushManager::setBrush(const Brush &brush)
 
 void BrushManager::setType(Brush::Type type)
 {
-    if (mBrush.mType == type)
+    if (mBrush->type == type)
         return;
 
-    mBrush.mType = type;
-    emit typeChanged(mBrush.mType);
+    mBrush->type = type;
+    emit typeChanged(mBrush->type);
 }
 
 void BrushManager::setSize(QSizeF size)
 {
-    if (mBrush.mSize == size)
+    if (mBrush->size == size)
         return;
 
-    mBrush.mSize = size;
-    emit sizeChanged(mBrush.mSize);
+    mBrush->size = size;
+    emit sizeChanged(mBrush->size);
 }
 
 void BrushManager::setAngle(qreal angle)
 {
-    if (qFuzzyCompare(mBrush.mAngle, angle))
+    if (qFuzzyCompare(mBrush->angle, angle))
         return;
 
-    mBrush.mAngle = angle;
-    emit angleChanged(mBrush.mAngle);
+    mBrush->angle = angle;
+    emit angleChanged(mBrush->angle);
 }
 
 void BrushManager::setHardness(qreal hardness)
 {
-    if (qFuzzyCompare(mBrush.mHardness, hardness))
+    if (qFuzzyCompare(mBrush->hardness, hardness))
         return;
 
-    mBrush.mHardness = hardness;
-    emit hardnessChanged(mBrush.mHardness);
+    mBrush->hardness = hardness;
+    emit hardnessChanged(mBrush->hardness);
 }
 
 void BrushManager::setOpacity(qreal opacity)
 {
-    if (qFuzzyCompare(mBrush.mOpacity, opacity))
+    if (qFuzzyCompare(mBrush->opacity, opacity))
         return;
 
-    mBrush.mOpacity = opacity;
-    emit opacityChanged(mBrush.mOpacity);
+    mBrush->opacity = opacity;
+    emit opacityChanged(mBrush->opacity);
 }
 
 void BrushManager::setImage(QImage image)
 {
-    if (mBrush.mImage == image)
+    if (mBrush->image == image)
         return;
 
-    mBrush.mImage = image;
-    emit imageChanged(mBrush.mImage);
+    mBrush->image = image;
+    emit imageChanged(mBrush->image);
 }
 
 void BrushManager::setSingleColour(bool singleColour)
 {
-    if (mBrush.mSingleColour == singleColour)
+    if (mBrush->singleColour == singleColour)
         return;
 
-    mBrush.mSingleColour = singleColour;
-    emit singleColourChanged(mBrush.mSingleColour);
+    mBrush->singleColour = singleColour;
+    emit singleColourChanged(mBrush->singleColour);
 }
 
 void BrushManager::setHandle(QPointF handle)
 {
-    if (mBrush.mHandle == handle)
+    if (mBrush->handle == handle)
         return;
 
-    mBrush.mHandle = handle;
-    emit handleChanged(mBrush.mHandle);
+    mBrush->handle = handle;
+    emit handleChanged(mBrush->handle);
 }

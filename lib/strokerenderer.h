@@ -6,13 +6,14 @@
 #include "editingcontext.h"
 
 #include <QOpenGLFunctions>
+//#include <QOpenGLExtraFunctions>
 #include <QOffscreenSurface>
 #include <QOpenGLTexture>
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLShaderProgram>
 #include <QOpenGLBuffer>
 
-class StrokeRenderer : public QOpenGLFunctions {
+class StrokeRenderer : public QOpenGLFunctions/*QOpenGLExtraFunctions*/ {
 public:
     StrokeRenderer();
     ~StrokeRenderer();
@@ -45,7 +46,8 @@ private:
     QOffscreenSurface mSurface;
     QOpenGLContext mContext;
 
-    QOpenGLFramebufferObject *mFramebuffer;
+    QOpenGLFramebufferObject *mImageFramebuffer;
+    QOpenGLFramebufferObject *mStrokeFramebuffer;
     QImage *mImage;
     QOpenGLTexture *mBrushTexture;
     Stroke mStroke;

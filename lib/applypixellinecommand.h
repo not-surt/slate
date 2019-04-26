@@ -68,5 +68,4 @@ private:
     bool mNeedDraw;
 };
 
-
 #endif // APPLYPIXELLINECOMMAND_H

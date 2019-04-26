@@ -110,9 +110,11 @@ Application::Application(int &argc, char **argv, const QString &applicationName)
     qmlRegisterType<TileGrid>("App", 1, 0, "TileGrid");
     qmlRegisterType<TilesetSwatchImage>("App", 1, 0, "TilesetSwatchImage");
     qmlRegisterUncreatableType<AnimationPlayback>("App", 1, 0, "AnimationPlayback", QLatin1String("Cannot create objects of type AnimationPlayback"));
-    qmlRegisterUncreatableType<BrushManager>("App", 1, 0, "Brush", "Can't create instances of Brush");
+    qmlRegisterUncreatableType<Brush>("App", 1, 0, "Brush", "Can't create instances of Brush");
+    qmlRegisterUncreatableType<BrushManager>("App", 1, 0, "BrushManager", "Can't create instances of BrushManager");
     qmlRegisterUncreatableType<CanvasPane>("App", 1, 0, "CanvasPane", "Can't create instances of CanvasPane");
-    qmlRegisterUncreatableType<EditingContextManager>("App", 1, 0, "EditingContext", "Can't create instances of EditingContext");
+    qmlRegisterUncreatableType<EditingContext>("App", 1, 0, "EditingContext", "Can't create instances of EditingContext");
+    qmlRegisterUncreatableType<EditingContextManager>("App", 1, 0, "EditingContextManager", "Can't create instances of EditingContextManager");
     qmlRegisterUncreatableType<Project>("App", 1, 0, "Project", QLatin1String("Cannot create objects of type Project"));
     qmlRegisterUncreatableType<LayeredImageProject>("App", 1, 0, "LayeredImageProject",
         QLatin1String("Cannot create objects of type LayeredImageProject"));
@@ -125,7 +127,7 @@ Application::Application(int &argc, char **argv, const QString &applicationName)
     qRegisterMetaType<ApplicationSettings*>();
     qRegisterMetaType<ImageLayer*>();
     qRegisterMetaType<Project::Type>();
-    qRegisterMetaType<EditingContextManager::BlendMode>();
+    qRegisterMetaType<EditingContext::BlendMode>();
 
     // For some reason, only when debugging, I get
     // QMetaProperty::read: Unable to handle unregistered datatype 'QUndoStack*' for property 'Project_QML_108::undoStack'

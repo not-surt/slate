@@ -28,19 +28,19 @@ public:
     bool operator!=(const Brush &other) const;
     Brush &operator=(const Brush &other);
 
-    Type mType;
-    QSizeF mSize;
-    qreal mAngle;
-    qreal mHardness;
-    qreal mOpacity;
-    QImage mImage;
-    bool mSingleColour;
-    QPointF mHandle;
+    Type type;
+    QSizeF size;
+    qreal angle;
+    qreal hardness;
+    qreal opacity;
+    QImage image;
+    bool singleColour;
+    QPointF handle;
 };
 
 inline QDebug operator<<(QDebug debug, const Brush &brush)
 {
-    debug.nospace() << "Brush(" << brush.mType << ", " << brush.mSize << ", " << brush.mAngle << ", " << brush.mHardness << ", " << brush.mOpacity << ", " << brush.mImage << ", " << brush.mHandle << ")";
+    debug.nospace() << "Brush(" << brush.type << ", " << brush.size << ", " << brush.angle << ", " << brush.hardness << ", " << brush.opacity << ", " << brush.image << ", " << brush.handle << ")";
     return debug.space();
 }
 
@@ -57,7 +57,7 @@ class SLATE_EXPORT BrushManager : public QObject {
     Q_PROPERTY(QPointF handle READ handle WRITE setHandle NOTIFY handleChanged)
 
 public:
-    BrushManager(const Brush &brush = Brush(), QObject *const parent = nullptr);
+    BrushManager(Brush *const brush = nullptr, QObject *const parent = nullptr);
     BrushManager(const BrushManager &other);
 
     bool operator==(const BrushManager &other) const;
@@ -70,7 +70,7 @@ public:
 
     void draw(QPainter *const painter, const QColor &colour, const QPointF pos = {0.0, 0.0}, const qreal scale = 1.0, const qreal rotation = 0.0) const;
 
-    const Brush &brush() const;
+    const Brush *brush() const;
     Brush::Type type() const;
     QSizeF size() const;
     qreal angle() const;
@@ -81,7 +81,7 @@ public:
     QPointF handle() const;
 
 public slots:
-    void setBrush(const Brush &brush);
+    void setBrush(Brush *const brush);
     void setType(Brush::Type type);
     void setSize(QSizeF size);
     void setAngle(qreal angle);
@@ -92,7 +92,7 @@ public slots:
     void setHandle(QPointF handle);
 
 signals:
-    void brushChanged(const Brush &brush);
+    void brushChanged(const Brush *brush);
     void typeChanged(Brush::Type type);
     void sizeChanged(QSizeF size);
     void angleChanged(qreal angle);
@@ -103,7 +103,7 @@ signals:
     void handleChanged(QPointF handle);
 
 protected:
-    Brush mBrush;
+    Brush *mBrush;
 };
 
 #endif // BRUSH_H

@@ -11,7 +11,7 @@ Popup {
     focus: true
 
     property ImageCanvas canvas
-    property EditingContext context: canvas ? canvas.editingContext : null
+    property EditingContextManager context: canvas ? canvas.editingContextManager : null
 
     contentItem: GridLayout {
         columns: 3
@@ -39,8 +39,8 @@ Popup {
 //            ActionGroup {
 //                id: typeGroup
 //                exclusive: true
-//                onTriggered: if (canvas) context.brush.type = action.brushType
-//                checkedAction: canvas ? actions[context.brush.type] : squareBrushType
+//                onTriggered: if (canvas) context.brushManager.type = action.brushType
+//                checkedAction: canvas ? actions[context.brushManager.type] : squareBrushType
 
 //                Action {
 //                    id: squareBrushType
@@ -85,10 +85,10 @@ Popup {
                 qsTr("Circle"),
                 qsTr("Image")
             ]
-            currentIndex: canvas ? context.brush.type : 0
+            currentIndex: canvas ? context.brushManager.type : 0
 
             Binding {
-                target: context.brush
+                target: context.brushManager
                 property: "type"
                 value: typeComboBox.currentIndex // why parent.currentIndex not work?
                 when: canvas
@@ -100,15 +100,15 @@ Popup {
             text: "\uf1fc"
             hoverEnabled: true
 
-            checked: canvas ? context.brush.singleColour : false
+            checked: canvas ? context.brushManager.singleColour : false
             checkable: true
-            enabled: canvas && context.brush.type === Brush.ImageType
+            enabled: canvas && context.brushManager.type === Brush.ImageType
 
             ToolTip.text: qsTr("Replace brush colours with current colour")
             ToolTip.visible: hovered
 
             Binding {
-                target: context.brush
+                target: context.brushManager
                 property: "singleColour"
                 value: singleColourButton.checked
                 when: canvas
@@ -119,10 +119,10 @@ Popup {
             id: sizeControl
             Layout.columnSpan: 3
             Layout.fillWidth: true
-            value: canvas ? context.brush.size : Qt.size()
+            value: canvas ? context.brushManager.size : Qt.size()
 
             Binding {
-                target: context.brush
+                target: context.brushManager
                 property: "size"
                 when: canvas
                 value: sizeControl.value
@@ -140,14 +140,14 @@ Popup {
             to: 360
             stepSize: 1
             Layout.fillWidth: true
-            value: canvas ? context.brush.angle : 0
+            value: canvas ? context.brushManager.angle : 0
             textFromValue: function(value, locale) { return value + "\u00b0" }
             valueFromText: function(text, locale) { return parseInt(text, 10) }
 
             Layout.columnSpan: 2
 
             Binding {
-                target: context.brush
+                target: context.brushManager
                 property: "angle"
                 value: angleSpinBox.value
                 when: canvas
@@ -163,11 +163,11 @@ Popup {
             from: 0.0
             to: 1.0
             Layout.fillWidth: true
-            value: canvas ? context.brush.opacity : 1
-            enabled: canvas && (context.brush.type != Brush.ImageType || (context.brush.type == Brush.ImageType && singleColourButton.checked))
+            value: canvas ? context.brushManager.opacity : 1
+            enabled: canvas && (context.brushManager.type != Brush.ImageType || (context.brushManager.type == Brush.ImageType && singleColourButton.checked))
 
             Binding {
-                target: context.brush
+                target: context.brushManager
                 property: "opacity"
                 value: opacitySlider.value
                 when: canvas
@@ -189,11 +189,11 @@ Popup {
             from: 0.0
             to: 1.0
             Layout.fillWidth: true
-            value: canvas ? context.brush.hardness : 1
-            enabled: canvas && (context.brush.type != Brush.ImageType || (context.brush.type == Brush.ImageType && singleColourButton.checked))
+            value: canvas ? context.brushManager.hardness : 1
+            enabled: canvas && (context.brushManager.type != Brush.ImageType || (context.brushManager.type == Brush.ImageType && singleColourButton.checked))
 
             Binding {
-                target: context.brush
+                target: context.brushManager
                 property: "hardness"
                 value: hardnessSlider.value
                 when: canvas

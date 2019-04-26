@@ -11,7 +11,7 @@ Popup {
     focus: true
 
     property ImageCanvas canvas
-    property EditingContext context: canvas ? canvas.editingContext : null
+    property EditingContextManager context: canvas ? canvas.editingContextManager : null
 
     contentItem: GridLayout {
         columns: 3

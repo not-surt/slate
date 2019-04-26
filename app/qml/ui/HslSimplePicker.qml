@@ -12,7 +12,7 @@ GridLayout {
     rowSpacing: 0
 
     property ImageCanvas canvas
-    property EditingContext editingContext
+    property EditingContextManager context
     property Project project
 
     readonly property real spinBoxFactor: 1000
@@ -38,14 +38,14 @@ GridLayout {
             id: hueSlider
             implicitHeight: saturationLightnessPicker.height
 
-            onHuePicked: canvas.editingContext[hexColourRowLayout.colourSelector.currentPenPropertyName] = saturationLightnessPicker.color
+            onHuePicked: canvas.editingContextManager[hexColourRowLayout.colourSelector.currentPenPropertyName] = saturationLightnessPicker.color
 
             function updateOurColour() {
-                hueSlider.hue = project && canvas ? canvas.editingContext[hexColourRowLayout.colourSelector.currentPenPropertyName].hslHue : 0;
+                hueSlider.hue = project && canvas ? canvas.editingContextManager[hexColourRowLayout.colourSelector.currentPenPropertyName].hslHue : 0;
             }
 
             Connections {
-                target: editingContext
+                target: context
                 onForegroundColourChanged: hueSlider.updateOurColour()
                 onBackgroundColourChanged: hueSlider.updateOurColour()
             }
@@ -57,7 +57,7 @@ GridLayout {
 
             Connections {
                 target: root
-                onCanvasChanged: editingContext = canvas.editingContext
+                onCanvasChanged: context = canvas.editingContextManager
             }
         }
         SaturationLightnessPicker {
@@ -69,11 +69,11 @@ GridLayout {
             alpha: opacitySlider.value
 
             function updateOurColour() {
-                saturationLightnessPicker.color = canvas.editingContext[hexColourRowLayout.colourSelector.currentPenPropertyName];
+                saturationLightnessPicker.color = canvas.editingContextManager[hexColourRowLayout.colourSelector.currentPenPropertyName];
             }
 
             Connections {
-                target: editingContext
+                target: context
                 onForegroundColourChanged: saturationLightnessPicker.updateOurColour()
                 onBackgroundColourChanged: saturationLightnessPicker.updateOurColour()
             }
@@ -87,7 +87,7 @@ GridLayout {
                 if (!canvas)
                     return;
 
-                canvas.editingContext[hexColourRowLayout.colourSelector.currentPenPropertyName] = saturationLightnessPicker.color
+                canvas.editingContextManager[hexColourRowLayout.colourSelector.currentPenPropertyName] = saturationLightnessPicker.color
             }
         }
     }
@@ -106,7 +106,7 @@ GridLayout {
     Slider {
         id: opacitySlider
         objectName: "opacitySlider"
-        value: canvas ? canvas.editingContext[hexColourRowLayout.colourSelector.currentPenPropertyName].a : 1
+        value: canvas ? canvas.editingContextManager[hexColourRowLayout.colourSelector.currentPenPropertyName].a : 1
         focusPolicy: Qt.NoFocus
 
         Layout.fillWidth: true
@@ -119,7 +119,7 @@ GridLayout {
                 return;
 
             ignoreChanges = true;
-            canvas.editingContext[hexColourRowLayout.colourSelector.currentPenPropertyName].a = opacitySlider.value;
+            canvas.editingContextManager[hexColourRowLayout.colourSelector.currentPenPropertyName].a = opacitySlider.value;
             ignoreChanges = false;
         }
 
@@ -127,7 +127,7 @@ GridLayout {
             if (ignoreChanges)
                 return;
 
-            opacitySlider.value = canvas.editingContext[hexColourRowLayout.colourSelector.currentPenPropertyName].a;
+            opacitySlider.value = canvas.editingContextManager[hexColourRowLayout.colourSelector.currentPenPropertyName].a;
         }
 
         Connections {
@@ -140,7 +140,7 @@ GridLayout {
         }
 
         Connections {
-            target: editingContext
+            target: context
             onForegroundColourChanged: opacitySlider.updateOurValue()
             onBackgroundColourChanged: opacitySlider.updateOurValue()
         }
