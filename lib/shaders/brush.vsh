@@ -1,6 +1,3 @@
-precision highp float;
-precision highp int;
-
 attribute vec2 vertex;
 attribute mat4 instanceTransform;
 

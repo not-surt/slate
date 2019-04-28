@@ -1,8 +1,3 @@
-#extension GL_EXT_frag_depth : enable
-
-precision highp float;
-precision highp int;
-
 varying vec2 vertexPos;
 varying vec2 texturePos;
 
@@ -39,7 +34,5 @@ void main(void)
     vec3 rgb = ((type == ImageType && !singleColour) ? texture2D(imageTypeTexture, texturePos).rgb : colour.rgb);
     float a = (type == ImageType ? texture2D(imageTypeTexture, texturePos).a * (singleColour ? colour.a : 1.0) : colour.a * applyHardness(hardness, 1.0 - dist));
     gl_FragColor = vec4(rgb, a * opacity);
-    gl_FragDepthEXT = dist;
-//    gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);
-//    gl_FragDepthEXT = 0.0;
+    gl_FragDepth = dist;
 }

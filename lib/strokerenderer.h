@@ -5,15 +5,14 @@
 #include "stroke.h"
 #include "editingcontext.h"
 
-#include <QOpenGLFunctions>
-//#include <QOpenGLExtraFunctions>
+#include <QOpenGLExtraFunctions>
 #include <QOffscreenSurface>
 #include <QOpenGLTexture>
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLShaderProgram>
 #include <QOpenGLBuffer>
 
-class StrokeRenderer : public QOpenGLFunctions/*QOpenGLExtraFunctions*/ {
+class StrokeRenderer : public QOpenGLExtraFunctions {
 public:
     StrokeRenderer();
     ~StrokeRenderer();
@@ -58,10 +57,13 @@ private:
     QOpenGLShaderProgram mStrokeFramebufferCopyProgram;
     QOpenGLBuffer mClipQuadVertexBuffer;
 
-    typedef void (ProcGlDrawArraysInstanced)(GLenum mode, GLint first, GLsizei count, GLsizei instancecount);
-    ProcGlDrawArraysInstanced *glDrawArraysInstanced;
-    typedef void (ProcGlVertexAttribDivisor)(GLuint index, GLuint divisor);
-    ProcGlVertexAttribDivisor *glVertexAttribDivisor;
+    QByteArray shaderVersionString() {
+        if (mContext.isOpenGLES()) return QByteArrayLiteral(
+                    "#version 300 es\n"
+                    "precision highp float;\n"
+                    "precision highp int;\n");
+        else return QByteArrayLiteral("#version 330\n");
+    }
 };
 
 #endif // STROKERENDERER_H

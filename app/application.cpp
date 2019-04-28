@@ -66,7 +66,7 @@ static QGuiApplication *createApplication(int &argc, char **argv, const QString 
     QLoggingCategory::setFilterRules("app.* = false");
     QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     // Force ANGLE
-    QGuiApplication::setAttribute(Qt::AA_UseOpenGLES);
+//    QGuiApplication::setAttribute(Qt::AA_UseOpenGLES);
 
     QApplication *app = new QApplication(argc, argv);
     app->setOrganizationName("Mitch Curtis");

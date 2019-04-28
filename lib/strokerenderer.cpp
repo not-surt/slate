@@ -3,6 +3,7 @@
 #include <QPainter>
 #include <QThread>
 #include <QGuiApplication>
+#include <QFile>
 
 #include "utils.h"
 
@@ -14,8 +15,7 @@ QVector<QVector2D> StrokeRenderer::clipQuad{
 };
 
 StrokeRenderer::StrokeRenderer() :
-    QOpenGLFunctions(),
-//    QOpenGLExtraFunctions(),
+    QOpenGLExtraFunctions(),
     mSurface(),
     mContext(),
     mStrokeFramebuffer(nullptr),
@@ -27,14 +27,21 @@ StrokeRenderer::StrokeRenderer() :
     mEditingContext(),
     mBrushProgram(),
     mStrokeFramebufferCopyProgram(),
-    mClipQuadVertexBuffer(QOpenGLBuffer::VertexBuffer),
-    glDrawArraysInstanced(nullptr),
-    glVertexAttribDivisor(nullptr)
+    mClipQuadVertexBuffer(QOpenGLBuffer::VertexBuffer)
 {
     // Create offscreen render context
     QSurfaceFormat format;
-    format.setRenderableType(QSurfaceFormat::OpenGLES);
-    format.setVersion(2, 0);
+    if (QOpenGLContext::openGLModuleType() == QOpenGLContext::LibGL) {
+        // Desktop OpenGL
+        format.setRenderableType(QSurfaceFormat::OpenGL);
+        format.setVersion(3, 3);
+        format.setProfile(QSurfaceFormat::CompatibilityProfile);
+    }
+    else {
+        // OpenGL ES
+        format.setRenderableType(QSurfaceFormat::OpenGLES);
+        format.setVersion(3, 0);
+    }
 #ifdef QT_DEBUG
     format.setOption(QSurfaceFormat::DebugContext);
 #endif
@@ -43,32 +50,6 @@ StrokeRenderer::StrokeRenderer() :
     mSurface.create();
     const bool createContextSuccess = mContext.create();
     Q_ASSERT(createContextSuccess);
-
-    // Used extensions
-    // GL_EXT_frag_depth
-    // GL_ANGLE_instanced_arrays
-    // GL_OES_vertex_array_object
-
-//    qDebug() << mContext.isOpenGLES() << mContext.format().majorVersion() << mContext.format().minorVersion() << mContext.hasExtension("GL_ANGLE_instanced_arrays");
-//    qDebug() << mContext.format();
-    qDebug() << mContext.extensions();
-    if (mContext.isOpenGLES() && mContext.format().majorVersion() == 2 && mContext.hasExtension("GL_ANGLE_instanced_arrays")) {
-        glDrawArraysInstanced = reinterpret_cast<ProcGlDrawArraysInstanced *>(mContext.getProcAddress("glDrawArraysInstancedANGLE"));
-        glVertexAttribDivisor = reinterpret_cast<ProcGlVertexAttribDivisor *>(mContext.getProcAddress("glVertexAttribDivisorANGLE"));
-    }
-    else if (!mContext.isOpenGLES() && mContext.format().majorVersion() == 2 && mContext.hasExtension("GL_ARB_instanced_arrays")) {
-        glDrawArraysInstanced = reinterpret_cast<ProcGlDrawArraysInstanced *>(mContext.getProcAddress("glDrawArraysInstancedARB"));
-        glVertexAttribDivisor = reinterpret_cast<ProcGlVertexAttribDivisor *>(mContext.getProcAddress("glVertexAttribDivisorARB"));
-    }
-    else if ((!mContext.isOpenGLES() && mContext.format().majorVersion() == 3 && mContext.format().minorVersion() >= 3) ||
-             (!mContext.isOpenGLES() && mContext.format().majorVersion() > 3) ||
-             (mContext.isOpenGLES() && mContext.format().majorVersion() >= 3)) {
-        glDrawArraysInstanced = reinterpret_cast<ProcGlDrawArraysInstanced *>(mContext.getProcAddress("glDrawArraysInstanced"));
-        glVertexAttribDivisor = reinterpret_cast<ProcGlVertexAttribDivisor *>(mContext.getProcAddress("glVertexAttribDivisor"));
-    }
-    else {
-        qFatal("Requires OpenGL 3.3+, GLES 3+, OpenGL 2 with GL_ARB_instanced_arrays extension or GLES 2 with GL_ANGLE_instanced_arrays extension");
-    }
 
     // Initialise
     {
@@ -79,8 +60,8 @@ StrokeRenderer::StrokeRenderer() :
         glClearDepthf(1.0);
 
         // Create shader programs
-        mBrushProgram.addCacheableShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/brush.vsh");
-        mBrushProgram.addCacheableShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/brush.fsh");
+        mBrushProgram.addCacheableShaderFromSourceCode(QOpenGLShader::Vertex, shaderVersionString() + Utils::fileToString(":/shaders/brush.vsh"));
+        mBrushProgram.addCacheableShaderFromSourceCode(QOpenGLShader::Fragment, shaderVersionString() + Utils::fileToString(":/shaders/brush.fsh"));
         programLinkingSuccess = mBrushProgram.link();
         Q_ASSERT_X(programLinkingSuccess, "StrokeRenderer: mBrushProgram", mBrushProgram.log().toLatin1());
         mStrokeFramebufferCopyProgram.addCacheableShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/brush.vsh");
