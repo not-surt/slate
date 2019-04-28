@@ -54,6 +54,18 @@ Brush &Brush::operator=(const Brush &other)
     return *this;
 }
 
+QTransform Brush::transform() const
+{
+    QTransform transform;
+    transform.translate(-handle.x(), -handle.y());
+    return transform;
+}
+
+QRectF Brush::bounds(const QPointF pos, const qreal scale, const qreal rotation) const
+{
+    return QRectF(QPointF(-handle.x() * size.width(), -handle.y() * size.height()) * scale, size * scale).translated(pos);
+}
+
 BrushManager::BrushManager(Brush *const brush, QObject *const parent) :
     QObject(parent),
     mBrush(brush)
@@ -80,18 +92,6 @@ BrushManager &BrushManager::operator=(const BrushManager &other)
 {
     mBrush = other.mBrush;
     return *this;
-}
-
-QTransform BrushManager::transform() const
-{
-    QTransform transform;
-    transform.translate(-mBrush->handle.x(), -mBrush->handle.y());
-    return transform;
-}
-
-QRectF BrushManager::bounds(const QPointF pos, const qreal scale, const qreal rotation) const
-{
-    return QRectF(QPointF(-mBrush->handle.x() * mBrush->size.width(), -mBrush->handle.y() * mBrush->size.height()) * scale, mBrush->size * scale).translated(pos);
 }
 
 const Brush *BrushManager::brush() const

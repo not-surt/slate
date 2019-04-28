@@ -182,7 +182,6 @@ ImageCanvas::ImageCanvas() :
     connect(&mSecondPane, SIGNAL(sizeChanged()), this, SLOT(onPaneSizeChanged()));
     connect(&mSplitter, SIGNAL(positionChanged()), this, SLOT(onSplitterPositionChanged()));
 
-    // TODO: reconnect when new brush assigned
     connect(mEditingContextManager->brushManager(), &BrushManager::sizeChanged, this, &ImageCanvas::brushRectChanged);
 
     recreateCheckerImage();
@@ -530,12 +529,12 @@ EditingContextManager *ImageCanvas::editingContextManager() const
     return mEditingContextManager;
 }
 
-void ImageCanvas::setEditingContext(EditingContextManager *editingContext)
+void ImageCanvas::setEditingContextManager(EditingContextManager *editingContextManager)
 {
-    if (editingContext == mEditingContextManager)
+    if (editingContextManager == mEditingContextManager)
         return;
 
-    mEditingContextManager = editingContext;
+    mEditingContextManager = editingContextManager;
     emit editingContextChanged();
 }
 
@@ -546,7 +545,7 @@ int ImageCanvas::maxToolSize() const
 
 QRectF ImageCanvas::brushRect()
 {
-    return mEditingContextManager->brushManager()->bounds();
+    return mEditingContext.brush.bounds();
 }
 
 TexturedFillParameters *ImageCanvas::texturedFillParameters()
@@ -2460,6 +2459,7 @@ bool ImageCanvas::eventFilter(QObject *watched, QEvent *event)
                                     other->rotation(), other->z(), other->modifiers(), other->uniqueId(),
                                     other->button(), other->buttons());
         tabletEvent(&own);
+        qDebug() << own.globalPosF();///////////////////////
     }
 
     return QQuickItem::eventFilter(watched, event);

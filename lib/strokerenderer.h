@@ -27,9 +27,9 @@ public:
     const Stroke &stroke() const;
     void setStroke(const Stroke &brush);
 
-    EditingContextManager &editingContext();
-    const EditingContextManager &editingContext() const;
-    void setEditingContext(const EditingContextManager &editingContext);
+    EditingContext &editingContext();
+    const EditingContext &editingContext() const;
+    void setEditingContext(const EditingContext &editingContext);
 
     void upload(const QRect &rect = QRect());
     void download(const QRect &rect = QRect());
@@ -37,8 +37,8 @@ public:
     void renderBrush(const QTransform &transform);
     void render(const QTransform &transform, const QRect &clip = QRect());
 
-    QRect brushBounds(const BrushManager &brush) const;
-    QRect strokeBounds(const Stroke &stroke, const BrushManager &brush) const;
+    QRect brushBounds(const Brush &brush) const;
+    QRect strokeBounds(const Stroke &stroke, const Brush &brush) const;
 
 private:    
     static QVector<QVector2D> clipQuad;
@@ -46,16 +46,22 @@ private:
     QOffscreenSurface mSurface;
     QOpenGLContext mContext;
 
-    QOpenGLFramebufferObject *mImageFramebuffer;
     QOpenGLFramebufferObject *mStrokeFramebuffer;
+    QOpenGLFramebufferObject *mImageFramebuffer;
     QImage *mImage;
     QOpenGLTexture *mBrushTexture;
     Stroke mStroke;
     QOpenGLBuffer *mStrokeVertexBuffer;
-    EditingContextManager mEditingContext;
+    EditingContext mEditingContext;
 
-    QOpenGLShaderProgram mProgram;
-    QOpenGLBuffer mUnitQuadVertexBuffer;
+    QOpenGLShaderProgram mBrushProgram;
+    QOpenGLShaderProgram mStrokeFramebufferCopyProgram;
+    QOpenGLBuffer mClipQuadVertexBuffer;
+
+    typedef void (ProcGlDrawArraysInstanced)(GLenum mode, GLint first, GLsizei count, GLsizei instancecount);
+    ProcGlDrawArraysInstanced *glDrawArraysInstanced;
+    typedef void (ProcGlVertexAttribDivisor)(GLuint index, GLuint divisor);
+    ProcGlVertexAttribDivisor *glVertexAttribDivisor;
 };
 
 #endif // STROKERENDERER_H

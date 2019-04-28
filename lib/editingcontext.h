@@ -95,7 +95,7 @@ class SLATE_EXPORT EditingContextManager : public QObject
     Q_OBJECT
 
     // Brush
-    Q_PROPERTY(BrushManager *brushManager READ brushManager NOTIFY brushChanged)
+    Q_PROPERTY(BrushManager *brushManager READ brushManager NOTIFY brushManagerChanged)
 
     // Stroke
     Q_PROPERTY(EditingContext::StrokeMode strokeMode READ strokeMode WRITE setStrokeMode NOTIFY strokeModeChanged)
@@ -215,6 +215,8 @@ public slots:
 
 signals:
     void editingContextChanged();
+
+    void brushManagerChanged();
 
     void brushChanged();
 

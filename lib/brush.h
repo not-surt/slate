@@ -28,6 +28,9 @@ public:
     bool operator!=(const Brush &other) const;
     Brush &operator=(const Brush &other);
 
+    QTransform transform() const;
+    QRectF bounds(const QPointF pos = {0.0, 0.0}, const qreal scale = 1.0, const qreal rotation = 0.0) const;
+
     Type type;
     QSizeF size;
     qreal angle;
@@ -63,12 +66,6 @@ public:
     bool operator==(const BrushManager &other) const;
     bool operator!=(const BrushManager &other) const;
     BrushManager &operator=(const BrushManager &other);
-
-    QTransform transform() const;
-
-    QRectF bounds(const QPointF pos = {0.0, 0.0}, const qreal scale = 1.0, const qreal rotation = 0.0) const;
-
-    void draw(QPainter *const painter, const QColor &colour, const QPointF pos = {0.0, 0.0}, const qreal scale = 1.0, const qreal rotation = 0.0) const;
 
     const Brush *brush() const;
     Brush::Type type() const;

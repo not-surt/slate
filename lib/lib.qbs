@@ -5,7 +5,7 @@ Product {
     type: Qt.core.staticBuild ? "staticlibrary" : "dynamiclibrary"
 
     Depends { name: "cpp" }
-    Depends { name: "Qt"; submodules: ["core", "gui", "quick", "widgets", "opengl"]; versionAtLeast: "5.12" }
+    Depends { name: "Qt"; submodules: ["core", "gui", "quick", "widgets", "opengl", "openglextensions"]; versionAtLeast: "5.12" }
     // For version info.
     Depends { name: "vcs" }
     Depends { name: "bundle" }
@@ -14,6 +14,8 @@ Product {
     cpp.visibility: "minimal"
     cpp.defines: [
         "SLATE_LIBRARY",
+        "QT_OPENGL_ES",
+        "QT_OPENGL_ES_2",
 //        "QT_NO_CAST_FROM_ASCII",
 //        "QT_NO_CAST_TO_ASCII",
 //        "QT_NO_URL_CAST_FROM_STRING",

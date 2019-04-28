@@ -12,7 +12,7 @@ GridLayout {
     rowSpacing: 0
 
     property ImageCanvas canvas
-    property EditingContextManager context
+    property EditingContextManager context: canvas ? canvas.editingContextManager : null
     property Project project
 
     readonly property real spinBoxFactor: 1000
@@ -55,10 +55,10 @@ GridLayout {
                 onProjectChanged: hueSlider.updateOurColour()
             }
 
-            Connections {
-                target: root
-                onCanvasChanged: context = canvas.editingContextManager
-            }
+//            Connections {
+//                target: root
+//                onCanvasChanged: context = canvas.editingContextManager
+//            }
         }
         SaturationLightnessPicker {
             id: saturationLightnessPicker

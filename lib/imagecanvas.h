@@ -85,7 +85,7 @@ class SLATE_EXPORT ImageCanvas : public QQuickItem
     Q_PROPERTY(bool containsMouse READ containsMouse NOTIFY containsMouseChanged)
     Q_PROPERTY(Tool tool READ tool WRITE setTool NOTIFY toolChanged)
     Q_PROPERTY(Tool lastFillToolUsed READ lastFillToolUsed NOTIFY lastFillToolUsedChanged)
-    Q_PROPERTY(EditingContextManager *editingContextManager READ editingContextManager WRITE setEditingContext NOTIFY editingContextChanged)
+    Q_PROPERTY(EditingContextManager *editingContextManager READ editingContextManager WRITE setEditingContextManager NOTIFY editingContextManagerChanged)
     Q_PROPERTY(int maxToolSize READ maxToolSize CONSTANT)
     Q_PROPERTY(QRectF brushRect READ brushRect NOTIFY brushRectChanged)
     Q_PROPERTY(EditingContext::BlendMode toolBlendMode READ toolBlendMode WRITE setToolBlendMode NOTIFY toolBlendModeChanged)
@@ -210,7 +210,7 @@ public:
     Tool lastFillToolUsed() const;
 
     EditingContextManager *editingContextManager() const;
-    void setEditingContext(EditingContextManager *editingContextManager);
+    void setEditingContextManager(EditingContextManager *editingContextManager);
     int maxToolSize() const;
     QRectF brushRect();
 
@@ -324,6 +324,7 @@ signals:
     void toolBlendModeChanged();
     void lastFillToolUsedChanged();
     void editingContextChanged();
+    void editingContextManagerChanged();
     void hasBlankCursorChanged();
     void hasSelectionChanged();
     void hasModifiedSelectionChanged();

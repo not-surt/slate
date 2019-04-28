@@ -40,9 +40,9 @@ public:
 
     StrokePoint snapped(const int index, const QPointF snapOffset = {0.0, 0.0}, const bool snapToPixel = true) const;
 
-    void apply(std::function<void(const StrokePoint &)> render, const BrushManager &brush, const bool snapToPixel = false) const;
+    void apply(std::function<void(const StrokePoint &)> render, const Brush &brush, const QRect &clipRect = QRect(), const bool snapToPixel = false) const;
 
-    QRect bounds(const BrushManager &brush, const qreal scaleMin, const qreal scaleMax);
+    QRect bounds(const Brush &brush, const qreal scaleMin, const qreal scaleMax);
 };
 
 #endif // STROKE_H

@@ -50,33 +50,32 @@ StrokePoint Stroke::snapped(const int index, const QPointF snapOffset, const boo
     else return at(index).snapped(snapOffset);
 }
 
-void Stroke::apply(std::function<void(const StrokePoint &)> func, const BrushManager &brush, const bool snapToPixel) const
+void Stroke::apply(std::function<void(const StrokePoint &)> func, const Brush &brush, const QRect &clipRect, const bool snapToPixel) const
 {
     if (isEmpty()) return;
 
     int i = 0;
-    StrokePoint from = snapped(i, brush.handle(), snapToPixel), to;
+    StrokePoint from = snapped(i, brush.handle, snapToPixel), to;
     if (length() > 1) {
         ++i;
     }
     qreal segmentOffset = 0.0;
 
-    auto arePixelsNeighbors = [](const QPoint &point0, const QPoint &point1) {
-        return qAbs(point1.x() - point0.x()) <= 1 &&
-               qAbs(point1.y() - point0.y()) <= 1;
-    };
-    QVector<QPoint> pixels(3);
-    pixels.append(from.pos.toPoint());
+//    auto arePixelsNeighbors = [](const QPoint &point0, const QPoint &point1) {
+//        return qAbs(point1.x() - point0.x()) <= 1 &&
+//               qAbs(point1.y() - point0.y()) <= 1;
+//    };
+//    QVector<QPoint> pixels(3);
+//    pixels.append(from.pos.toPoint());
 //    if (pixels[pixels.length() - 1] == pixels[pixels.length() - 2] && pixels.length() > 1) {
 
 //    }
 
     while (i < length()) {
         do {
-            to = snapped(i, brush.handle(), snapToPixel);
+            to = snapped(i, brush.handle, snapToPixel);
             ++i;
         } while (to == from && i < length());
-//        const QRect clipRect = painter->clipBoundingRect().toAlignedRect();
 //        const QRect segmentBounds = Stroke{from, to}.bounds(brush, scaleMin, scaleMax);
 //        const bool drawSegment = clipRect.isValid() && clipRect.intersects(segmentBounds);
         const bool drawSegment = true;
@@ -86,7 +85,7 @@ void Stroke::apply(std::function<void(const StrokePoint &)> func, const BrushMan
 //    painter->restore();
 }
 
-QRect Stroke::bounds(const BrushManager &brush, const qreal scaleMin, const qreal scaleMax)
+QRect Stroke::bounds(const Brush &brush, const qreal scaleMin, const qreal scaleMax)
 {
     QRectF bounds;
     for (auto point : *this) {

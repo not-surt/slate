@@ -88,8 +88,8 @@ Popup {
             currentIndex: canvas ? context.brushManager.type : 0
 
             Binding {
-                target: context.brushManager
-                property: "type"
+                target: context
+                property: "brushManager.type"
                 value: typeComboBox.currentIndex // why parent.currentIndex not work?
                 when: canvas
             }
@@ -108,8 +108,8 @@ Popup {
             ToolTip.visible: hovered
 
             Binding {
-                target: context.brushManager
-                property: "singleColour"
+                target: context
+                property: "brushManager.singleColour"
                 value: singleColourButton.checked
                 when: canvas
             }
@@ -122,8 +122,8 @@ Popup {
             value: canvas ? context.brushManager.size : Qt.size()
 
             Binding {
-                target: context.brushManager
-                property: "size"
+                target: context
+                property: "brushManager.size"
                 when: canvas
                 value: sizeControl.value
             }
@@ -147,8 +147,8 @@ Popup {
             Layout.columnSpan: 2
 
             Binding {
-                target: context.brushManager
-                property: "angle"
+                target: context
+                property: "brushManager.angle"
                 value: angleSpinBox.value
                 when: canvas
             }
@@ -167,8 +167,8 @@ Popup {
             enabled: canvas && (context.brushManager.type != Brush.ImageType || (context.brushManager.type == Brush.ImageType && singleColourButton.checked))
 
             Binding {
-                target: context.brushManager
-                property: "opacity"
+                target: context
+                property: "brushManager.opacity"
                 value: opacitySlider.value
                 when: canvas
             }
@@ -193,8 +193,8 @@ Popup {
             enabled: canvas && (context.brushManager.type != Brush.ImageType || (context.brushManager.type == Brush.ImageType && singleColourButton.checked))
 
             Binding {
-                target: context.brushManager
-                property: "hardness"
+                target: context
+                property: "brushManager.hardness"
                 value: hardnessSlider.value
                 when: canvas
             }

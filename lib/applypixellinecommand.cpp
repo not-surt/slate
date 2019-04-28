@@ -80,7 +80,7 @@ void ApplyPixelLineCommand::redo()
 
         // Find intersections of subimages with draw area
         QMap<int, QRegion> subImageRegions;
-        QRect mDrawBounds = Stroke(mStroke.mid(mStrokeUpdateStartIndex)).bounds(*mCanvas->mEditingContextManager->brushManager(), mCanvas->mEditingContextManager->brushScalingMin(), mCanvas->mEditingContextManager->brushScalingMax());
+        QRect mDrawBounds = Stroke(mStroke.mid(mStrokeUpdateStartIndex)).bounds(mCanvas->mEditingContext.brush, mCanvas->mEditingContext.brushScalingMin, mCanvas->mEditingContext.brushScalingMax);
         for (auto const &instance : mCanvas->subImageInstancesInBounds(mDrawBounds)) {
             const ImageCanvas::SubImage subImage = mCanvas->getSubImage(instance.index);
             const QPoint instanceDrawOffset = subImage.bounds.topLeft() - instance.position;
@@ -95,7 +95,7 @@ void ApplyPixelLineCommand::redo()
 
         // Find offsets of subimage instances within stroke area
         QMap<int, QVector<QPoint>> instanceOffsets;
-        for (auto const &instance : mCanvas->subImageInstancesInBounds(mStroke.bounds(*mCanvas->mEditingContextManager->brushManager(), mCanvas->mEditingContextManager->brushScalingMin(), mCanvas->mEditingContextManager->brushScalingMax()))) {
+        for (auto const &instance : mCanvas->subImageInstancesInBounds(mStroke.bounds(mCanvas->mEditingContext.brush, mCanvas->mEditingContext.brushScalingMin, mCanvas->mEditingContext.brushScalingMax))) {
             const ImageCanvas::SubImage subImage = mCanvas->getSubImage(instance.index);
             const QPoint instanceDrawOffset = subImage.bounds.topLeft() - instance.position;
             if (subImageRegions.contains(instance.index)) instanceOffsets[instance.index] += instanceDrawOffset;
@@ -145,11 +145,11 @@ void ApplyPixelLineCommand::redo()
             {
                 Utils::ContextGrabber grabber(&mCanvas->mStrokeRenderer.surface(), &mCanvas->mStrokeRenderer.context());
                 mCanvas->mStrokeRenderer.setStroke(mStroke);
-                mCanvas->mStrokeRenderer.setEditingContext(*mCanvas->mEditingContextManager);
+                mCanvas->mStrokeRenderer.setEditingContext(mCanvas->mEditingContext);
                 mCanvas->mStrokeRenderer.setImage(mCanvas->imageForLayerAt(mLayerIndex));
                 mCanvas->mStrokeRenderer.upload(bufferDrawRegion.boundingRect());
                 for (auto const &key : subImageRegions.keys()) {
-                    for (auto const &rect : subImageRegions[key].rects()) {
+                    for (auto const &rect : subImageRegions[key]) {
 //                        mCanvas->mStrokeRenderer.upload(rect);
                         for (auto const &offset : instanceOffsets[key]) {
                             mCanvas->mStrokeRenderer.render(QTransform().translate(offset.x(), offset.y()), rect);

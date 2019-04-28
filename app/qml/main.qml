@@ -47,7 +47,6 @@ ApplicationWindow {
     readonly property int projectType: project && projectManager.ready ? project.type : 0
     readonly property bool isImageProjectType: projectType === Project.ImageType || projectType === Project.LayeredImageType
     property ImageCanvas canvas: canvasContainer.canvas
-    property EditingContextManager context: canvas.editingContextManager
     property alias newProjectPopup: newProjectPopup
     property alias openProjectDialog: openProjectDialog
     property alias saveChangesDialog: discardChangesDialog

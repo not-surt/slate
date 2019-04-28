@@ -2,5 +2,6 @@
     <qresource prefix="/shaders">
         <file>brush.vsh</file>
         <file>brush.fsh</file>
+        <file>strokebuffer.fsh</file>
     </qresource>
 </RCC>
