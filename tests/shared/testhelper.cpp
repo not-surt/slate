@@ -458,18 +458,18 @@ bool TestHelper::changeBrushType(Brush::Type brushType)
     VERIFY(brushTypeMenu);
     TRY_VERIFY(brushTypeMenu->property("opened").toBool() == true);
 
-    if (brushType == Brush::SquareType) {
+    if (brushType == Brush::Type::Square) {
         QQuickItem *squareBrushTypeMenuItem = brushTypeMenu->findChild<QQuickItem*>("squareBrushTypeMenuItem");
         VERIFY(squareBrushTypeMenuItem);
 
         mouseEventOnCentre(squareBrushTypeMenuItem, MouseClick);
-        VERIFY(canvas->editingContextManager()->brushManager()->type() == Brush::SquareType);
-    } else if (brushType == Brush::CircleType) {
+        VERIFY(canvas->editingContextManager()->brushManager()->type() == Brush::Type::Square);
+    } else if (brushType == Brush::Type::Circle) {
         QQuickItem *circleBrushTypeMenuItem = brushTypeMenu->findChild<QQuickItem*>("circleBrushTypeMenuItem");
         VERIFY(circleBrushTypeMenuItem);
 
         mouseEventOnCentre(circleBrushTypeMenuItem, MouseClick);
-        VERIFY(canvas->editingContextManager()->brushManager()->type() == Brush::CircleType);
+        VERIFY(canvas->editingContextManager()->brushManager()->type() == Brush::Type::Circle);
     }
 
     return true;
@@ -1792,7 +1792,7 @@ bool TestHelper::updateVariables(bool isNewProject, Project::Type projectType)
     // This determines which colour the ColourSelector considers "current",
     // and hence which value is shown in the hex field.
     VERIFY(penForegroundColourButton->setProperty("checked", QVariant(true)));
-    canvas->editingContextManager()->brushManager()->setType(Brush::SquareType);
+    canvas->editingContextManager()->brushManager()->setType(Brush::Type::Square);
 
     app.settings()->setAutoSwatchEnabled(false);
 

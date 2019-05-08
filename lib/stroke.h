@@ -1,7 +1,7 @@
 #ifndef STROKE_H
 #define STROKE_H
 
-#include <QPointF>
+#include <QVector2D>
 #include <QVector>
 #include <QPainter>
 #include <QtMath>
@@ -14,14 +14,14 @@ struct StrokePoint {
     bool operator==(const StrokePoint &other) const;
     bool operator!=(const StrokePoint &other) const;
 
-    StrokePoint snapped(const QPointF snapOffset = {0.0, 0.0}) const;
+    StrokePoint snapped(const QVector2D snapOffset = {0.0, 0.0}) const;
 
     QPoint pixel() const;
 
-    static StrokePoint lerp(const StrokePoint &from, const StrokePoint &to, const qreal pos);
+    static StrokePoint lerp(const StrokePoint &from, const StrokePoint &to, const float pos);
 
-    QPointF pos;
-    qreal pressure;
+    QVector2D pos alignas(8);
+    float pressure alignas(8);
 //    QQuaternion quaternion;
 };
 
@@ -36,13 +36,23 @@ public:
     using QVector::QVector;
     Stroke(const QVector<StrokePoint> &vector = QVector<StrokePoint>()) : QVector<StrokePoint>(vector) {}
 
-    static qreal applySegment(std::function<void(const StrokePoint &)> render, const StrokePoint &from, const StrokePoint &to, const qreal stepOffset = 0.0, const bool stepOffsetOnly = false);
+    static float applySegment(std::function<void(const StrokePoint &)> render, const StrokePoint &from, const StrokePoint &to, const float stepOffset = 0.0, const bool stepOffsetOnly = false);
 
-    StrokePoint snapped(const int index, const QPointF snapOffset = {0.0, 0.0}, const bool snapToPixel = true) const;
+    StrokePoint snapped(const int index, const QVector2D snapOffset = {0.0, 0.0}, const bool snapToPixel = true) const;
 
     void apply(std::function<void(const StrokePoint &)> render, const Brush &brush, const QRect &clipRect = QRect(), const bool snapToPixel = false) const;
 
-    QRect bounds(const Brush &brush, const qreal scaleMin, const qreal scaleMax);
+    QRect bounds(const Brush &brush, const float scaleMin, const float scaleMax);
 };
+
+inline QDebug operator<<(QDebug debug, const Stroke &stroke)
+{
+    debug.nospace() << "Stroke(";
+    for (int i = 0; i < stroke.size(); ++i) {
+        debug.nospace() << (i != 0 ? ", " : "") << "(" << stroke[i].pos.x() << ", " << stroke[i].pos.y() << ")";
+    }
+    debug.nospace() << ")";
+    return debug.space();
+}
 
 #endif // STROKE_H

@@ -1,11 +1,9 @@
-varying vec2 vertexPos;
-varying vec2 texturePos;
+in vec2 vertexPos;
+in vec2 texturePos;
 
 uniform sampler2D texture;
 
-vec4 premultiply(const vec4 colour) {
-    return vec4(colour.rgb * colour.a, colour.a);
-}
+layout (location = 0) out vec4 fragColour;
 
 vec4 unpremultiply(const vec4 colour) {
     if (colour.a == 0.0) return colour;
@@ -14,5 +12,5 @@ vec4 unpremultiply(const vec4 colour) {
 
 void main(void)
 {
-    gl_FragColor = premultiply(texture2D(texture, texturePos));
+    fragColour = unpremultiply(texture2D(texture, texturePos));
 }

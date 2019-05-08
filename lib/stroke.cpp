@@ -11,7 +11,7 @@ bool StrokePoint::operator!=(const StrokePoint &other) const
     return !(*this == other);
 }
 
-StrokePoint StrokePoint::snapped(const QPointF snapOffset) const
+StrokePoint StrokePoint::snapped(const QVector2D snapOffset) const
 {
     return StrokePoint{{qRound(pos.x() + snapOffset.x()) - snapOffset.x(), qRound(pos.y() + snapOffset.y()) - snapOffset.y()}, pressure};
 }
@@ -21,30 +21,30 @@ QPoint StrokePoint::pixel() const
     return QPoint{qFloor(pos.x()), qFloor(pos.y())};
 }
 
-StrokePoint StrokePoint::lerp(const StrokePoint &from, const StrokePoint &to, const qreal pos)
+StrokePoint StrokePoint::lerp(const StrokePoint &from, const StrokePoint &to, const float pos)
 {
-    const QPointF point =  Utils::lerp(from.pos, to.pos, pos);
-    const qreal pressure = Utils::lerp(from.pressure, to.pressure, pos);
+    const QVector2D point =  Utils::lerp(from.pos, to.pos, pos);
+    const float pressure = Utils::lerp(from.pressure, to.pressure, pos);
     return StrokePoint{point, pressure};
 }
 
-qreal Stroke::applySegment(std::function<void(const StrokePoint &)> func, const StrokePoint &from, const StrokePoint &to, const qreal offset, const bool stepOffsetOnly)
+float Stroke::applySegment(std::function<void(const StrokePoint &)> func, const StrokePoint &from, const StrokePoint &to, const float offset, const bool stepOffsetOnly)
 {
-    const QPointF posDelta = {to.pos.x() - from.pos.x(), to.pos.y() - from.pos.y()};
-    const qreal steps = qMax(qMax(qAbs(posDelta.x()), qAbs(posDelta.y())), 1.0);
-    const qreal step = 1.0 / steps;
-    qreal pos = offset * step;
-    while (pos < 1.0/* || qFuzzyCompare(pos, 1.0)*/) {
+    const QVector2D posDelta = {to.pos.x() - from.pos.x(), to.pos.y() - from.pos.y()};
+    const float steps = qMax(qMax(qAbs(posDelta.x()), qAbs(posDelta.y())), 1.0f);
+    const float step = 1.0f / steps;
+    float pos = offset * step;
+    while (pos < 1.0f/* || qFuzzyCompare(pos, 1.0f)*/) {
         if (!stepOffsetOnly) {
             func(StrokePoint::lerp(from, to, pos));
         }
         pos += step;
     }
 //    qDebug() << pos << (offset + qFloor(steps)) * step;
-    return (pos - 1.0) * steps;
+    return (pos - 1.0f) * steps;
 }
 
-StrokePoint Stroke::snapped(const int index, const QPointF snapOffset, const bool snapToPixel) const
+StrokePoint Stroke::snapped(const int index, const QVector2D snapOffset, const bool snapToPixel) const
 {
     if (!snapToPixel) return at(index);
     else return at(index).snapped(snapOffset);
@@ -55,11 +55,11 @@ void Stroke::apply(std::function<void(const StrokePoint &)> func, const Brush &b
     if (isEmpty()) return;
 
     int i = 0;
-    StrokePoint from = snapped(i, brush.handle, snapToPixel), to;
+    StrokePoint from = snapped(i, QVector2D(brush.handle), snapToPixel), to;
     if (length() > 1) {
         ++i;
     }
-    qreal segmentOffset = 0.0;
+    float segmentOffset = 0.0;
 
 //    auto arePixelsNeighbors = [](const QPoint &point0, const QPoint &point1) {
 //        return qAbs(point1.x() - point0.x()) <= 1 &&
@@ -73,7 +73,7 @@ void Stroke::apply(std::function<void(const StrokePoint &)> func, const Brush &b
 
     while (i < length()) {
         do {
-            to = snapped(i, brush.handle, snapToPixel);
+            to = snapped(i, QVector2D(brush.handle), snapToPixel);
             ++i;
         } while (to == from && i < length());
 //        const QRect segmentBounds = Stroke{from, to}.bounds(brush, scaleMin, scaleMax);
@@ -85,11 +85,11 @@ void Stroke::apply(std::function<void(const StrokePoint &)> func, const Brush &b
 //    painter->restore();
 }
 
-QRect Stroke::bounds(const Brush &brush, const qreal scaleMin, const qreal scaleMax)
+QRect Stroke::bounds(const Brush &brush, const float scaleMin, const float scaleMax)
 {
     QRectF bounds;
     for (auto point : *this) {
-        bounds = bounds.united(brush.bounds(point.pos, scaleMin + point.pressure * (scaleMax - scaleMin)));
+        bounds = bounds.united(brush.bounds(point.pos.toPointF(), scaleMin + point.pressure * (scaleMax - scaleMin)));
     }
     return bounds.toAlignedRect();
 }

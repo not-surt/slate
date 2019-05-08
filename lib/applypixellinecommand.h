@@ -53,14 +53,13 @@ private:
     int mLayerIndex;
     Stroke mOldStroke;
     QPainter::CompositionMode mCompositionMode;
-    EditingContextManager *mEditingContext;
+    EditingContext mEditingContext;
 
     Stroke mStroke;
     int mStrokeUpdateStartIndex;
     QRegion mBufferRegion;
     QImage mUndoBuffer;
     QImage mRedoBuffer;
-    QImage mStrokeBuffer;
     QRect mBufferBounds;
 
     const QUndoCommand *mPreviousCommand;

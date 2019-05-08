@@ -1641,7 +1641,7 @@ void ImageCanvas::reset()
     mTabletPressure = 0.0;
     mEditingContextManager->setForegroundColour(Qt::black);
     mEditingContextManager->setBackgroundColour(Qt::white);
-    mEditingContext.brush = Brush(Brush::SquareType, {1, 1});
+    mEditingContext.brush = Brush(Brush::Type::Square, {1, 1});
     emit mEditingContextManager->brushChanged();
 
     mTexturedFillParameters.reset();
@@ -1921,9 +1921,9 @@ void ImageCanvas::brushFromSelection()
     if (!mHasSelection)
         return;
 
-    mEditingContextManager->brushManager()->setType(Brush::ImageType);
+    mEditingContextManager->brushManager()->setType(Brush::Type::Image);
 //    mEditingContext->brush()->setBrush(Brush(Brush::ImageType, mSelectionArea.size(), 0.0, 1.0, 0.0, currentProjectImage()->copy(mSelectionArea)));
-    mEditingContext.brush = Brush(Brush::ImageType, mSelectionArea.size(), 0.0, 1.0, 0.0, currentProjectImage()->copy(mSelectionArea));
+    mEditingContext.brush = Brush(Brush::Type::Image, mSelectionArea.size(), 0.0, 1.0, 0.0, currentProjectImage()->copy(mSelectionArea));
     emit mEditingContextManager->brushChanged();
     mEditingContextManager->setBrushScalingMax(qMax(mEditingContextManager->brushManager()->size().width(), mEditingContextManager->brushManager()->size().height()));
     emit brushRectChanged();
@@ -2034,7 +2034,7 @@ void ImageCanvas::applyCurrentTool(QUndoStack *const alternateStack)
         break;
     }
     case EyeDropperTool: {
-        const QColor pickedColour = pickColour(mNewStroke.last().pos);
+        const QColor pickedColour = pickColour(mNewStroke.last().pos.toPointF());
         if (pickedColour.isValid())
             setPenColour(pickedColour);
         break;
@@ -2592,7 +2592,7 @@ void ImageCanvas::mousePressEvent(QMouseEvent *event)
             }
         }
 
-        mNewStroke = {StrokePoint{{mCursorSceneFX, mCursorSceneFY}, pressure()}};
+        mNewStroke = {StrokePoint{{float(mCursorSceneFX), float(mCursorSceneFY)}, float(pressure())}};
         if (mShiftPressed && !mOldStroke.isEmpty()) {
             mToolContinue = true;
             mNewStroke.prepend(mOldStroke.last());
@@ -2645,7 +2645,7 @@ void ImageCanvas::mouseMoveEvent(QMouseEvent *event)
             if (!isPanning()) {
                 if (mTool != SelectionTool) {
                     mToolContinue = true;
-                    mNewStroke = {StrokePoint{{mCursorSceneFX, mCursorSceneFY}, pressure()}};
+                    mNewStroke = {StrokePoint{{float(mCursorSceneFX), float(mCursorSceneFY)}, float(pressure())}};
                     if (!mOldStroke.isEmpty()) {
                         mNewStroke.prepend(mOldStroke.last());
                     }
@@ -2799,7 +2799,7 @@ void ImageCanvas::hoverMoveEvent(QHoverEvent *event)
 
     updateWindowCursorShape();
 
-    mNewStroke = {{{mCursorSceneFX, mCursorSceneFY}, 1.0}};
+    mNewStroke = {{{float(mCursorSceneFX), float(mCursorSceneFY)}, 1.0f}};
     if (isLineVisible() && !mOldStroke.isEmpty()) mNewStroke.prepend(mOldStroke.last());
     if (isLineVisible() || mProject->settings()->isBrushPreviewVisible()) {
         requestContentPaint();

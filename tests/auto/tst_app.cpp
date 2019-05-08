@@ -1600,7 +1600,7 @@ void tst_App::undoThickRoundPen()
     QVERIFY2(createNewImageProject(), failureMessage);
 
     QVERIFY2(changeToolSize(4), failureMessage);
-    QVERIFY2(changeBrushType(Brush::CircleType), failureMessage);
+    QVERIFY2(changeBrushType(Brush::Type::Circle), failureMessage);
 
     QImage expectedClickImage(":/resources/undoThickRoundPen-1.png");
     QVERIFY(!expectedClickImage.isNull());
@@ -1757,9 +1757,9 @@ void tst_App::penSubpixelPositionWithThickBrush_data()
     QTest::addColumn<Brush::Type>("brushType");
     QTest::addColumn<QString>("expectedImagePath");
 
-    QTest::newRow("square") << Brush::SquareType
+    QTest::newRow("square") << Brush::Type::Square
         << ":/resources/penSubpixelPositionWithThickBrush-square.png";
-    QTest::newRow("circle") << Brush::CircleType
+    QTest::newRow("circle") << Brush::Type::Circle
         << ":/resources/penSubpixelPositionWithThickBrush-circle.png";
 }
 

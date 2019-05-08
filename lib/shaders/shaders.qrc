@@ -1,7 +1,8 @@
 <RCC>
     <qresource prefix="/shaders">
-        <file>brush.vsh</file>
+        <file>quad.vsh</file>
         <file>brush.fsh</file>
         <file>strokebuffer.fsh</file>
+        <file>stroke.vsh</file>
     </qresource>
 </RCC>

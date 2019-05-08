@@ -14,14 +14,14 @@ struct SLATE_EXPORT Brush {
     Q_GADGET
 
 public:
-    enum Type {
-        SquareType,
-        CircleType,
-        ImageType,
+    enum class Type {
+        Square,
+        Circle,
+        Image,
     };
     Q_ENUM(Type)
 
-    Brush(const Brush::Type type = SquareType, const QSizeF &size = {1, 1}, const qreal angle = 0.0, const qreal hardness = 1.0, const qreal opacity = 1.0, const QImage &image = QImage(), const QPointF handle = {0.5, 0.5});
+    Brush(const Brush::Type type = Type::Square, const QSizeF &size = {1, 1}, const qreal angle = 0.0, const qreal hardness = 1.0, const qreal opacity = 1.0, const QImage &image = QImage(), const QPointF handle = {0.5, 0.5});
     Brush(const Brush &other);
 
     bool operator==(const Brush &other) const;
